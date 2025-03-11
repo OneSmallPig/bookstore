@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>百变书屋 - 私人智能图书馆</title>
+  <meta name="description" content="百变书屋是一个智能化的私人图书馆平台，通过AI技术为用户提供个性化的阅读体验">
+  <link rel="stylesheet" href="src/css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <a href="/" class="navbar-logo">
+        <i class="fas fa-book-open mr-2"></i>
+        百变书屋
+      </a>
+      <div class="navbar-menu">
+        <a href="/" class="navbar-link active">首页</a>
+        <a href="/src/pages/search.html" class="navbar-link">智能搜索</a>
+        <a href="/src/pages/bookshelf.html" class="navbar-link">我的书架</a>
+        <a href="/src/pages/community.html" class="navbar-link">阅读社区</a>
+        <a href="/src/pages/profile.html" class="navbar-link">
+          <i class="fas fa-user-circle"></i>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 主要内容 -->
+  <main>
+    <!-- 英雄区域 -->
+    <section class="bg-gradient-to-r from-primary-600 to-secondary-600 text-white py-16">
+      <div class="container mx-auto px-4">
+        <div class="max-w-2xl">
+          <h1 class="text-4xl md:text-5xl font-bold mb-4">你的私人智能图书馆</h1>
+          <p class="text-xl mb-8">通过AI技术，为你推荐最适合的书籍，并提供免费阅读资源</p>
+          <div class="flex flex-col sm:flex-row gap-4">
+            <a href="/src/pages/search.html" class="btn bg-white text-primary-600 hover:bg-gray-100">
+              <i class="fas fa-search mr-2"></i>开始智能搜索
+            </a>
+            <a href="/src/pages/bookshelf.html" class="btn bg-secondary-700 text-white hover:bg-secondary-800">
+              <i class="fas fa-book mr-2"></i>查看我的书架
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 特色功能 -->
+    <section class="py-16 bg-white">
+      <div class="container mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center mb-12">特色功能</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="card p-6 text-center">
+            <div class="w-16 h-16 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-brain text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-3">AI智能推荐</h3>
+            <p class="text-gray-600">描述你的需求，AI会为你推荐最合适的书籍，无需浪费时间在海量书籍中筛选</p>
+          </div>
+          <div class="card p-6 text-center">
+            <div class="w-16 h-16 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-search text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-3">免费资源搜索</h3>
+            <p class="text-gray-600">AI自动搜索网络上的免费资源，让你轻松获取想要阅读的书籍</p>
+          </div>
+          <div class="card p-6 text-center">
+            <div class="w-16 h-16 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-users text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-3">社区互动</h3>
+            <p class="text-gray-600">与志同道合的读者分享阅读心得，发现更多优质书籍</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 热门书籍 -->
+    <section class="py-16 bg-gray-50">
+      <div class="container mx-auto px-4">
+        <div class="flex justify-between items-center mb-8">
+          <h2 class="text-3xl font-bold">热门书籍</h2>
+          <a href="/src/pages/search.html" class="text-primary-600 hover:text-primary-800">
+            查看更多 <i class="fas fa-arrow-right ml-1"></i>
+          </a>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+          <!-- 书籍卡片 -->
+          <div class="card">
+            <img src="/model/images/book-covers/atomic-habits.svg" alt="原子习惯" class="w-full aspect-[2/3] object-cover">
+            <div class="p-4">
+              <h3 class="font-bold mb-1 truncate">原子习惯</h3>
+              <p class="text-sm text-gray-600 mb-2">詹姆斯·克利尔</p>
+              <div class="flex items-center text-yellow-400 text-sm">
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star-half-alt"></i>
+                <span class="ml-1 text-gray-600">4.5</span>
+              </div>
+            </div>
+          </div>
+          <!-- 更多书籍卡片 -->
+          <div class="card">
+            <img src="/model/images/book-covers/deep-learning.svg" alt="深度学习" class="w-full aspect-[2/3] object-cover">
+            <div class="p-4">
+              <h3 class="font-bold mb-1 truncate">深度学习</h3>
+              <p class="text-sm text-gray-600 mb-2">伊恩·古德费洛</p>
+              <div class="flex items-center text-yellow-400 text-sm">
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="far fa-star"></i>
+                <span class="ml-1 text-gray-600">4.0</span>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <img src="/model/images/book-covers/psychology-book.svg" alt="心理学入门" class="w-full aspect-[2/3] object-cover">
+            <div class="p-4">
+              <h3 class="font-bold mb-1 truncate">心理学入门</h3>
+              <p class="text-sm text-gray-600 mb-2">卡罗尔·德韦克</p>
+              <div class="flex items-center text-yellow-400 text-sm">
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <span class="ml-1 text-gray-600">5.0</span>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <img src="/model/images/book-covers/history-book.svg" alt="世界简史" class="w-full aspect-[2/3] object-cover">
+            <div class="p-4">
+              <h3 class="font-bold mb-1 truncate">世界简史</h3>
+              <p class="text-sm text-gray-600 mb-2">尤瓦尔·赫拉利</p>
+              <div class="flex items-center text-yellow-400 text-sm">
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star-half-alt"></i>
+                <i class="far fa-star"></i>
+                <span class="ml-1 text-gray-600">3.5</span>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <img src="/model/images/book-covers/deliberate-practice.svg" alt="刻意练习" class="w-full aspect-[2/3] object-cover">
+            <div class="p-4">
+              <h3 class="font-bold mb-1 truncate">刻意练习</h3>
+              <p class="text-sm text-gray-600 mb-2">安德斯·艾利克森</p>
+              <div class="flex items-center text-yellow-400 text-sm">
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="far fa-star"></i>
+                <span class="ml-1 text-gray-600">4.0</span>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <img src="/model/images/book-covers/future-book.svg" alt="未来简史" class="w-full aspect-[2/3] object-cover">
+            <div class="p-4">
+              <h3 class="font-bold mb-1 truncate">未来简史</h3>
+              <p class="text-sm text-gray-600 mb-2">尤瓦尔·赫拉利</p>
+              <div class="flex items-center text-yellow-400 text-sm">
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star-half-alt"></i>
+                <span class="ml-1 text-gray-600">4.5</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 智能搜索区域 -->
+    <section class="py-16 bg-white">
+      <div class="container mx-auto px-4">
+        <div class="max-w-3xl mx-auto text-center">
+          <h2 class="text-3xl font-bold mb-6">智能搜索你想要的书籍</h2>
+          <p class="text-lg text-gray-600 mb-8">告诉AI你想要阅读的内容、风格或主题，我们会为你找到最合适的书籍</p>
+          <div class="relative mb-6">
+            <input type="text" class="input pl-12 py-4 text-lg" placeholder="例如：想学习如何提高专注力的书籍...">
+            <i class="fas fa-brain absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl"></i>
+          </div>
+          <button class="btn btn-primary py-3 px-8 text-lg">
+            <i class="fas fa-search mr-2"></i>智能搜索
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-links">
+        <div class="footer-column">
+          <h4>百变书屋</h4>
+          <ul>
+            <li><a href="/">首页</a></li>
+            <li><a href="/src/pages/search.html">智能搜索</a></li>
+            <li><a href="/src/pages/bookshelf.html">我的书架</a></li>
+            <li><a href="/src/pages/community.html">阅读社区</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h4>帮助中心</h4>
+          <ul>
+            <li><a href="#">使用指南</a></li>
+            <li><a href="#">常见问题</a></li>
+            <li><a href="#">联系我们</a></li>
+            <li><a href="#">意见反馈</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h4>关于我们</h4>
+          <ul>
+            <li><a href="#">公司介绍</a></li>
+            <li><a href="#">团队成员</a></li>
+            <li><a href="#">加入我们</a></li>
+            <li><a href="#">合作伙伴</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h4>关注我们</h4>
+          <ul>
+            <li><a href="#"><i class="fab fa-weixin mr-2"></i>微信公众号</a></li>
+            <li><a href="#"><i class="fab fa-weibo mr-2"></i>微博</a></li>
+            <li><a href="#"><i class="fab fa-zhihu mr-2"></i>知乎</a></li>
+            <li><a href="#"><i class="fab fa-github mr-2"></i>GitHub</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2024 百变书屋 版权所有</p>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module" src="/src/js/main.js"></script>
+</body>
+</html> 
