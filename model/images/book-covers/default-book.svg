@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="150" height="225" viewBox="0 0 150 225" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景 -->
+  <rect width="150" height="225" fill="#3B82F6"/>
+  
+  <!-- 书本图标 -->
+  <path d="M35 82.5C35 77.8056 38.8056 74 43.5 74H106.5C111.194 74 115 77.8056 115 82.5V142.5C115 147.194 111.194 151 106.5 151H43.5C38.8056 151 35 147.194 35 142.5V82.5Z" fill="white"/>
+  <path d="M45 92H105V132H45V92Z" fill="#3B82F6"/>
+  
+  <!-- 书本标题文本 -->
+  <text x="75" y="170" font-family="Arial" font-size="14" fill="white" text-anchor="middle">书籍标题</text>
+  <text x="75" y="190" font-family="Arial" font-size="12" fill="white" text-anchor="middle">作者名称</text>
+</svg> 

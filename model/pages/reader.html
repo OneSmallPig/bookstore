@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>阅读器 - 百变书屋</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    /* 阅读器特定样式 */
+    body.theme-light {
+      background-color: #f9fafb;
+      color: #1f2937;
+    }
+    
+    body.theme-dark {
+      background-color: #1f2937;
+      color: #f9fafb;
+    }
+    
+    body.theme-sepia {
+      background-color: #f8f3e6;
+      color: #5c4b35;
+    }
+    
+    .reader-container.theme-light {
+      background-color: #ffffff;
+      color: #1f2937;
+    }
+    
+    .reader-container.theme-dark {
+      background-color: #2d3748;
+      color: #e5e7eb;
+    }
+    
+    .reader-container.theme-sepia {
+      background-color: #fbf7ef;
+      color: #5c4b35;
+    }
+    
+    .reader-toolbar {
+      background-color: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(5px);
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    body.theme-dark .reader-toolbar {
+      background-color: rgba(45, 55, 72, 0.9);
+      border-bottom: 1px solid #4b5563;
+    }
+    
+    body.theme-sepia .reader-toolbar {
+      background-color: rgba(251, 247, 239, 0.9);
+      border-bottom: 1px solid #e0d6c2;
+    }
+    
+    .reader-text {
+      line-height: 1.8;
+      font-size: 1.125rem;
+    }
+    
+    .chapter-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    
+    .chapter-content p {
+      margin-bottom: 1.25rem;
+    }
+    
+    .highlight {
+      background-color: rgba(250, 204, 21, 0.3);
+      padding: 0 2px;
+      border-radius: 2px;
+    }
+    
+    .note-indicator {
+      position: relative;
+      cursor: pointer;
+      border-bottom: 2px dotted #3b82f6;
+    }
+    
+    .note-popup {
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      width: 250px;
+      background-color: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 0.75rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+      display: none;
+    }
+    
+    .note-indicator:hover .note-popup {
+      display: block;
+    }
+    
+    body.theme-dark .note-popup {
+      background-color: #374151;
+      border-color: #4b5563;
+    }
+    
+    body.theme-sepia .note-popup {
+      background-color: #f8f3e6;
+      border-color: #e0d6c2;
+    }
+    
+    .toolbar-button {
+      padding: 0.5rem;
+      border-radius: 0.375rem;
+      transition: background-color 0.2s;
+    }
+    
+    .toolbar-button:hover {
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    body.theme-dark .toolbar-button:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .toolbar-button.active {
+      color: #3b82f6;
+    }
+    
+    .chapter-navigation {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      background-color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      z-index: 10;
+      transition: background-color 0.2s;
+    }
+    
+    .chapter-navigation:hover {
+      background-color: #f3f4f6;
+    }
+    
+    .chapter-prev {
+      left: 1rem;
+    }
+    
+    .chapter-next {
+      right: 1rem;
+    }
+    
+    body.theme-dark .chapter-navigation {
+      background-color: #374151;
+      color: #e5e7eb;
+    }
+    
+    body.theme-dark .chapter-navigation:hover {
+      background-color: #4b5563;
+    }
+    
+    body.theme-sepia .chapter-navigation {
+      background-color: #f8f3e6;
+      color: #5c4b35;
+    }
+    
+    body.theme-sepia .chapter-navigation:hover {
+      background-color: #f0e9d8;
+    }
+    
+    @media (max-width: 768px) {
+      .chapter-navigation {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body class="theme-light">
+  <!-- 阅读器工具栏 -->
+  <div class="reader-toolbar sticky top-0 z-10 px-4 py-3">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center">
+        <a href="book-detail.html" class="toolbar-button mr-2">
+          <i class="fas fa-arrow-left"></i>
+        </a>
+        <span class="hidden md:inline-block font-medium">深度学习</span>
+      </div>
+      
+      <div class="flex items-center space-x-2">
+        <!-- 字体大小调整 -->
+        <button class="toolbar-button font-size-btn" data-size="decrease">
+          <i class="fas fa-font text-sm"></i>
+        </button>
+        <button class="toolbar-button font-size-btn" data-size="reset">
+          <i class="fas fa-font"></i>
+        </button>
+        <button class="toolbar-button font-size-btn" data-size="increase">
+          <i class="fas fa-font text-lg"></i>
+        </button>
+        
+        <span class="mx-2 text-gray-300">|</span>
+        
+        <!-- 主题切换 -->
+        <button class="toolbar-button theme-btn active" data-theme="light">
+          <i class="fas fa-sun"></i>
+        </button>
+        <button class="toolbar-button theme-btn" data-theme="sepia">
+          <i class="fas fa-moon"></i>
+        </button>
+        <button class="toolbar-button theme-btn" data-theme="dark">
+          <i class="fas fa-adjust"></i>
+        </button>
+        
+        <span class="mx-2 text-gray-300">|</span>
+        
+        <!-- 其他功能 -->
+        <button class="toolbar-button" title="添加书签">
+          <i class="far fa-bookmark"></i>
+        </button>
+        <button class="toolbar-button" title="目录">
+          <i class="fas fa-list"></i>
+        </button>
+        <button class="toolbar-button" title="笔记">
+          <i class="far fa-sticky-note"></i>
+        </button>
+        <button class="toolbar-button" title="搜索">
+          <i class="fas fa-search"></i>
+        </button>
+      </div>
+      
+      <div class="flex items-center">
+        <span class="text-sm text-gray-500">第3章 · 45%</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 章节导航按钮 -->
+  <div class="chapter-navigation chapter-prev">
+    <i class="fas fa-chevron-left"></i>
+  </div>
+  <div class="chapter-navigation chapter-next">
+    <i class="fas fa-chevron-right"></i>
+  </div>
+  
+  <!-- 阅读内容 -->
+  <main class="py-8">
+    <div class="reader-container theme-light max-w-3xl mx-auto px-6 py-8 rounded-lg shadow-sm">
+      <div class="reader-text">
+        <h1 class="chapter-title">第3章 概率与信息论</h1>
+        
+        <div class="chapter-content">
+          <p>
+            概率论是用于表示不确定性陈述的数学框架。它为人工智能提供了现代方法的基础，因为不确定性的来源很多。不确定性可能来自于问题本身的随机性，也可能来自于不完整的建模，或者是不完整的观察。
+          </p>
+          
+          <p>
+            概率论已经成为人工智能和机器学习的重要工具，因为它们的设计和评估都需要考虑不确定性。我们在本章中介绍概率论的基本概念。
+          </p>
+          
+          <p>
+            首先，我们讨论为什么需要使用概率论，以及概率论中的一些基本定义。接下来，我们描述概率分布的基本性质，并讨论常见的概率分布。然后，我们介绍重要的导出量，如边缘概率、条件概率和贝叶斯法则。
+          </p>
+          
+          <p>
+            <span class="highlight">概率论是一种用于表示有关不确定性陈述的数学语言</span>，以及基于这些陈述进行推理的规则。它是人工智能的核心，因为：
+          </p>
+          
+          <p>
+            1. 概率论的规则告诉我们AI系统应该如何推理，因此我们设计这些系统时会遵循这些规则。
+          </p>
+          
+          <p>
+            2. 我们可以使用概率论和统计学来理论分析我们提出的AI系统的行为。
+          </p>
+          
+          <p>
+            3. 在许多情况下，我们明确地使用概率论的定律来设计AI系统的某些组件。
+          </p>
+          
+          <p>
+            <span class="note-indicator">
+              概率可以被视为处理不确定性的扩展逻辑
+              <div class="note-popup">
+                <div class="text-sm font-medium text-blue-500 mb-1">我的笔记：</div>
+                <div class="text-sm">概率论是逻辑的延伸，用于处理不确定性情况。这对于AI系统非常重要，因为现实世界充满了不确定性。</div>
+              </div>
+            </span>
+          </p>
+          
+          <p>
+            逻辑提供了一套形式化的规则，可以从假设的前提出发，推导出保证正确的结论。但在许多情况下，我们无法确定某些陈述的真假。在这种情况下，我们需要一种方法来表示和推理我们的不确定性程度。
+          </p>
+          
+          <p>
+            概率论提供了一套形式化的规则，用于表示关于不确定性陈述的信念程度，以及如何从已知的信念程度推导出新的信念程度。
+          </p>
+          
+          <p>
+            在人工智能中，我们使用概率论有两个不同的目的。首先，概率法则告诉我们如何构建AI系统，使其能够计算在给定一些证据的情况下，某些命题为真的概率。其次，我们可以使用概率论来分析AI系统的行为。
+          </p>
+          
+          <p>
+            <span class="highlight">概率论为我们提供了一种量化不确定性的方法</span>，这在机器学习中是至关重要的，因为学习算法必须处理不确定的数据和模型。
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <!-- 阅读进度条 -->
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 py-2 px-4">
+    <div class="container mx-auto flex items-center justify-between">
+      <div class="flex items-center">
+        <button class="text-gray-500 hover:text-gray-700 mr-4">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="text-sm text-gray-500">第3章：概率与信息论</div>
+      </div>
+      
+      <div class="w-1/2">
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: 45%"></div>
+        </div>
+      </div>
+      
+      <div class="text-sm text-gray-500">45%</div>
+    </div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // 字体大小调整
+      const fontSizeButtons = document.querySelectorAll('.font-size-btn');
+      const readerText = document.querySelector('.reader-text');
+      
+      fontSizeButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+          const size = this.dataset.size;
+          const currentSize = parseFloat(window.getComputedStyle(readerText).fontSize);
+          
+          if (size === 'increase') {
+            readerText.style.fontSize = `${currentSize + 2}px`;
+          } else if (size === 'decrease') {
+            readerText.style.fontSize = `${Math.max(currentSize - 2, 12)}px`;
+          } else if (size === 'reset') {
+            readerText.style.fontSize = '1.125rem';
+          }
+        });
+      });
+      
+      // 主题切换
+      const themeButtons = document.querySelectorAll('.theme-btn');
+      const body = document.body;
+      const readerContainer = document.querySelector('.reader-container');
+      
+      themeButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+          const theme = this.dataset.theme;
+          
+          // 更新按钮状态
+          themeButtons.forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          
+          // 更新主题
+          body.className = `theme-${theme}`;
+          readerContainer.className = `reader-container theme-${theme} max-w-3xl mx-auto px-6 py-8 rounded-lg shadow-sm`;
+        });
+      });
+      
+      // 章节导航
+      const prevButton = document.querySelector('.chapter-prev');
+      const nextButton = document.querySelector('.chapter-next');
+      
+      prevButton.addEventListener('click', function() {
+        // 在实际应用中，这里应该导航到上一章
+        alert('导航到上一章');
+      });
+      
+      nextButton.addEventListener('click', function() {
+        // 在实际应用中，这里应该导航到下一章
+        alert('导航到下一章');
+      });
+    });
+  </script>
+</body>
+</html> 

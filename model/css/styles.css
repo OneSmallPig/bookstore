@@ -1,0 +1,180 @@
+/* 百变书屋 - 主样式文件 */
+
+/* 导入Tailwind CSS */
+@import 'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css';
+/* 导入字体 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+/* 导入FontAwesome图标 */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+
+/* 全局样式 */
+:root {
+  --primary-color: #3b82f6;
+  --secondary-color: #10b981;
+  --accent-color: #8b5cf6;
+  --text-color: #1f2937;
+  --bg-color: #f9fafb;
+  --card-color: #ffffff;
+  --border-color: #e5e7eb;
+}
+
+body {
+  font-family: 'Noto Sans SC', sans-serif;
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  line-height: 1.6;
+}
+
+/* 自定义组件样式 */
+
+/* 导航栏 */
+.navbar {
+  background-color: var(--card-color);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* 卡片 */
+.book-card {
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.book-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* 按钮 */
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 8px;
+  padding: 0.5rem 1.5rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: #2563eb;
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color);
+  color: white;
+  border-radius: 8px;
+  padding: 0.5rem 1.5rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #059669;
+}
+
+/* 搜索框 */
+.search-container {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background-color: var(--card-color);
+}
+
+.search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  padding: 1rem;
+  font-size: 1rem;
+}
+
+/* 标签 */
+.tag {
+  background-color: #e5e7eb;
+  color: #4b5563;
+  border-radius: 16px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* 书籍封面 */
+.book-cover {
+  aspect-ratio: 2/3;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 阅读进度条 */
+.progress-bar {
+  height: 6px;
+  background-color: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: var(--primary-color);
+  border-radius: 3px;
+}
+
+/* 评分星星 */
+.rating {
+  color: #f59e0b;
+}
+
+/* 页面容器 */
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* 阅读器样式 */
+.reader-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: var(--card-color);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.reader-text {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  color: var(--text-color);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 0.5rem;
+  }
+  
+  .reader-container {
+    padding: 1rem;
+  }
+}
+
+/* 框架页面样式 */
+.iframe-container {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  overflow: hidden;
+}
+
+.iframe-title {
+  background-color: #f3f4f6;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  border-bottom: 1px solid #ddd;
+}
+
+iframe {
+  border: none;
+  width: 100%;
+} 

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>百变书屋 - 私人智能图书馆</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    body {
+      padding: 2rem;
+      background-color: #f3f4f6;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .header img {
+      max-width: 200px;
+      margin-bottom: 1rem;
+    }
+    
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 0.5rem;
+    }
+    
+    .header p {
+      color: #6b7280;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .prototypes-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    @media (min-width: 768px) {
+      .prototypes-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    .iframe-container {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: white;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+    
+    .iframe-title {
+      background-color: #f3f4f6;
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .iframe-title-text {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .iframe-title-icon {
+      width: 20px;
+      height: 20px;
+    }
+    
+    iframe {
+      border: none;
+      width: 100%;
+      height: 600px;
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 3rem;
+      padding: 1rem;
+      color: #6b7280;
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="images/logo.svg" alt="百变书屋 Logo">
+    <h1>百变书屋 - 私人智能图书馆</h1>
+    <p>一个现代化的私人图书馆网站，结合AI技术，为用户提供智能书籍推荐和免费阅读资源。</p>
+  </div>
+  
+  <div class="prototypes-grid">
+    <!-- 首页/发现页 -->
+    <div class="iframe-container">
+      <div class="iframe-title">
+        <div class="iframe-title-text">
+          <img src="images/logo.svg" alt="首页图标" class="iframe-title-icon">
+          <span>首页/发现页</span>
+        </div>
+        <span class="text-xs text-gray-500">home.html</span>
+      </div>
+      <iframe src="pages/home.html" title="首页/发现页"></iframe>
+    </div>
+    
+    <!-- 智能搜索页 -->
+    <div class="iframe-container">
+      <div class="iframe-title">
+        <div class="iframe-title-text">
+          <img src="images/ai-search.svg" alt="智能搜索图标" class="iframe-title-icon">
+          <span>智能搜索页</span>
+        </div>
+        <span class="text-xs text-gray-500">search.html</span>
+      </div>
+      <iframe src="pages/search.html" title="智能搜索页"></iframe>
+    </div>
+    
+    <!-- 个人书架页 -->
+    <div class="iframe-container">
+      <div class="iframe-title">
+        <div class="iframe-title-text">
+          <img src="images/bookshelf.svg" alt="个人书架图标" class="iframe-title-icon">
+          <span>个人书架页</span>
+        </div>
+        <span class="text-xs text-gray-500">bookshelf.html</span>
+      </div>
+      <iframe src="pages/bookshelf.html" title="个人书架页"></iframe>
+    </div>
+    
+    <!-- 书籍详情页 -->
+    <div class="iframe-container">
+      <div class="iframe-title">
+        <div class="iframe-title-text">
+          <i class="fas fa-book text-blue-500"></i>
+          <span>书籍详情页</span>
+        </div>
+        <span class="text-xs text-gray-500">book-detail.html</span>
+      </div>
+      <iframe src="pages/book-detail.html" title="书籍详情页"></iframe>
+    </div>
+    
+    <!-- 阅读器页面 -->
+    <div class="iframe-container">
+      <div class="iframe-title">
+        <div class="iframe-title-text">
+          <img src="images/reader.svg" alt="阅读器图标" class="iframe-title-icon">
+          <span>阅读器页面</span>
+        </div>
+        <span class="text-xs text-gray-500">reader.html</span>
+      </div>
+      <iframe src="pages/reader.html" title="阅读器页面"></iframe>
+    </div>
+    
+    <!-- 个人中心 -->
+    <div class="iframe-container">
+      <div class="iframe-title">
+        <div class="iframe-title-text">
+          <img src="images/profile.svg" alt="个人中心图标" class="iframe-title-icon">
+          <span>个人中心</span>
+        </div>
+        <span class="text-xs text-gray-500">profile.html</span>
+      </div>
+      <iframe src="pages/profile.html" title="个人中心"></iframe>
+    </div>
+    
+    <!-- 社区/发现页 -->
+    <div class="iframe-container">
+      <div class="iframe-title">
+        <div class="iframe-title-text">
+          <img src="images/community.svg" alt="社区图标" class="iframe-title-icon">
+          <span>社区/发现页</span>
+        </div>
+        <span class="text-xs text-gray-500">community.html</span>
+      </div>
+      <iframe src="pages/community.html" title="社区/发现页"></iframe>
+    </div>
+  </div>
+  
+  <div class="footer">
+    <p>© 2023 百变书屋 - 私人智能图书馆. 保留所有权利.</p>
+  </div>
+  
+  <script src="js/main.js"></script>
+</body>
+</html> 

@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>首页 - 百变书屋</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    /* 添加基础样式，以防styles.css未加载 */
+    .book-card {
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s, box-shadow 0.2s;
+      height: 100%;
+    }
+    
+    .book-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .book-cover-container {
+      position: relative;
+      width: 120px;
+      height: 180px;
+      margin: 0 auto 1rem;
+      transition: transform 0.2s;
+    }
+    
+    .book-card:hover .book-cover-container {
+      transform: scale(1.05);
+    }
+    
+    .book-cover {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 4px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .book-intro {
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      color: #6b7280;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.4;
+      height: 3.6em;
+      text-align: left;
+    }
+    
+    .book-card-content {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+    }
+    
+    .book-meta {
+      margin-bottom: 0.5rem;
+    }
+    
+    .book-actions {
+      margin-top: auto;
+    }
+    
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      background-color: #f3f4f6;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      color: #4b5563;
+      transition: background-color 0.2s;
+    }
+    
+    .tag:hover {
+      background-color: #e5e7eb;
+    }
+    
+    .btn-primary {
+      background-color: #3b82f6;
+      color: white;
+      border-radius: 0.375rem;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary:hover {
+      background-color: #2563eb;
+      transform: translateY(-1px);
+    }
+    
+    .btn-secondary {
+      background-color: #f3f4f6;
+      color: #4b5563;
+      border-radius: 0.375rem;
+      transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+      background-color: #e5e7eb;
+      transform: translateY(-1px);
+    }
+    
+    .rating {
+      transition: transform 0.2s;
+    }
+    
+    .book-card:hover .rating {
+      transform: scale(1.1);
+    }
+  </style>
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="navbar sticky top-0 z-10 px-4 py-3">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center">
+        <img src="../images/logo.svg" alt="百变书屋" class="h-10">
+        <span class="ml-2 text-lg font-bold">百变书屋</span>
+      </div>
+      
+      <div class="hidden md:flex items-center space-x-6">
+        <a href="home.html" class="nav-item active font-medium">首页</a>
+        <a href="search.html" class="nav-item font-medium">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item font-medium">我的书架</a>
+        <a href="community.html" class="nav-item font-medium">社区</a>
+      </div>
+      
+      <div class="flex items-center space-x-4">
+        <a href="search.html" class="text-gray-600 hover:text-blue-500">
+          <i class="fas fa-search text-xl"></i>
+        </a>
+        <a href="profile.html" class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+          <i class="fas fa-user"></i>
+        </a>
+        <button class="menu-button md:hidden text-gray-600">
+          <i class="fas fa-bars text-xl"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- 移动端菜单 -->
+    <div class="nav-menu hidden md:hidden mt-2 bg-white shadow-lg rounded-lg absolute right-4 left-4 p-4">
+      <div class="flex flex-col space-y-3">
+        <a href="home.html" class="nav-item active py-2 px-4 rounded hover:bg-gray-100">首页</a>
+        <a href="search.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">我的书架</a>
+        <a href="community.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">社区</a>
+      </div>
+    </div>
+  </nav>
+  
+  <!-- 主要内容 -->
+  <main class="page-container py-6">
+    <!-- 欢迎横幅 -->
+    <section class="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-6 mb-8 text-white">
+      <div class="flex flex-col md:flex-row items-center">
+        <div class="md:w-2/3">
+          <h1 class="text-3xl font-bold mb-2">欢迎来到您的私人图书馆</h1>
+          <p class="mb-4">通过AI智能推荐，发现适合您的书籍，并获取免费阅读资源。</p>
+          <div class="flex space-x-4">
+            <a href="search.html" class="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition">
+              <i class="fas fa-search mr-2"></i>智能搜索
+            </a>
+            <a href="bookshelf.html" class="bg-blue-700 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-800 transition">
+              <i class="fas fa-book mr-2"></i>我的书架
+            </a>
+          </div>
+        </div>
+        <div class="md:w-1/3 mt-6 md:mt-0 flex justify-center">
+          <img src="../images/bookshelf.svg" alt="书架" class="w-40 h-40">
+        </div>
+      </div>
+    </section>
+    
+    <!-- 为您推荐 -->
+    <section class="mb-10">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">为您推荐</h2>
+        <a href="#" class="text-blue-500 text-sm flex items-center">
+          查看全部 <i class="fas fa-chevron-right ml-1 text-xs"></i>
+        </a>
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- 推荐书籍1 -->
+        <div class="book-card bg-white p-4 rounded-lg shadow-sm" data-id="1">
+          <div class="book-cover-container">
+            <img src="../images/book-covers/deep-learning.svg" alt="深度学习" class="book-cover">
+            <div class="absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded">推荐</div>
+          </div>
+          <div class="book-card-content">
+            <div class="book-meta text-center">
+              <h3 class="font-bold text-gray-900">深度学习</h3>
+              <p class="text-gray-600 text-sm">伊恩·古德费洛</p>
+              <div class="rating mt-1 text-sm">
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star-half-alt text-yellow-400"></i>
+                <span class="text-gray-600 ml-1">4.8</span>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-1 justify-center">
+                <span class="tag">人工智能</span>
+                <span class="tag">计算机科学</span>
+              </div>
+            </div>
+            <p class="book-intro">
+              这是AI领域的经典之作，由三位深度学习领域的专家撰写。本书系统地介绍了深度学习的基本原理、数学基础和实际应用，是入门人工智能必读的权威教材。
+            </p>
+            <div class="book-actions mt-3 flex justify-between">
+              <button class="btn-primary text-sm py-1 px-3">阅读</button>
+              <button class="btn-secondary text-sm py-1 px-3">加入书架</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 推荐书籍2 -->
+        <div class="book-card bg-white p-4 rounded-lg shadow-sm" data-id="2">
+          <div class="book-cover-container">
+            <img src="../images/book-covers/history-book.svg" alt="人类简史" class="book-cover">
+            <div class="absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded">推荐</div>
+          </div>
+          <div class="book-card-content">
+            <div class="book-meta text-center">
+              <h3 class="font-bold text-gray-900">人类简史</h3>
+              <p class="text-gray-600 text-sm">尤瓦尔·赫拉利</p>
+              <div class="rating mt-1 text-sm">
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star-half-alt text-yellow-400"></i>
+                <span class="text-gray-600 ml-1">4.7</span>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-1 justify-center">
+                <span class="tag">历史</span>
+                <span class="tag">人类学</span>
+              </div>
+            </div>
+            <p class="book-intro">
+              从十万年前有生命迹象开始，赫拉利带领读者跨越整个人类历史。这部全球现象级的畅销书，讲述了我们如何从狩猎采集者发展为当今世界的主宰者。
+            </p>
+            <div class="book-actions mt-3 flex justify-between">
+              <button class="btn-primary text-sm py-1 px-3">阅读</button>
+              <button class="btn-secondary text-sm py-1 px-3">加入书架</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 推荐书籍3 -->
+        <div class="book-card bg-white p-4 rounded-lg shadow-sm" data-id="3">
+          <div class="book-cover-container">
+            <img src="../images/book-covers/future-book.svg" alt="未来简史" class="book-cover">
+            <div class="absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded">推荐</div>
+          </div>
+          <div class="book-card-content">
+            <div class="book-meta text-center">
+              <h3 class="font-bold text-gray-900">未来简史</h3>
+              <p class="text-gray-600 text-sm">尤瓦尔·赫拉利</p>
+              <div class="rating mt-1 text-sm">
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star-half-alt text-yellow-400"></i>
+                <span class="text-gray-600 ml-1">4.6</span>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-1 justify-center">
+                <span class="tag">未来学</span>
+                <span class="tag">科技</span>
+              </div>
+            </div>
+            <p class="book-intro">
+              继《人类简史》之后，赫拉利的又一力作。本书探讨了人类面临的未来挑战，从人工智能到生物工程，思考人类将如何应对这些变革以及我们的命运将走向何方。
+            </p>
+            <div class="book-actions mt-3 flex justify-between">
+              <button class="btn-primary text-sm py-1 px-3">阅读</button>
+              <button class="btn-secondary text-sm py-1 px-3">加入书架</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 推荐书籍4 -->
+        <div class="book-card bg-white p-4 rounded-lg shadow-sm" data-id="4">
+          <div class="book-cover-container">
+            <img src="../images/book-covers/psychology-book.svg" alt="思考，快与慢" class="book-cover">
+            <div class="absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded">推荐</div>
+          </div>
+          <div class="book-card-content">
+            <div class="book-meta text-center">
+              <h3 class="font-bold text-gray-900">思考，快与慢</h3>
+              <p class="text-gray-600 text-sm">丹尼尔·卡尼曼</p>
+              <div class="rating mt-1 text-sm">
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <span class="text-gray-600 ml-1">4.9</span>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-1 justify-center">
+                <span class="tag">心理学</span>
+                <span class="tag">行为经济学</span>
+              </div>
+            </div>
+            <p class="book-intro">
+              诺贝尔经济学奖得主卡尼曼的代表作，揭示了人类思维的两种模式：快速、直觉的"系统1"和缓慢、理性的"系统2"，以及它们如何塑造我们的判断和决策。
+            </p>
+            <div class="book-actions mt-3 flex justify-between">
+              <button class="btn-primary text-sm py-1 px-3">阅读</button>
+              <button class="btn-secondary text-sm py-1 px-3">加入书架</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 热门分类 -->
+    <section class="mb-10">
+      <h2 class="text-xl font-bold mb-4">热门分类</h2>
+      
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <a href="#" class="bg-blue-500 text-white rounded-lg p-4 text-center hover:bg-blue-600 transition">
+          <i class="fas fa-laptop-code text-2xl mb-2"></i>
+          <div>计算机科学</div>
+        </a>
+        <a href="#" class="bg-green-500 text-white rounded-lg p-4 text-center hover:bg-green-600 transition">
+          <i class="fas fa-flask text-2xl mb-2"></i>
+          <div>科学</div>
+        </a>
+        <a href="#" class="bg-purple-500 text-white rounded-lg p-4 text-center hover:bg-purple-600 transition">
+          <i class="fas fa-brain text-2xl mb-2"></i>
+          <div>心理学</div>
+        </a>
+        <a href="#" class="bg-yellow-500 text-white rounded-lg p-4 text-center hover:bg-yellow-600 transition">
+          <i class="fas fa-landmark text-2xl mb-2"></i>
+          <div>历史</div>
+        </a>
+        <a href="#" class="bg-red-500 text-white rounded-lg p-4 text-center hover:bg-red-600 transition">
+          <i class="fas fa-book-open text-2xl mb-2"></i>
+          <div>文学</div>
+        </a>
+        <a href="#" class="bg-indigo-500 text-white rounded-lg p-4 text-center hover:bg-indigo-600 transition">
+          <i class="fas fa-chart-line text-2xl mb-2"></i>
+          <div>经济学</div>
+        </a>
+      </div>
+    </section>
+    
+    <!-- 最近更新 -->
+    <section class="mb-10">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">最近更新</h2>
+        <a href="#" class="text-blue-500 text-sm flex items-center">
+          查看全部 <i class="fas fa-chevron-right ml-1 text-xs"></i>
+        </a>
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- 更新书籍1 -->
+        <div class="book-card bg-white p-4 rounded-lg shadow-sm" data-id="5">
+          <div class="book-cover-container">
+            <img src="../images/book-covers/atomic-habits.svg" alt="原子习惯" class="book-cover">
+            <div class="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">新书</div>
+          </div>
+          <div class="book-card-content">
+            <div class="book-meta text-center">
+              <h3 class="font-bold text-gray-900">原子习惯</h3>
+              <p class="text-gray-600 text-sm">詹姆斯·克利尔</p>
+              <div class="rating mt-1 text-sm">
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <span class="text-gray-600 ml-1">5.0</span>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-1 justify-center">
+                <span class="tag">自我提升</span>
+                <span class="tag">心理学</span>
+              </div>
+            </div>
+            <p class="book-intro">
+              这本书揭示了养成好习惯和打破坏习惯的实用框架。通过微小的改变，你可以获得惊人的结果。克利尔提供了简单而有效的方法，帮助你建立持久的好习惯。
+            </p>
+            <div class="book-actions mt-3 flex justify-between">
+              <button class="btn-primary text-sm py-1 px-3">阅读</button>
+              <button class="btn-secondary text-sm py-1 px-3">加入书架</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 更新书籍2 -->
+        <div class="book-card bg-white p-4 rounded-lg shadow-sm" data-id="6">
+          <div class="book-cover-container">
+            <img src="../images/book-covers/deliberate-practice.svg" alt="刻意练习" class="book-cover">
+            <div class="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">新书</div>
+          </div>
+          <div class="book-card-content">
+            <div class="book-meta text-center">
+              <h3 class="font-bold text-gray-900">刻意练习</h3>
+              <p class="text-gray-600 text-sm">安德斯·艾利克森</p>
+              <div class="rating mt-1 text-sm">
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="far fa-star text-yellow-400"></i>
+                <span class="text-gray-600 ml-1">4.0</span>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-1 justify-center">
+                <span class="tag">自我提升</span>
+                <span class="tag">学习方法</span>
+              </div>
+            </div>
+            <p class="book-intro">
+              本书揭示了卓越表现背后的秘密：刻意练习。作者通过研究顶尖表现者，发现天才并非天生，而是通过特定类型的练习——刻意练习——来实现的。
+            </p>
+            <div class="book-actions mt-3 flex justify-between">
+              <button class="btn-primary text-sm py-1 px-3">阅读</button>
+              <button class="btn-secondary text-sm py-1 px-3">加入书架</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 更新书籍3 -->
+        <div class="book-card bg-white p-4 rounded-lg shadow-sm" data-id="7">
+          <div class="book-cover-container">
+            <img src="../images/book-covers/default-book.svg" alt="金字塔原理" class="book-cover">
+            <div class="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">新书</div>
+          </div>
+          <div class="book-card-content">
+            <div class="book-meta text-center">
+              <h3 class="font-bold text-gray-900">金字塔原理</h3>
+              <p class="text-gray-600 text-sm">芭芭拉·明托</p>
+              <div class="rating mt-1 text-sm">
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star-half-alt text-yellow-400"></i>
+                <span class="text-gray-600 ml-1">4.5</span>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-1 justify-center">
+                <span class="tag">思维方式</span>
+                <span class="tag">沟通技巧</span>
+              </div>
+            </div>
+            <p class="book-intro">
+              这本经典著作教你如何清晰地思考和表达。金字塔原理是一种逻辑思维方法，帮助你构建有说服力的论点，使复杂的想法变得简单易懂，是商业写作和演讲的必备工具。
+            </p>
+            <div class="book-actions mt-3 flex justify-between">
+              <button class="btn-primary text-sm py-1 px-3">阅读</button>
+              <button class="btn-secondary text-sm py-1 px-3">加入书架</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 更新书籍4 -->
+        <div class="book-card bg-white p-4 rounded-lg shadow-sm" data-id="8">
+          <div class="book-cover-container">
+            <img src="../images/book-covers/default-book.svg" alt="影响力" class="book-cover">
+            <div class="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">新书</div>
+          </div>
+          <div class="book-card-content">
+            <div class="book-meta text-center">
+              <h3 class="font-bold text-gray-900">影响力</h3>
+              <p class="text-gray-600 text-sm">罗伯特·西奥迪尼</p>
+              <div class="rating mt-1 text-sm">
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star text-yellow-400"></i>
+                <i class="fas fa-star-half-alt text-yellow-400"></i>
+                <span class="text-gray-600 ml-1">4.7</span>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-1 justify-center">
+                <span class="tag">心理学</span>
+                <span class="tag">营销</span>
+              </div>
+            </div>
+            <p class="book-intro">
+              西奥迪尼博士揭示了说服他人的六大心理原则：互惠、承诺和一致、社会认同、喜好、权威和稀缺。这本书帮助你理解为什么人们会说"是"，以及如何应用这些原则。
+            </p>
+            <div class="book-actions mt-3 flex justify-between">
+              <button class="btn-primary text-sm py-1 px-3">阅读</button>
+              <button class="btn-secondary text-sm py-1 px-3">加入书架</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 社区推荐 -->
+    <section>
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">社区推荐</h2>
+        <a href="community.html" class="text-blue-500 text-sm flex items-center">
+          前往社区 <i class="fas fa-chevron-right ml-1 text-xs"></i>
+        </a>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 社区推荐1 -->
+        <div class="bg-white p-4 rounded-lg shadow-sm">
+          <div class="flex items-start">
+            <div class="w-10 h-10 rounded-full bg-purple-500 flex-shrink-0 flex items-center justify-center text-white">
+              <span>L</span>
+            </div>
+            <div class="ml-3 flex-1">
+              <div class="flex justify-between">
+                <div>
+                  <span class="font-medium">李小明</span>
+                  <span class="text-gray-500 text-sm ml-2">推荐了</span>
+                  <span class="font-medium text-blue-500">《深度学习》</span>
+                </div>
+                <span class="text-gray-400 text-xs">2小时前</span>
+              </div>
+              <p class="mt-2 text-gray-700">这本书是AI领域的经典之作，详细介绍了深度学习的基本原理和应用。对于想入门AI的朋友来说，是必读书目！</p>
+              <div class="mt-3 flex items-center text-gray-500 text-sm">
+                <button class="flex items-center mr-4 hover:text-blue-500">
+                  <i class="far fa-thumbs-up mr-1"></i>
+                  <span>42</span>
+                </button>
+                <button class="flex items-center hover:text-blue-500">
+                  <i class="far fa-comment mr-1"></i>
+                  <span>8条评论</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 社区推荐2 -->
+        <div class="bg-white p-4 rounded-lg shadow-sm">
+          <div class="flex items-start">
+            <div class="w-10 h-10 rounded-full bg-green-500 flex-shrink-0 flex items-center justify-center text-white">
+              <span>Z</span>
+            </div>
+            <div class="ml-3 flex-1">
+              <div class="flex justify-between">
+                <div>
+                  <span class="font-medium">张三</span>
+                  <span class="text-gray-500 text-sm ml-2">推荐了</span>
+                  <span class="font-medium text-blue-500">《原子习惯》</span>
+                </div>
+                <span class="text-gray-400 text-xs">5小时前</span>
+              </div>
+              <p class="mt-2 text-gray-700">这本书改变了我的生活！通过微小的改变，养成好习惯，最终实现巨大的成果。强烈推荐给每一个想要提升自己的人。</p>
+              <div class="mt-3 flex items-center text-gray-500 text-sm">
+                <button class="flex items-center mr-4 hover:text-blue-500">
+                  <i class="far fa-thumbs-up mr-1"></i>
+                  <span>36</span>
+                </button>
+                <button class="flex items-center hover:text-blue-500">
+                  <i class="far fa-comment mr-1"></i>
+                  <span>12条评论</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  
+  <!-- 页脚 -->
+  <footer class="bg-gray-800 text-white py-8">
+    <div class="page-container">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div>
+          <h3 class="text-lg font-bold mb-4">百变书屋</h3>
+          <p class="text-gray-400">您的私人智能图书馆，为您提供个性化的阅读体验。</p>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">功能</h3>
+          <ul class="space-y-2 text-gray-400">
+            <li><a href="home.html" class="hover:text-white">首页</a></li>
+            <li><a href="search.html" class="hover:text-white">智能搜索</a></li>
+            <li><a href="bookshelf.html" class="hover:text-white">我的书架</a></li>
+            <li><a href="community.html" class="hover:text-white">社区</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">关于我们</h3>
+          <ul class="space-y-2 text-gray-400">
+            <li><a href="#" class="hover:text-white">关于百变书屋</a></li>
+            <li><a href="#" class="hover:text-white">联系我们</a></li>
+            <li><a href="#" class="hover:text-white">隐私政策</a></li>
+            <li><a href="#" class="hover:text-white">使用条款</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">关注我们</h3>
+          <div class="flex space-x-4 text-gray-400">
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-weixin"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-weibo"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-qq"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-github"></i></a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-8 pt-6 border-t border-gray-700 text-center text-gray-400 text-sm">
+        <p>© 2023 百变书屋 - 私人智能图书馆. 保留所有权利.</p>
+      </div>
+    </div>
+  </footer>
+  
+  <script src="../js/main.js"></script>
+</body>
+</html> 
