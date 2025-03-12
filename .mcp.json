@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "browserConnector": {
+    "port": 9222,
+    "host": "localhost"
+  },
+  "devServer": {
+    "port": 3000,
+    "host": "localhost"
+  },
+  "mcpServers": {
+    "@smithery-ai-server-sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@smithery-ai/server-sequential-thinking",
+        "--config",
+        "{}"
+      ]
+    }
+  }
+} 

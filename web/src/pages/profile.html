@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人资料 - 百变书屋</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../css/output.css">
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="navbar sticky top-0 z-10 px-4 py-3">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center">
+        <img src="../images/logo.svg" alt="百变书屋" class="h-10">
+        <span class="ml-2 text-lg font-bold">百变书屋</span>
+      </div>
+      
+      <div class="hidden md:flex items-center space-x-6">
+        <a href="home.html" class="nav-item font-medium">首页</a>
+        <a href="search.html" class="nav-item font-medium">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item font-medium">我的书架</a>
+        <a href="community.html" class="nav-item font-medium">社区</a>
+      </div>
+      
+      <div class="flex items-center space-x-4">
+        <a href="search.html" class="text-gray-600 hover:text-blue-500">
+          <i class="fas fa-search text-xl"></i>
+        </a>
+        <a href="profile.html" class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+          <i class="fas fa-user"></i>
+        </a>
+        <button class="menu-button md:hidden text-gray-600">
+          <i class="fas fa-bars text-xl"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- 移动端菜单 -->
+    <div class="nav-menu hidden md:hidden mt-2 bg-white shadow-lg rounded-lg absolute right-4 left-4 p-4">
+      <div class="flex flex-col space-y-3">
+        <a href="home.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">首页</a>
+        <a href="search.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">我的书架</a>
+        <a href="community.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">社区</a>
+      </div>
+    </div>
+  </nav>
+  
+  <!-- 主要内容 -->
+  <main class="page-container py-6">
+    <!-- 个人信息卡片 -->
+    <section class="mb-8">
+      <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div class="bg-gradient-to-r from-blue-500 to-purple-600 h-32 relative">
+          <button class="absolute top-4 right-4 bg-white bg-opacity-20 text-white rounded-full p-2 hover:bg-opacity-30">
+            <i class="fas fa-camera"></i>
+          </button>
+        </div>
+        
+        <div class="px-6 pb-6 relative">
+          <div class="flex flex-col md:flex-row items-start md:items-end -mt-16">
+            <div class="w-32 h-32 rounded-full border-4 border-white bg-blue-500 flex items-center justify-center text-white text-4xl overflow-hidden">
+              <i class="fas fa-user"></i>
+            </div>
+            
+            <div class="mt-4 md:mt-0 md:ml-6 flex-1">
+              <div class="flex flex-col md:flex-row md:items-center justify-between">
+                <div>
+                  <h1 class="text-2xl font-bold">张小明</h1>
+                  <p class="text-gray-600">书籍爱好者 · 加入于2023年6月</p>
+                </div>
+                
+                <div class="mt-4 md:mt-0">
+                  <button class="btn-primary py-2 px-4 flex items-center">
+                    <i class="fas fa-cog mr-2"></i>
+                    <span>编辑资料</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-6 flex flex-wrap gap-4">
+            <div class="flex items-center text-gray-700">
+              <i class="fas fa-book mr-2 text-blue-500"></i>
+              <span>24本藏书</span>
+            </div>
+            <div class="flex items-center text-gray-700">
+              <i class="fas fa-clock mr-2 text-blue-500"></i>
+              <span>总阅读时长：127小时</span>
+            </div>
+            <div class="flex items-center text-gray-700">
+              <i class="fas fa-calendar-check mr-2 text-blue-500"></i>
+              <span>连续阅读：15天</span>
+            </div>
+            <div class="flex items-center text-gray-700">
+              <i class="fas fa-star mr-2 text-blue-500"></i>
+              <span>阅读达人 Lv.3</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 阅读统计 -->
+    <section class="mb-8">
+      <h2 class="text-xl font-bold mb-4">阅读统计</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- 阅读时长统计 -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold">阅读时长</h3>
+            <div class="text-sm text-gray-500">
+              <select class="border-none bg-transparent outline-none">
+                <option>本周</option>
+                <option>本月</option>
+                <option>今年</option>
+                <option>全部</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="h-48 flex items-end justify-between">
+            <div class="flex flex-col items-center">
+              <div class="w-8 bg-blue-500 rounded-t-md" style="height: 30%"></div>
+              <div class="mt-2 text-xs text-gray-500">一</div>
+            </div>
+            <div class="flex flex-col items-center">
+              <div class="w-8 bg-blue-500 rounded-t-md" style="height: 60%"></div>
+              <div class="mt-2 text-xs text-gray-500">二</div>
+            </div>
+            <div class="flex flex-col items-center">
+              <div class="w-8 bg-blue-500 rounded-t-md" style="height: 45%"></div>
+              <div class="mt-2 text-xs text-gray-500">三</div>
+            </div>
+            <div class="flex flex-col items-center">
+              <div class="w-8 bg-blue-500 rounded-t-md" style="height: 80%"></div>
+              <div class="mt-2 text-xs text-gray-500">四</div>
+            </div>
+            <div class="flex flex-col items-center">
+              <div class="w-8 bg-blue-500 rounded-t-md" style="height: 70%"></div>
+              <div class="mt-2 text-xs text-gray-500">五</div>
+            </div>
+            <div class="flex flex-col items-center">
+              <div class="w-8 bg-blue-500 rounded-t-md" style="height: 90%"></div>
+              <div class="mt-2 text-xs text-gray-500">六</div>
+            </div>
+            <div class="flex flex-col items-center">
+              <div class="w-8 bg-blue-500 rounded-t-md" style="height: 50%"></div>
+              <div class="mt-2 text-xs text-gray-500">日</div>
+            </div>
+          </div>
+          
+          <div class="mt-4 text-center">
+            <div class="text-2xl font-bold">12小时</div>
+            <div class="text-sm text-gray-500">本周阅读时长</div>
+          </div>
+        </div>
+        
+        <!-- 阅读类型统计 -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold">阅读类型</h3>
+            <div class="text-sm text-gray-500">
+              <select class="border-none bg-transparent outline-none">
+                <option>全部</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="h-48 flex items-center justify-center">
+            <!-- 这里应该是一个饼图，但为了简单起见，使用简化的表示 -->
+            <div class="relative w-32 h-32">
+              <div class="absolute inset-0 rounded-full border-8 border-blue-500" style="clip-path: polygon(50% 50%, 0 0, 0 100%, 100% 100%, 100% 0); transform: rotate(45deg)"></div>
+              <div class="absolute inset-0 rounded-full border-8 border-green-500" style="clip-path: polygon(50% 50%, 0 0, 0 50%, 50% 50%); transform: rotate(0deg)"></div>
+              <div class="absolute inset-0 rounded-full border-8 border-purple-500" style="clip-path: polygon(50% 50%, 100% 0, 100% 50%, 50% 50%); transform: rotate(0deg)"></div>
+              <div class="absolute inset-0 flex items-center justify-center">
+                <div class="w-24 h-24 rounded-full bg-white"></div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-4 grid grid-cols-3 gap-2">
+            <div class="flex flex-col items-center">
+              <div class="w-4 h-4 bg-blue-500 rounded-full"></div>
+              <div class="mt-1 text-xs text-gray-500 text-center">计算机科学</div>
+              <div class="font-medium">40%</div>
+            </div>
+            <div class="flex flex-col items-center">
+              <div class="w-4 h-4 bg-green-500 rounded-full"></div>
+              <div class="mt-1 text-xs text-gray-500 text-center">心理学</div>
+              <div class="font-medium">35%</div>
+            </div>
+            <div class="flex flex-col items-center">
+              <div class="w-4 h-4 bg-purple-500 rounded-full"></div>
+              <div class="mt-1 text-xs text-gray-500 text-center">其他</div>
+              <div class="font-medium">25%</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 阅读成就 -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold">阅读成就</h3>
+            <a href="#" class="text-blue-500 text-sm">查看全部</a>
+          </div>
+          
+          <div class="space-y-4">
+            <div class="flex items-center">
+              <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-500 mr-4">
+                <i class="fas fa-book-reader text-xl"></i>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium">阅读先锋</div>
+                <div class="text-sm text-gray-500">连续阅读15天</div>
+                <div class="mt-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-full bg-yellow-500 rounded-full" style="width: 75%"></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="flex items-center">
+              <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 mr-4">
+                <i class="fas fa-glasses text-xl"></i>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium">博览群书</div>
+                <div class="text-sm text-gray-500">阅读10种不同类型的书籍</div>
+                <div class="mt-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-500 rounded-full" style="width: 60%"></div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="flex items-center">
+              <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-500 mr-4">
+                <i class="fas fa-clock text-xl"></i>
+              </div>
+              <div class="flex-1">
+                <div class="font-medium">阅读达人</div>
+                <div class="text-sm text-gray-500">累计阅读时长超过100小时</div>
+                <div class="mt-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-full bg-green-500 rounded-full" style="width: 100%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 最近阅读 -->
+    <section class="mb-8">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">最近阅读</h2>
+        <a href="bookshelf.html" class="text-blue-500 text-sm flex items-center">
+          查看全部 <i class="fas fa-chevron-right ml-1 text-xs"></i>
+        </a>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- 最近阅读1 -->
+        <div class="bg-white rounded-lg shadow-sm p-4">
+          <div class="flex">
+            <img src="https://via.placeholder.com/150x225/3b82f6/ffffff?text=深度学习" alt="深度学习" class="book-cover w-20 h-28">
+            <div class="ml-4 flex-1">
+              <h3 class="font-bold">深度学习</h3>
+              <p class="text-gray-600 text-sm">伊恩·古德费洛</p>
+              <div class="mt-2">
+                <div class="flex justify-between text-sm text-gray-500 mb-1">
+                  <span>阅读进度</span>
+                  <span>45%</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width: 45%"></div>
+                </div>
+              </div>
+              <div class="mt-2 text-xs text-gray-500">
+                上次阅读：今天 10:30
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 最近阅读2 -->
+        <div class="bg-white rounded-lg shadow-sm p-4">
+          <div class="flex">
+            <img src="https://via.placeholder.com/150x225/ef4444/ffffff?text=思考，快与慢" alt="思考，快与慢" class="book-cover w-20 h-28">
+            <div class="ml-4 flex-1">
+              <h3 class="font-bold">思考，快与慢</h3>
+              <p class="text-gray-600 text-sm">丹尼尔·卡尼曼</p>
+              <div class="mt-2">
+                <div class="flex justify-between text-sm text-gray-500 mb-1">
+                  <span>阅读进度</span>
+                  <span>75%</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width: 75%"></div>
+                </div>
+              </div>
+              <div class="mt-2 text-xs text-gray-500">
+                上次阅读：昨天 21:15
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 最近阅读3 -->
+        <div class="bg-white rounded-lg shadow-sm p-4">
+          <div class="flex">
+            <img src="https://via.placeholder.com/150x225/10b981/ffffff?text=人类简史" alt="人类简史" class="book-cover w-20 h-28">
+            <div class="ml-4 flex-1">
+              <h3 class="font-bold">人类简史</h3>
+              <p class="text-gray-600 text-sm">尤瓦尔·赫拉利</p>
+              <div class="mt-2">
+                <div class="flex justify-between text-sm text-gray-500 mb-1">
+                  <span>阅读进度</span>
+                  <span>100%</span>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" style="width: 100%"></div>
+                </div>
+              </div>
+              <div class="mt-2 text-xs text-gray-500">
+                上次阅读：3天前
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 设置选项 -->
+    <section>
+      <h2 class="text-xl font-bold mb-4">设置</h2>
+      
+      <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div class="divide-y divide-gray-200">
+          <div class="p-4 flex justify-between items-center">
+            <div class="flex items-center">
+              <i class="fas fa-user-circle text-blue-500 text-xl w-8"></i>
+              <span class="ml-2">个人资料</span>
+            </div>
+            <i class="fas fa-chevron-right text-gray-400"></i>
+          </div>
+          
+          <div class="p-4 flex justify-between items-center">
+            <div class="flex items-center">
+              <i class="fas fa-bell text-blue-500 text-xl w-8"></i>
+              <span class="ml-2">通知设置</span>
+            </div>
+            <i class="fas fa-chevron-right text-gray-400"></i>
+          </div>
+          
+          <div class="p-4 flex justify-between items-center">
+            <div class="flex items-center">
+              <i class="fas fa-shield-alt text-blue-500 text-xl w-8"></i>
+              <span class="ml-2">隐私与安全</span>
+            </div>
+            <i class="fas fa-chevron-right text-gray-400"></i>
+          </div>
+          
+          <div class="p-4 flex justify-between items-center">
+            <div class="flex items-center">
+              <i class="fas fa-palette text-blue-500 text-xl w-8"></i>
+              <span class="ml-2">外观设置</span>
+            </div>
+            <i class="fas fa-chevron-right text-gray-400"></i>
+          </div>
+          
+          <div class="p-4 flex justify-between items-center">
+            <div class="flex items-center">
+              <i class="fas fa-question-circle text-blue-500 text-xl w-8"></i>
+              <span class="ml-2">帮助与反馈</span>
+            </div>
+            <i class="fas fa-chevron-right text-gray-400"></i>
+          </div>
+          
+          <div class="p-4">
+            <button class="w-full text-center text-red-500">退出登录</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  
+  <!-- 页脚 -->
+  <footer class="bg-gray-800 text-white py-8 mt-12">
+    <div class="page-container">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div>
+          <h3 class="text-lg font-bold mb-4">百变书屋</h3>
+          <p class="text-gray-400">您的私人智能图书馆，为您提供个性化的阅读体验。</p>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">功能</h3>
+          <ul class="space-y-2 text-gray-400">
+            <li><a href="home.html" class="hover:text-white">首页</a></li>
+            <li><a href="search.html" class="hover:text-white">智能搜索</a></li>
+            <li><a href="bookshelf.html" class="hover:text-white">我的书架</a></li>
+            <li><a href="community.html" class="hover:text-white">社区</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">关于我们</h3>
+          <ul class="space-y-2 text-gray-400">
+            <li><a href="#" class="hover:text-white">关于百变书屋</a></li>
+            <li><a href="#" class="hover:text-white">联系我们</a></li>
+            <li><a href="#" class="hover:text-white">隐私政策</a></li>
+            <li><a href="#" class="hover:text-white">使用条款</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">关注我们</h3>
+          <div class="flex space-x-4 text-gray-400">
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-weixin"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-weibo"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-qq"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-github"></i></a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-8 pt-6 border-t border-gray-700 text-center text-gray-400 text-sm">
+        <p>© 2023 百变书屋 - 私人智能图书馆. 保留所有权利.</p>
+      </div>
+    </div>
+  </footer>
+  
+  <script src="../js/main.js"></script>
+</body>
+</html> 

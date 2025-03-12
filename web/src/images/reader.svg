@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+  <!-- 打开的书本 -->
+  <path d="M10,30 Q50,15 90,30 L90,70 Q50,55 10,70 Z" fill="#f9fafb" stroke="#3b82f6" stroke-width="2"/>
+  
+  <!-- 书页分割线 -->
+  <line x1="50" y1="22.5" x2="50" y2="62.5" stroke="#3b82f6" stroke-width="1"/>
+  
+  <!-- 左侧书页 -->
+  <path d="M10,30 Q50,15 50,22.5 L50,62.5 Q50,55 10,70 Z" fill="#e5e7eb"/>
+  
+  <!-- 右侧书页 -->
+  <path d="M50,22.5 Q50,15 90,30 L90,70 Q50,55 50,62.5 Z" fill="#ffffff"/>
+  
+  <!-- 书页纹理 - 左侧 -->
+  <line x1="20" y1="28" x2="40" y2="24" stroke="#d1d5db" stroke-width="1"/>
+  <line x1="20" y1="38" x2="40" y2="34" stroke="#d1d5db" stroke-width="1"/>
+  <line x1="20" y1="48" x2="40" y2="44" stroke="#d1d5db" stroke-width="1"/>
+  <line x1="20" y1="58" x2="40" y2="54" stroke="#d1d5db" stroke-width="1"/>
+  
+  <!-- 书页纹理 - 右侧 -->
+  <line x1="60" y1="24" x2="80" y2="28" stroke="#d1d5db" stroke-width="1"/>
+  <line x1="60" y1="34" x2="80" y2="38" stroke="#d1d5db" stroke-width="1"/>
+  <line x1="60" y1="44" x2="80" y2="48" stroke="#d1d5db" stroke-width="1"/>
+  <line x1="60" y1="54" x2="80" y2="58" stroke="#d1d5db" stroke-width="1"/>
+  
+  <!-- 书签 -->
+  <path d="M70,25 L75,25 L75,45 L72.5,40 L70,45 Z" fill="#ef4444"/>
+  
+  <!-- 阅读指示器 -->
+  <circle cx="30" cy="43" r="3" fill="#3b82f6" opacity="0.7"/>
+  
+  <!-- 阅读进度条 -->
+  <rect x="20" y="80" width="60" height="4" rx="2" ry="2" fill="#e5e7eb"/>
+  <rect x="20" y="80" width="35" height="4" rx="2" ry="2" fill="#3b82f6"/>
+  
+  <!-- 阅读控制按钮 -->
+  <circle cx="30" cy="90" r="4" fill="#f3f4f6" stroke="#3b82f6" stroke-width="1"/>
+  <circle cx="50" cy="90" r="4" fill="#f3f4f6" stroke="#3b82f6" stroke-width="1"/>
+  <circle cx="70" cy="90" r="4" fill="#f3f4f6" stroke="#3b82f6" stroke-width="1"/>
+  
+  <!-- 控制按钮图标 -->
+  <text x="30" y="93" font-family="Arial, sans-serif" font-size="6" text-anchor="middle" fill="#3b82f6">A-</text>
+  <text x="50" y="93" font-family="Arial, sans-serif" font-size="6" text-anchor="middle" fill="#3b82f6">A</text>
+  <text x="70" y="93" font-family="Arial, sans-serif" font-size="6" text-anchor="middle" fill="#3b82f6">A+</text>
+</svg> 

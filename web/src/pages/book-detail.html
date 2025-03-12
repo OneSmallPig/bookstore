@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>书籍详情 - 百变书屋</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../css/output.css">
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="navbar sticky top-0 z-10 px-4 py-3">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center">
+        <img src="../images/logo.svg" alt="百变书屋" class="h-10">
+        <span class="ml-2 text-lg font-bold">百变书屋</span>
+      </div>
+      
+      <div class="hidden md:flex items-center space-x-6">
+        <a href="home.html" class="nav-item font-medium">首页</a>
+        <a href="search.html" class="nav-item font-medium">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item font-medium">我的书架</a>
+        <a href="community.html" class="nav-item font-medium">社区</a>
+      </div>
+      
+      <div class="flex items-center space-x-4">
+        <a href="search.html" class="text-gray-600 hover:text-blue-500">
+          <i class="fas fa-search text-xl"></i>
+        </a>
+        <a href="profile.html" class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+          <i class="fas fa-user"></i>
+        </a>
+        <button class="menu-button md:hidden text-gray-600">
+          <i class="fas fa-bars text-xl"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- 移动端菜单 -->
+    <div class="nav-menu hidden md:hidden mt-2 bg-white shadow-lg rounded-lg absolute right-4 left-4 p-4">
+      <div class="flex flex-col space-y-3">
+        <a href="home.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">首页</a>
+        <a href="search.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">我的书架</a>
+        <a href="community.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">社区</a>
+      </div>
+    </div>
+  </nav>
+  
+  <!-- 主要内容 -->
+  <main class="page-container py-6">
+    <!-- 返回按钮 -->
+    <div class="mb-6">
+      <a href="bookshelf.html" class="inline-flex items-center text-blue-500 hover:text-blue-600">
+        <i class="fas fa-arrow-left mr-2"></i>
+        <span>返回书架</span>
+      </a>
+    </div>
+    
+    <!-- 书籍详情 -->
+    <section class="bg-white rounded-lg shadow-sm overflow-hidden">
+      <!-- 书籍基本信息 -->
+      <div class="p-6">
+        <div class="flex flex-col md:flex-row">
+          <!-- 书籍封面 -->
+          <div class="md:w-1/4 flex justify-center mb-6 md:mb-0">
+            <img src="https://via.placeholder.com/300x450/3b82f6/ffffff?text=深度学习" alt="深度学习" class="book-cover w-48 h-72">
+          </div>
+          
+          <!-- 书籍信息 -->
+          <div class="md:w-3/4 md:pl-8">
+            <div class="flex justify-between items-start">
+              <h1 class="text-3xl font-bold mb-2">深度学习</h1>
+              <div class="flex space-x-2">
+                <button class="text-gray-400 hover:text-gray-600 text-xl">
+                  <i class="far fa-bookmark"></i>
+                </button>
+                <button class="text-gray-400 hover:text-gray-600 text-xl">
+                  <i class="fas fa-share-alt"></i>
+                </button>
+              </div>
+            </div>
+            
+            <div class="text-gray-600 mb-4">
+              <span>作者：伊恩·古德费洛、约书亚·本吉奥、亚伦·库维尔</span>
+            </div>
+            
+            <div class="flex items-center mb-4">
+              <div class="rating text-lg mr-2">
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star"></i>
+                <i class="fas fa-star-half-alt"></i>
+              </div>
+              <span class="text-gray-600">4.8（1,245人评分）</span>
+            </div>
+            
+            <div class="mb-4">
+              <div class="flex flex-wrap gap-2">
+                <span class="tag">人工智能</span>
+                <span class="tag">计算机科学</span>
+                <span class="tag">机器学习</span>
+                <span class="tag">神经网络</span>
+                <span class="tag">数学</span>
+              </div>
+            </div>
+            
+            <div class="mb-6">
+              <div class="text-gray-700 mb-2">阅读进度</div>
+              <div class="flex items-center">
+                <div class="progress-bar w-full max-w-md mr-4">
+                  <div class="progress-fill" style="width: 45%"></div>
+                </div>
+                <span class="text-gray-600">45%</span>
+              </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-3">
+              <button class="btn-primary py-2 px-6 flex items-center">
+                <i class="fas fa-book-open mr-2"></i>
+                <span>继续阅读</span>
+              </button>
+              <button class="btn-secondary py-2 px-6 flex items-center">
+                <i class="fas fa-download mr-2"></i>
+                <span>下载</span>
+              </button>
+              <button class="border border-gray-300 rounded-lg py-2 px-6 text-gray-700 hover:bg-gray-50 flex items-center">
+                <i class="fas fa-plus mr-2"></i>
+                <span>添加到收藏夹</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 书籍详细信息标签页 -->
+      <div class="border-t border-gray-200">
+        <div class="flex border-b border-gray-200">
+          <button class="px-6 py-3 border-b-2 border-blue-500 font-medium text-blue-500">简介</button>
+          <button class="px-6 py-3 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">目录</button>
+          <button class="px-6 py-3 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">笔记</button>
+          <button class="px-6 py-3 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">评论</button>
+          <button class="px-6 py-3 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">相关推荐</button>
+        </div>
+        
+        <!-- 简介内容 -->
+        <div class="p-6">
+          <h2 class="text-xl font-bold mb-4">内容简介</h2>
+          <p class="text-gray-700 mb-4">
+            《深度学习》由全球知名的三位专家Ian Goodfellow、Yoshua Bengio 和Aaron Courville撰写，是深度学习领域奠基性的经典教材。本书提供了深度学习领域的全面知识，内容涵盖了数学基础、机器学习基础、深度前馈网络、正则化、优化、卷积网络、循环网络、实践方法论等。
+          </p>
+          <p class="text-gray-700 mb-4">
+            本书适合各类读者阅读，包括大学本科生和研究生、软件工程师、研究人员，以及任何希望开始学习深度学习或加强对深度学习理解的人士。
+          </p>
+          <p class="text-gray-700">
+            深度学习是机器学习的一个分支，它基于人工神经网络的概念，通过多层次的抽象来学习数据的表示。近年来，深度学习在计算机视觉、语音识别、自然语言处理、音频识别和生物信息学等领域取得了突破性进展，并在许多任务上超越了传统机器学习方法的性能。
+          </p>
+          
+          <h2 class="text-xl font-bold mt-8 mb-4">作者简介</h2>
+          <div class="space-y-4">
+            <div>
+              <h3 class="font-bold">伊恩·古德费洛（Ian Goodfellow）</h3>
+              <p class="text-gray-700">
+                谷歌研究员，生成对抗网络（GAN）的发明者，在深度学习领域有重要贡献。
+              </p>
+            </div>
+            <div>
+              <h3 class="font-bold">约书亚·本吉奥（Yoshua Bengio）</h3>
+              <p class="text-gray-700">
+                蒙特利尔大学教授，深度学习领域的先驱之一，2018年图灵奖获得者。
+              </p>
+            </div>
+            <div>
+              <h3 class="font-bold">亚伦·库维尔（Aaron Courville）</h3>
+              <p class="text-gray-700">
+                蒙特利尔大学助理教授，主要研究深度学习和概率模型。
+              </p>
+            </div>
+          </div>
+          
+          <h2 class="text-xl font-bold mt-8 mb-4">出版信息</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p class="text-gray-600">出版社：<span class="text-gray-800">人民邮电出版社</span></p>
+              <p class="text-gray-600">出版日期：<span class="text-gray-800">2017-07-01</span></p>
+              <p class="text-gray-600">页数：<span class="text-gray-800">802</span></p>
+            </div>
+            <div>
+              <p class="text-gray-600">语言：<span class="text-gray-800">简体中文</span></p>
+              <p class="text-gray-600">ISBN：<span class="text-gray-800">9787115461476</span></p>
+              <p class="text-gray-600">装帧：<span class="text-gray-800">平装</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 相关推荐 -->
+    <section class="mt-10">
+      <h2 class="text-xl font-bold mb-6">猜你喜欢</h2>
+      
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+        <!-- 推荐书籍1 -->
+        <div class="book-card bg-white p-4">
+          <div class="flex flex-col items-center">
+            <img src="https://via.placeholder.com/150x225/10b981/ffffff?text=机器学习" alt="机器学习" class="book-cover w-full h-48 object-cover mb-3">
+            <h3 class="font-bold text-center">机器学习</h3>
+            <p class="text-gray-600 text-sm text-center">周志华</p>
+            <div class="rating mt-1 text-sm">
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 推荐书籍2 -->
+        <div class="book-card bg-white p-4">
+          <div class="flex flex-col items-center">
+            <img src="https://via.placeholder.com/150x225/8b5cf6/ffffff?text=Python机器学习" alt="Python机器学习" class="book-cover w-full h-48 object-cover mb-3">
+            <h3 class="font-bold text-center">Python机器学习</h3>
+            <p class="text-gray-600 text-sm text-center">塞巴斯蒂安·拉施卡</p>
+            <div class="rating mt-1 text-sm">
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star-half-alt"></i>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 推荐书籍3 -->
+        <div class="book-card bg-white p-4">
+          <div class="flex flex-col items-center">
+            <img src="https://via.placeholder.com/150x225/ef4444/ffffff?text=TensorFlow实战" alt="TensorFlow实战" class="book-cover w-full h-48 object-cover mb-3">
+            <h3 class="font-bold text-center">TensorFlow实战</h3>
+            <p class="text-gray-600 text-sm text-center">黄文坚</p>
+            <div class="rating mt-1 text-sm">
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="far fa-star"></i>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 推荐书籍4 -->
+        <div class="book-card bg-white p-4">
+          <div class="flex flex-col items-center">
+            <img src="https://via.placeholder.com/150x225/f59e0b/ffffff?text=神经网络与深度学习" alt="神经网络与深度学习" class="book-cover w-full h-48 object-cover mb-3">
+            <h3 class="font-bold text-center">神经网络与深度学习</h3>
+            <p class="text-gray-600 text-sm text-center">邱锡鹏</p>
+            <div class="rating mt-1 text-sm">
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star-half-alt"></i>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 推荐书籍5 -->
+        <div class="book-card bg-white p-4">
+          <div class="flex flex-col items-center">
+            <img src="https://via.placeholder.com/150x225/3b82f6/ffffff?text=强化学习" alt="强化学习" class="book-cover w-full h-48 object-cover mb-3">
+            <h3 class="font-bold text-center">强化学习</h3>
+            <p class="text-gray-600 text-sm text-center">理查德·萨顿</p>
+            <div class="rating mt-1 text-sm">
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="fas fa-star"></i>
+              <i class="far fa-star"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  
+  <!-- 页脚 -->
+  <footer class="bg-gray-800 text-white py-8 mt-12">
+    <div class="page-container">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div>
+          <h3 class="text-lg font-bold mb-4">百变书屋</h3>
+          <p class="text-gray-400">您的私人智能图书馆，为您提供个性化的阅读体验。</p>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">功能</h3>
+          <ul class="space-y-2 text-gray-400">
+            <li><a href="home.html" class="hover:text-white">首页</a></li>
+            <li><a href="search.html" class="hover:text-white">智能搜索</a></li>
+            <li><a href="bookshelf.html" class="hover:text-white">我的书架</a></li>
+            <li><a href="community.html" class="hover:text-white">社区</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">关于我们</h3>
+          <ul class="space-y-2 text-gray-400">
+            <li><a href="#" class="hover:text-white">关于百变书屋</a></li>
+            <li><a href="#" class="hover:text-white">联系我们</a></li>
+            <li><a href="#" class="hover:text-white">隐私政策</a></li>
+            <li><a href="#" class="hover:text-white">使用条款</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">关注我们</h3>
+          <div class="flex space-x-4 text-gray-400">
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-weixin"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-weibo"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-qq"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-github"></i></a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-8 pt-6 border-t border-gray-700 text-center text-gray-400 text-sm">
+        <p>© 2023 百变书屋 - 私人智能图书馆. 保留所有权利.</p>
+      </div>
+    </div>
+  </footer>
+  
+  <script src="../js/main.js"></script>
+</body>
+</html> 

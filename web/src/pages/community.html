@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>阅读社区 - 百变书屋</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../css/output.css">
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="navbar sticky top-0 z-10 px-4 py-3">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center">
+        <img src="../images/logo.svg" alt="百变书屋" class="h-10">
+        <span class="ml-2 text-lg font-bold">百变书屋</span>
+      </div>
+      
+      <div class="hidden md:flex items-center space-x-6">
+        <a href="home.html" class="nav-item font-medium">首页</a>
+        <a href="search.html" class="nav-item font-medium">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item font-medium">我的书架</a>
+        <a href="community.html" class="nav-item active font-medium">社区</a>
+      </div>
+      
+      <div class="flex items-center space-x-4">
+        <a href="search.html" class="text-gray-600 hover:text-blue-500">
+          <i class="fas fa-search text-xl"></i>
+        </a>
+        <a href="profile.html" class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+          <i class="fas fa-user"></i>
+        </a>
+        <button class="menu-button md:hidden text-gray-600">
+          <i class="fas fa-bars text-xl"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- 移动端菜单 -->
+    <div class="nav-menu hidden md:hidden mt-2 bg-white shadow-lg rounded-lg absolute right-4 left-4 p-4">
+      <div class="flex flex-col space-y-3">
+        <a href="home.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">首页</a>
+        <a href="search.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">我的书架</a>
+        <a href="community.html" class="nav-item active py-2 px-4 rounded hover:bg-gray-100">社区</a>
+      </div>
+    </div>
+  </nav>
+  
+  <!-- 主要内容 -->
+  <main class="page-container py-6">
+    <!-- 社区头部 -->
+    <section class="mb-8">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <div>
+          <h1 class="text-3xl font-bold mb-2">读书社区</h1>
+          <p class="text-gray-600">与其他读者分享您的阅读体验、书评和推荐</p>
+        </div>
+        
+        <div class="mt-4 md:mt-0">
+          <button class="btn-primary py-2 px-4 flex items-center">
+            <i class="fas fa-pen mr-2"></i>
+            <span>发布新帖子</span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- 分类标签 -->
+      <div class="border-b border-gray-200">
+        <ul class="flex flex-wrap -mb-px">
+          <li class="mr-2">
+            <a href="#" class="inline-block py-2 px-4 border-b-2 border-blue-500 font-medium text-blue-500">热门讨论</a>
+          </li>
+          <li class="mr-2">
+            <a href="#" class="inline-block py-2 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">最新发布</a>
+          </li>
+          <li class="mr-2">
+            <a href="#" class="inline-block py-2 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">书评</a>
+          </li>
+          <li class="mr-2">
+            <a href="#" class="inline-block py-2 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">读书笔记</a>
+          </li>
+          <li class="mr-2">
+            <a href="#" class="inline-block py-2 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">书籍推荐</a>
+          </li>
+          <li class="mr-2">
+            <a href="#" class="inline-block py-2 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">我的关注</a>
+          </li>
+        </ul>
+      </div>
+    </section>
+    
+    <!-- 社区内容 -->
+    <div class="flex flex-col lg:flex-row gap-8">
+      <!-- 帖子列表 -->
+      <div class="lg:w-2/3">
+        <!-- 帖子1 -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div class="flex items-start">
+            <div class="w-10 h-10 rounded-full bg-purple-500 flex-shrink-0 flex items-center justify-center text-white">
+              <span>L</span>
+            </div>
+            <div class="ml-4 flex-1">
+              <div class="flex justify-between">
+                <div>
+                  <span class="font-medium">李小明</span>
+                  <span class="text-gray-500 text-sm ml-2">2小时前</span>
+                </div>
+                <div class="text-gray-400">
+                  <button class="hover:text-gray-600">
+                    <i class="fas fa-ellipsis-h"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="mt-2">
+                <h2 class="text-xl font-bold mb-2">《深度学习》读后感：AI领域的必读经典</h2>
+                <p class="text-gray-700">
+                  最近读完了《深度学习》这本书，不得不说这是AI领域的经典之作。书中详细介绍了深度学习的基本原理和应用，对于想入门AI的朋友来说，是必读书目！特别是书中关于神经网络的讲解，通俗易懂又不失深度。
+                </p>
+                
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <span class="tag">深度学习</span>
+                  <span class="tag">人工智能</span>
+                  <span class="tag">读后感</span>
+                </div>
+                
+                <div class="mt-4 flex items-center text-gray-500 text-sm">
+                  <button class="flex items-center mr-6 hover:text-blue-500">
+                    <i class="far fa-thumbs-up mr-1"></i>
+                    <span>42</span>
+                  </button>
+                  <button class="flex items-center mr-6 hover:text-blue-500">
+                    <i class="far fa-comment mr-1"></i>
+                    <span>8条评论</span>
+                  </button>
+                  <button class="flex items-center hover:text-blue-500">
+                    <i class="far fa-bookmark mr-1"></i>
+                    <span>收藏</span>
+                  </button>
+                </div>
+                
+                <!-- 评论区 -->
+                <div class="mt-6 pt-4 border-t border-gray-100">
+                  <div class="mb-4">
+                    <div class="flex items-start mb-4">
+                      <div class="w-8 h-8 rounded-full bg-green-500 flex-shrink-0 flex items-center justify-center text-white text-xs">
+                        <span>Z</span>
+                      </div>
+                      <div class="ml-3 flex-1 bg-gray-50 rounded-lg p-3">
+                        <div class="flex justify-between">
+                          <span class="font-medium">张三</span>
+                          <span class="text-gray-500 text-xs">1小时前</span>
+                        </div>
+                        <p class="text-gray-700 text-sm mt-1">
+                          我也读过这本书，确实是入门AI的好教材。不过对于完全没有数学基础的人来说可能有点难度，建议先补充一些线性代数和概率论的知识。
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                      <div class="w-8 h-8 rounded-full bg-blue-500 flex-shrink-0 flex items-center justify-center text-white text-xs">
+                        <span>W</span>
+                      </div>
+                      <div class="ml-3 flex-1 bg-gray-50 rounded-lg p-3">
+                        <div class="flex justify-between">
+                          <span class="font-medium">王五</span>
+                          <span class="text-gray-500 text-xs">30分钟前</span>
+                        </div>
+                        <p class="text-gray-700 text-sm mt-1">
+                          请问这本书适合完全没有编程基础的人阅读吗？我对AI很感兴趣，但是没有相关背景。
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- 评论输入框 -->
+                  <div class="flex">
+                    <div class="w-8 h-8 rounded-full bg-blue-500 flex-shrink-0 flex items-center justify-center text-white text-xs">
+                      <i class="fas fa-user"></i>
+                    </div>
+                    <div class="ml-3 flex-1">
+                      <input type="text" class="w-full border border-gray-200 rounded-full px-4 py-2 text-sm" placeholder="添加评论...">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 帖子2 -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div class="flex items-start">
+            <div class="w-10 h-10 rounded-full bg-green-500 flex-shrink-0 flex items-center justify-center text-white">
+              <span>Z</span>
+            </div>
+            <div class="ml-4 flex-1">
+              <div class="flex justify-between">
+                <div>
+                  <span class="font-medium">张三</span>
+                  <span class="text-gray-500 text-sm ml-2">5小时前</span>
+                </div>
+                <div class="text-gray-400">
+                  <button class="hover:text-gray-600">
+                    <i class="fas fa-ellipsis-h"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="mt-2">
+                <h2 class="text-xl font-bold mb-2">推荐《原子习惯》：改变生活的小习惯</h2>
+                <p class="text-gray-700">
+                  最近读完了《原子习惯》，这本书真的改变了我的生活！通过微小的改变，养成好习惯，最终实现巨大的成果。书中提出的"习惯循环"理论特别实用，我已经开始应用到日常生活中，效果显著。强烈推荐给每一个想要提升自己的人。
+                </p>
+                
+                <div class="mt-4">
+                  <img src="https://via.placeholder.com/600x300/f3f4f6/1f2937?text=原子习惯读书笔记" alt="原子习惯读书笔记" class="w-full rounded-lg">
+                </div>
+                
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <span class="tag">原子习惯</span>
+                  <span class="tag">自我提升</span>
+                  <span class="tag">读书推荐</span>
+                </div>
+                
+                <div class="mt-4 flex items-center text-gray-500 text-sm">
+                  <button class="flex items-center mr-6 hover:text-blue-500">
+                    <i class="far fa-thumbs-up mr-1"></i>
+                    <span>36</span>
+                  </button>
+                  <button class="flex items-center mr-6 hover:text-blue-500">
+                    <i class="far fa-comment mr-1"></i>
+                    <span>12条评论</span>
+                  </button>
+                  <button class="flex items-center hover:text-blue-500">
+                    <i class="far fa-bookmark mr-1"></i>
+                    <span>收藏</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 帖子3 -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div class="flex items-start">
+            <div class="w-10 h-10 rounded-full bg-yellow-500 flex-shrink-0 flex items-center justify-center text-white">
+              <span>C</span>
+            </div>
+            <div class="ml-4 flex-1">
+              <div class="flex justify-between">
+                <div>
+                  <span class="font-medium">陈六</span>
+                  <span class="text-gray-500 text-sm ml-2">昨天</span>
+                </div>
+                <div class="text-gray-400">
+                  <button class="hover:text-gray-600">
+                    <i class="fas fa-ellipsis-h"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="mt-2">
+                <h2 class="text-xl font-bold mb-2">求推荐：有哪些适合初学者的编程书籍？</h2>
+                <p class="text-gray-700">
+                  我是一名编程初学者，想学习Python和Web开发，有没有适合入门的书籍推荐？希望内容通俗易懂，有实践项目的那种。感谢大家！
+                </p>
+                
+                <div class="mt-4 flex flex-wrap gap-2">
+                  <span class="tag">编程</span>
+                  <span class="tag">Python</span>
+                  <span class="tag">求推荐</span>
+                </div>
+                
+                <div class="mt-4 flex items-center text-gray-500 text-sm">
+                  <button class="flex items-center mr-6 hover:text-blue-500">
+                    <i class="far fa-thumbs-up mr-1"></i>
+                    <span>18</span>
+                  </button>
+                  <button class="flex items-center mr-6 hover:text-blue-500">
+                    <i class="far fa-comment mr-1"></i>
+                    <span>24条评论</span>
+                  </button>
+                  <button class="flex items-center hover:text-blue-500">
+                    <i class="far fa-bookmark mr-1"></i>
+                    <span>收藏</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 分页 -->
+        <div class="mt-8 flex justify-center">
+          <nav class="flex items-center">
+            <a href="#" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 mr-2">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+            <a href="#" class="px-3 py-1 rounded-md border border-gray-300 bg-blue-500 text-white mr-2">1</a>
+            <a href="#" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 mr-2">2</a>
+            <a href="#" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 mr-2">3</a>
+            <span class="px-2 text-gray-500">...</span>
+            <a href="#" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 mr-2">8</a>
+            <a href="#" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-500 hover:bg-gray-50">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          </nav>
+        </div>
+      </div>
+      
+      <!-- 侧边栏 -->
+      <div class="lg:w-1/3">
+        <!-- 搜索框 -->
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <div class="search-container flex items-center">
+            <input type="text" class="search-input" placeholder="搜索社区内容...">
+            <button class="bg-blue-500 text-white p-2 rounded-r-lg">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- 热门话题 -->
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <h3 class="font-bold text-lg mb-4">热门话题</h3>
+          <div class="space-y-3">
+            <a href="#" class="flex items-center hover:bg-gray-50 p-2 rounded-lg">
+              <span class="w-6 h-6 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center text-xs mr-3">1</span>
+              <span class="flex-1">#2023年度好书推荐</span>
+              <span class="text-gray-500 text-sm">128篇</span>
+            </a>
+            <a href="#" class="flex items-center hover:bg-gray-50 p-2 rounded-lg">
+              <span class="w-6 h-6 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center text-xs mr-3">2</span>
+              <span class="flex-1">#如何培养阅读习惯</span>
+              <span class="text-gray-500 text-sm">96篇</span>
+            </a>
+            <a href="#" class="flex items-center hover:bg-gray-50 p-2 rounded-lg">
+              <span class="w-6 h-6 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center text-xs mr-3">3</span>
+              <span class="flex-1">#AI与未来教育</span>
+              <span class="text-gray-500 text-sm">85篇</span>
+            </a>
+            <a href="#" class="flex items-center hover:bg-gray-50 p-2 rounded-lg">
+              <span class="w-6 h-6 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center text-xs mr-3">4</span>
+              <span class="flex-1">#经典文学作品讨论</span>
+              <span class="text-gray-500 text-sm">72篇</span>
+            </a>
+            <a href="#" class="flex items-center hover:bg-gray-50 p-2 rounded-lg">
+              <span class="w-6 h-6 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center text-xs mr-3">5</span>
+              <span class="flex-1">#数字阅读vs纸质书</span>
+              <span class="text-gray-500 text-sm">64篇</span>
+            </a>
+          </div>
+        </div>
+        
+        <!-- 活跃用户 -->
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <h3 class="font-bold text-lg mb-4">活跃用户</h3>
+          <div class="space-y-4">
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full bg-purple-500 flex-shrink-0 flex items-center justify-center text-white">
+                <span>L</span>
+              </div>
+              <div class="ml-3">
+                <div class="font-medium">李小明</div>
+                <div class="text-gray-500 text-xs">发布了42篇内容</div>
+              </div>
+              <button class="ml-auto text-blue-500 text-sm">关注</button>
+            </div>
+            
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full bg-green-500 flex-shrink-0 flex items-center justify-center text-white">
+                <span>Z</span>
+              </div>
+              <div class="ml-3">
+                <div class="font-medium">张三</div>
+                <div class="text-gray-500 text-xs">发布了36篇内容</div>
+              </div>
+              <button class="ml-auto text-blue-500 text-sm">关注</button>
+            </div>
+            
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full bg-yellow-500 flex-shrink-0 flex items-center justify-center text-white">
+                <span>C</span>
+              </div>
+              <div class="ml-3">
+                <div class="font-medium">陈六</div>
+                <div class="text-gray-500 text-xs">发布了28篇内容</div>
+              </div>
+              <button class="ml-auto text-blue-500 text-sm">关注</button>
+            </div>
+            
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full bg-red-500 flex-shrink-0 flex items-center justify-center text-white">
+                <span>W</span>
+              </div>
+              <div class="ml-3">
+                <div class="font-medium">王五</div>
+                <div class="text-gray-500 text-xs">发布了24篇内容</div>
+              </div>
+              <button class="ml-auto text-blue-500 text-sm">关注</button>
+            </div>
+            
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full bg-blue-500 flex-shrink-0 flex items-center justify-center text-white">
+                <span>S</span>
+              </div>
+              <div class="ml-3">
+                <div class="font-medium">宋七</div>
+                <div class="text-gray-500 text-xs">发布了19篇内容</div>
+              </div>
+              <button class="ml-auto text-blue-500 text-sm">关注</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 社区公告 -->
+        <div class="bg-white rounded-lg shadow-sm p-4">
+          <h3 class="font-bold text-lg mb-4">社区公告</h3>
+          <div class="space-y-3">
+            <div class="border-l-4 border-blue-500 pl-3">
+              <div class="font-medium">社区规则更新</div>
+              <div class="text-gray-500 text-sm mt-1">为了维护良好的社区氛围，我们更新了社区规则，请大家遵守。</div>
+              <div class="text-gray-400 text-xs mt-1">2023-06-15</div>
+            </div>
+            
+            <div class="border-l-4 border-green-500 pl-3">
+              <div class="font-medium">每月读书活动</div>
+              <div class="text-gray-500 text-sm mt-1">6月读书活动主题：科技与未来，欢迎大家参与讨论。</div>
+              <div class="text-gray-400 text-xs mt-1">2023-06-01</div>
+            </div>
+            
+            <div class="border-l-4 border-yellow-500 pl-3">
+              <div class="font-medium">新功能上线</div>
+              <div class="text-gray-500 text-sm mt-1">现在可以在社区中直接分享您的阅读笔记了！</div>
+              <div class="text-gray-400 text-xs mt-1">2023-05-20</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <!-- 页脚 -->
+  <footer class="bg-gray-800 text-white py-8 mt-12">
+    <div class="page-container">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div>
+          <h3 class="text-lg font-bold mb-4">百变书屋</h3>
+          <p class="text-gray-400">您的私人智能图书馆，为您提供个性化的阅读体验。</p>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">功能</h3>
+          <ul class="space-y-2 text-gray-400">
+            <li><a href="home.html" class="hover:text-white">首页</a></li>
+            <li><a href="search.html" class="hover:text-white">智能搜索</a></li>
+            <li><a href="bookshelf.html" class="hover:text-white">我的书架</a></li>
+            <li><a href="community.html" class="hover:text-white">社区</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">关于我们</h3>
+          <ul class="space-y-2 text-gray-400">
+            <li><a href="#" class="hover:text-white">关于百变书屋</a></li>
+            <li><a href="#" class="hover:text-white">联系我们</a></li>
+            <li><a href="#" class="hover:text-white">隐私政策</a></li>
+            <li><a href="#" class="hover:text-white">使用条款</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">关注我们</h3>
+          <div class="flex space-x-4 text-gray-400">
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-weixin"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-weibo"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-qq"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-github"></i></a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-8 pt-6 border-t border-gray-700 text-center text-gray-400 text-sm">
+        <p>© 2023 百变书屋 - 私人智能图书馆. 保留所有权利.</p>
+      </div>
+    </div>
+  </footer>
+  
+  <script src="../js/main.js"></script>
+</body>
+</html> 

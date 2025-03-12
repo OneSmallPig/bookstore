@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 - 百变书屋</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../css/output.css">
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <a href="/" class="navbar-logo">
+        <i class="fas fa-book-open mr-2"></i>
+        百变书屋
+      </a>
+      <div class="navbar-menu">
+        <a href="/" class="navbar-link">首页</a>
+        <a href="search.html" class="navbar-link">智能搜索</a>
+        <a href="bookshelf.html" class="navbar-link">我的书架</a>
+        <a href="community.html" class="navbar-link">阅读社区</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 主要内容 -->
+  <main class="py-16">
+    <div class="container mx-auto px-4">
+      <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-8">
+        <h1 class="text-2xl font-bold text-center mb-6">登录账号</h1>
+        
+        <form class="login-form">
+          <div class="mb-4">
+            <label for="username" class="block text-gray-700 mb-2">用户名</label>
+            <input type="text" id="username" name="username" class="input" placeholder="请输入用户名" required>
+          </div>
+          
+          <div class="mb-6">
+            <label for="password" class="block text-gray-700 mb-2">密码</label>
+            <input type="password" id="password" name="password" class="input" placeholder="请输入密码" required>
+          </div>
+          
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center">
+              <input type="checkbox" id="remember" name="remember" class="mr-2">
+              <label for="remember" class="text-gray-700">记住我</label>
+            </div>
+            <a href="#" class="text-sm text-primary-600 hover:text-primary-800">忘记密码？</a>
+          </div>
+          
+          <button type="submit" class="btn btn-primary w-full py-3">登录</button>
+        </form>
+        
+        <div class="mt-6 text-center">
+          <p class="text-gray-600">还没有账号？ <a href="register.html" class="text-primary-600 hover:text-primary-800">立即注册</a></p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-links">
+        <div class="footer-column">
+          <h4>百变书屋</h4>
+          <ul>
+            <li><a href="/">首页</a></li>
+            <li><a href="search.html">智能搜索</a></li>
+            <li><a href="bookshelf.html">我的书架</a></li>
+            <li><a href="community.html">阅读社区</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h4>帮助中心</h4>
+          <ul>
+            <li><a href="#">使用指南</a></li>
+            <li><a href="#">常见问题</a></li>
+            <li><a href="#">联系我们</a></li>
+            <li><a href="#">意见反馈</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h4>关于我们</h4>
+          <ul>
+            <li><a href="#">公司介绍</a></li>
+            <li><a href="#">团队成员</a></li>
+            <li><a href="#">加入我们</a></li>
+            <li><a href="#">合作伙伴</a></li>
+          </ul>
+        </div>
+        <div class="footer-column">
+          <h4>关注我们</h4>
+          <ul>
+            <li><a href="#"><i class="fab fa-weixin mr-2"></i>微信公众号</a></li>
+            <li><a href="#"><i class="fab fa-weibo mr-2"></i>微博</a></li>
+            <li><a href="#"><i class="fab fa-zhihu mr-2"></i>知乎</a></li>
+            <li><a href="#"><i class="fab fa-github mr-2"></i>GitHub</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2024 百变书屋 版权所有</p>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { userApi } from '../js/api.js';
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      const loginForm = document.querySelector('.login-form');
+      
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const remember = document.getElementById('remember').checked;
+        
+        try {
+          // 显示加载状态
+          const submitButton = loginForm.querySelector('button[type="submit"]');
+          const originalText = submitButton.textContent;
+          submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 登录中...';
+          submitButton.disabled = true;
+          
+          // 调用登录API
+          const response = await userApi.login({ username, password });
+          
+          // 保存token
+          localStorage.setItem('token', response.token);
+          
+          // 如果选择了"记住我"，可以设置更长的过期时间
+          if (remember) {
+            localStorage.setItem('rememberMe', 'true');
+          }
+          
+          // 登录成功，跳转到首页
+          window.location.href = '/';
+        } catch (error) {
+          // 显示错误消息
+          alert(error.message || '登录失败，请检查用户名和密码');
+        } finally {
+          // 恢复按钮状态
+          const submitButton = loginForm.querySelector('button[type="submit"]');
+          submitButton.textContent = originalText;
+          submitButton.disabled = false;
+        }
+      });
+    });
+  </script>
+</body>
+</html> 

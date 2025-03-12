@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="150" height="225" viewBox="0 0 150 225" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景渐变 -->
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10B981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景 -->
+  <rect width="150" height="225" fill="url(#grad1)"/>
+  
+  <!-- 大脑图案 -->
+  <path d="M60 60 C40 60 40 80 50 90 C40 100 40 120 60 120 L90 120 C110 120 110 100 100 90 C110 80 110 60 90 60 Z" 
+        stroke="white" stroke-width="1" fill="none" opacity="0.3"/>
+  
+  <!-- 连接线 -->
+  <path d="M75 70 L75 110" stroke="white" stroke-width="1" fill="none" opacity="0.3"/>
+  <path d="M65 80 L85 80" stroke="white" stroke-width="1" fill="none" opacity="0.3"/>
+  <path d="M65 100 L85 100" stroke="white" stroke-width="1" fill="none" opacity="0.3"/>
+  
+  <!-- 书名和作者 -->
+  <text x="75" y="160" font-family="Arial" font-size="16" fill="white" text-anchor="middle" font-weight="bold">思考，快与慢</text>
+  <text x="75" y="180" font-family="Arial" font-size="12" fill="white" text-anchor="middle">丹尼尔·卡尼曼</text>
+</svg> 

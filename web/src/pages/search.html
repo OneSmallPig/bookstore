@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能搜索 - 百变书屋</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../css/output.css">
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="navbar sticky top-0 z-10 px-4 py-3">
+    <div class="container mx-auto flex justify-between items-center">
+      <div class="flex items-center">
+        <img src="../images/logo.svg" alt="百变书屋" class="h-10">
+        <span class="ml-2 text-lg font-bold">百变书屋</span>
+      </div>
+      
+      <div class="hidden md:flex items-center space-x-6">
+        <a href="home.html" class="nav-item font-medium">首页</a>
+        <a href="search.html" class="nav-item active font-medium">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item font-medium">我的书架</a>
+        <a href="community.html" class="nav-item font-medium">社区</a>
+      </div>
+      
+      <div class="flex items-center space-x-4">
+        <a href="search.html" class="text-blue-500 hover:text-blue-600">
+          <i class="fas fa-search text-xl"></i>
+        </a>
+        <a href="profile.html" class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
+          <i class="fas fa-user"></i>
+        </a>
+        <button class="menu-button md:hidden text-gray-600">
+          <i class="fas fa-bars text-xl"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- 移动端菜单 -->
+    <div class="nav-menu hidden md:hidden mt-2 bg-white shadow-lg rounded-lg absolute right-4 left-4 p-4">
+      <div class="flex flex-col space-y-3">
+        <a href="home.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">首页</a>
+        <a href="search.html" class="nav-item active py-2 px-4 rounded hover:bg-gray-100">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">我的书架</a>
+        <a href="community.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">社区</a>
+      </div>
+    </div>
+  </nav>
+  
+  <!-- 主要内容 -->
+  <main class="page-container py-6">
+    <!-- 搜索横幅 -->
+    <section class="mb-8">
+      <div class="text-center mb-6">
+        <h1 class="text-3xl font-bold mb-2">AI智能书籍推荐</h1>
+        <p class="text-gray-600 max-w-2xl mx-auto">
+          通过描述您的阅读需求、兴趣或想了解的主题，AI将为您推荐最匹配的书籍，并帮您找到免费阅读资源。
+        </p>
+      </div>
+      
+      <div class="flex justify-center">
+        <div class="search-container w-full max-w-3xl p-2">
+          <form class="search-form flex flex-col md:flex-row">
+            <div class="flex-1 flex items-center">
+              <img src="../images/ai-search.svg" alt="AI搜索" class="w-8 h-8 ml-2 mr-2">
+              <input type="text" class="search-input" placeholder="描述您想阅读的内容，例如：'我想了解人工智能如何改变未来社会'">
+            </div>
+            <button type="submit" class="btn-primary mt-2 md:mt-0 md:ml-2 py-2 px-6 flex items-center justify-center">
+              <i class="fas fa-search mr-2"></i>搜索
+            </button>
+          </form>
+        </div>
+      </div>
+      
+      <div class="mt-4 text-center text-sm text-gray-500">
+        <p>搜索示例：</p>
+        <div class="flex flex-wrap justify-center gap-2 mt-2">
+          <button class="search-example bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 transition">我想了解量子物理的基础知识</button>
+          <button class="search-example bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 transition">推荐一些关于心理学的入门书籍</button>
+          <button class="search-example bg-gray-100 hover:bg-gray-200 rounded-full px-3 py-1 transition">类似《人类简史》风格的历史书籍</button>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 搜索结果 -->
+    <section class="search-results">
+      <!-- 初始状态显示热门搜索 -->
+      <div class="initial-results">
+        <h2 class="text-xl font-bold mb-4">热门搜索</h2>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- 热门搜索1 -->
+          <div class="book-card bg-white p-4" data-id="1">
+            <div class="flex">
+              <img src="https://via.placeholder.com/150x225/3b82f6/ffffff?text=深度学习" alt="深度学习" class="book-cover w-24 h-36">
+              <div class="ml-4 flex-1">
+                <h3 class="font-bold text-lg">深度学习</h3>
+                <p class="text-gray-600">伊恩·古德费洛</p>
+                <div class="rating mt-1">
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star-half-alt"></i>
+                  <span class="text-gray-600 text-sm ml-1">4.8</span>
+                </div>
+                <div class="mt-2 flex flex-wrap gap-1">
+                  <span class="tag">人工智能</span>
+                  <span class="tag">计算机科学</span>
+                </div>
+              </div>
+            </div>
+            <p class="mt-3 text-gray-700 text-sm">这本书是人工智能领域的经典之作，详细介绍了深度学习的基本原理和应用。</p>
+            <div class="mt-4 flex justify-between">
+              <button class="btn-primary text-sm py-1 px-3">阅读</button>
+              <button class="btn-secondary text-sm py-1 px-3">加入书架</button>
+            </div>
+          </div>
+          
+          <!-- 热门搜索2 -->
+          <div class="book-card bg-white p-4" data-id="2">
+            <div class="flex">
+              <img src="https://via.placeholder.com/150x225/10b981/ffffff?text=人类简史" alt="人类简史" class="book-cover w-24 h-36">
+              <div class="ml-4 flex-1">
+                <h3 class="font-bold text-lg">人类简史</h3>
+                <p class="text-gray-600">尤瓦尔·赫拉利</p>
+                <div class="rating mt-1">
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star-half-alt"></i>
+                  <span class="text-gray-600 text-sm ml-1">4.7</span>
+                </div>
+                <div class="mt-2 flex flex-wrap gap-1">
+                  <span class="tag">历史</span>
+                  <span class="tag">人类学</span>
+                </div>
+              </div>
+            </div>
+            <p class="mt-3 text-gray-700 text-sm">从认知革命到人工智能时代，讲述了人类如何征服世界的历史。</p>
+            <div class="mt-4 flex justify-between">
+              <button class="btn-primary text-sm py-1 px-3">阅读</button>
+              <button class="btn-secondary text-sm py-1 px-3">加入书架</button>
+            </div>
+          </div>
+          
+          <!-- 热门搜索3 -->
+          <div class="book-card bg-white p-4" data-id="3">
+            <div class="flex">
+              <img src="https://via.placeholder.com/150x225/8b5cf6/ffffff?text=未来简史" alt="未来简史" class="book-cover w-24 h-36">
+              <div class="ml-4 flex-1">
+                <h3 class="font-bold text-lg">未来简史</h3>
+                <p class="text-gray-600">尤瓦尔·赫拉利</p>
+                <div class="rating mt-1">
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star"></i>
+                  <i class="fas fa-star-half-alt"></i>
+                  <span class="text-gray-600 text-sm ml-1">4.6</span>
+                </div>
+                <div class="mt-2 flex flex-wrap gap-1">
+                  <span class="tag">未来学</span>
+                  <span class="tag">科技</span>
+                </div>
+              </div>
+            </div>
+            <p class="mt-3 text-gray-700 text-sm">探讨了生物技术和人工智能如何改变人类社会的未来图景。</p>
+            <div class="mt-4 flex justify-between">
+              <button class="btn-primary text-sm py-1 px-3">阅读</button>
+              <button class="btn-secondary text-sm py-1 px-3">加入书架</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 搜索结果将在这里显示 -->
+      <!-- 由JavaScript动态生成 -->
+    </section>
+    
+    <!-- 搜索历史 -->
+    <section class="mt-12">
+      <h2 class="text-xl font-bold mb-4">搜索历史</h2>
+      
+      <div class="bg-white rounded-lg p-4">
+        <div class="space-y-4">
+          <!-- 历史记录1 -->
+          <div class="flex justify-between items-center pb-3 border-b border-gray-100">
+            <div>
+              <p class="font-medium">我想了解量子物理的基础知识</p>
+              <p class="text-gray-500 text-sm mt-1">2023-06-15 10:30</p>
+            </div>
+            <div class="flex space-x-2">
+              <button class="text-blue-500 hover:text-blue-600">
+                <i class="fas fa-search"></i>
+              </button>
+              <button class="text-gray-400 hover:text-gray-500">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- 历史记录2 -->
+          <div class="flex justify-between items-center pb-3 border-b border-gray-100">
+            <div>
+              <p class="font-medium">推荐一些关于心理学的入门书籍</p>
+              <p class="text-gray-500 text-sm mt-1">2023-06-14 15:45</p>
+            </div>
+            <div class="flex space-x-2">
+              <button class="text-blue-500 hover:text-blue-600">
+                <i class="fas fa-search"></i>
+              </button>
+              <button class="text-gray-400 hover:text-gray-500">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- 历史记录3 -->
+          <div class="flex justify-between items-center">
+            <div>
+              <p class="font-medium">类似《人类简史》风格的历史书籍</p>
+              <p class="text-gray-500 text-sm mt-1">2023-06-12 09:15</p>
+            </div>
+            <div class="flex space-x-2">
+              <button class="text-blue-500 hover:text-blue-600">
+                <i class="fas fa-search"></i>
+              </button>
+              <button class="text-gray-400 hover:text-gray-500">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-4 text-center">
+          <button class="text-blue-500 hover:text-blue-600 text-sm">
+            清除所有历史记录
+          </button>
+        </div>
+      </div>
+    </section>
+    
+    <!-- AI搜索说明 -->
+    <section class="mt-12 bg-blue-50 rounded-lg p-6">
+      <div class="flex flex-col md:flex-row items-center">
+        <div class="md:w-1/4 flex justify-center mb-6 md:mb-0">
+          <img src="../images/ai-search.svg" alt="AI搜索" class="w-32 h-32">
+        </div>
+        <div class="md:w-3/4 md:pl-6">
+          <h2 class="text-xl font-bold mb-3">AI智能搜索如何工作？</h2>
+          <div class="space-y-4">
+            <div class="flex items-start">
+              <div class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-1">1</div>
+              <p class="ml-3">您输入描述，例如您感兴趣的主题、想了解的知识领域，或者您喜欢的书籍风格。</p>
+            </div>
+            <div class="flex items-start">
+              <div class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-1">2</div>
+              <p class="ml-3">AI分析您的输入，理解您的阅读需求和偏好，从海量书籍数据库中筛选匹配的内容。</p>
+            </div>
+            <div class="flex items-start">
+              <div class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-1">3</div>
+              <p class="ml-3">AI为您推荐最匹配的书籍，并提供免费阅读资源链接（如有）。</p>
+            </div>
+            <div class="flex items-start">
+              <div class="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0 mt-1">4</div>
+              <p class="ml-3">您可以直接阅读推荐书籍，或将其添加到个人书架中，方便后续访问。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  
+  <!-- 页脚 -->
+  <footer class="bg-gray-800 text-white py-8 mt-12">
+    <div class="page-container">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div>
+          <h3 class="text-lg font-bold mb-4">百变书屋</h3>
+          <p class="text-gray-400">您的私人智能图书馆，为您提供个性化的阅读体验。</p>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">功能</h3>
+          <ul class="space-y-2 text-gray-400">
+            <li><a href="home.html" class="hover:text-white">首页</a></li>
+            <li><a href="search.html" class="hover:text-white">智能搜索</a></li>
+            <li><a href="bookshelf.html" class="hover:text-white">我的书架</a></li>
+            <li><a href="community.html" class="hover:text-white">社区</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">关于我们</h3>
+          <ul class="space-y-2 text-gray-400">
+            <li><a href="#" class="hover:text-white">关于百变书屋</a></li>
+            <li><a href="#" class="hover:text-white">联系我们</a></li>
+            <li><a href="#" class="hover:text-white">隐私政策</a></li>
+            <li><a href="#" class="hover:text-white">使用条款</a></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-bold mb-4">关注我们</h3>
+          <div class="flex space-x-4 text-gray-400">
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-weixin"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-weibo"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-qq"></i></a>
+            <a href="#" class="hover:text-white text-xl"><i class="fab fa-github"></i></a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-8 pt-6 border-t border-gray-700 text-center text-gray-400 text-sm">
+        <p>© 2023 百变书屋 - 私人智能图书馆. 保留所有权利.</p>
+      </div>
+    </div>
+  </footer>
+  
+  <script>
+    // 搜索示例点击事件
+    document.addEventListener('DOMContentLoaded', function() {
+      const searchExamples = document.querySelectorAll('.search-example');
+      const searchInput = document.querySelector('.search-input');
+      
+      searchExamples.forEach(example => {
+        example.addEventListener('click', function() {
+          searchInput.value = this.textContent;
+          // 滚动到搜索框
+          searchInput.scrollIntoView({ behavior: 'smooth' });
+          // 聚焦搜索框
+          searchInput.focus();
+        });
+      });
+      
+      // 搜索表单提交
+      const searchForm = document.querySelector('.search-form');
+      const initialResults = document.querySelector('.initial-results');
+      const searchResults = document.querySelector('.search-results');
+      
+      searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const query = searchInput.value.trim();
+        if (query) {
+          // 隐藏初始结果
+          initialResults.style.display = 'none';
+          
+          // 显示加载状态
+          searchResults.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-3xl text-blue-500"></i><p class="mt-4">AI正在分析您的需求，请稍候...</p></div>';
+          
+          // 模拟API请求延迟
+          setTimeout(() => {
+            // 这里应该是实际的API请求
+            // 现在使用模拟数据
+            const mockResults = [
+              {
+                id: 1,
+                title: '量子物理入门',
+                author: '莱昂纳德·萨斯坎德',
+                cover: 'https://via.placeholder.com/150x225/3b82f6/ffffff?text=量子物理入门',
+                rating: 4.6,
+                tags: ['物理学', '量子力学', '科普'],
+                summary: '这本书以通俗易懂的语言介绍了量子物理的基本概念和原理，适合初学者阅读。'
+              },
+              {
+                id: 2,
+                title: '量子力学原理',
+                author: '理查德·费曼',
+                cover: 'https://via.placeholder.com/150x225/10b981/ffffff?text=量子力学原理',
+                rating: 4.8,
+                tags: ['物理学', '量子力学', '教材'],
+                summary: '诺贝尔物理学奖得主费曼的经典著作，深入浅出地讲解了量子力学的核心原理。'
+              },
+              {
+                id: 3,
+                title: '时间简史',
+                author: '史蒂芬·霍金',
+                cover: 'https://via.placeholder.com/150x225/8b5cf6/ffffff?text=时间简史',
+                rating: 4.7,
+                tags: ['物理学', '宇宙学', '科普'],
+                summary: '这本书探讨了宇宙的起源和本质，包含了量子物理和相对论的基本知识。'
+              }
+            ];
+            
+            // 渲染搜索结果
+            renderSearchResults(mockResults);
+            
+            // 添加到搜索历史（实际应用中应该通过API保存）
+            addSearchHistory(query);
+          }, 2000);
+        }
+      });
+      
+      // 渲染搜索结果
+      function renderSearchResults(results) {
+        if (results.length === 0) {
+          searchResults.innerHTML = '<div class="text-center py-8"><p>没有找到相关书籍，请尝试其他关键词。</p></div>';
+          return;
+        }
+        
+        let html = '<h2 class="text-xl font-bold mb-4">搜索结果</h2>';
+        html += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">';
+        
+        results.forEach(book => {
+          html += `
+            <div class="book-card bg-white p-4" data-id="${book.id}">
+              <div class="flex">
+                <img src="${book.cover}" alt="${book.title}" class="book-cover w-24 h-36">
+                <div class="ml-4 flex-1">
+                  <h3 class="font-bold text-lg">${book.title}</h3>
+                  <p class="text-gray-600">${book.author}</p>
+                  <div class="rating mt-1">
+                    ${getRatingStars(book.rating)}
+                    <span class="text-gray-600 text-sm ml-1">${book.rating}</span>
+                  </div>
+                  <div class="mt-2 flex flex-wrap gap-1">
+                    ${book.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                  </div>
+                </div>
+              </div>
+              <p class="mt-3 text-gray-700 text-sm">${book.summary}</p>
+              <div class="mt-4 flex justify-between">
+                <button class="btn-primary text-sm py-1 px-3">阅读</button>
+                <button class="btn-secondary text-sm py-1 px-3">加入书架</button>
+              </div>
+            </div>
+          `;
+        });
+        
+        html += '</div>';
+        searchResults.innerHTML = html;
+        
+        // 初始化新渲染的书籍卡片
+        initBookCards();
+      }
+      
+      // 获取评分星星HTML
+      function getRatingStars(rating) {
+        let html = '';
+        const fullStars = Math.floor(rating);
+        const halfStar = rating % 1 >= 0.5;
+        
+        // 添加实心星星
+        for (let i = 0; i < fullStars; i++) {
+          html += '<i class="fas fa-star"></i>';
+        }
+        
+        // 添加半星（如果需要）
+        if (halfStar) {
+          html += '<i class="fas fa-star-half-alt"></i>';
+        }
+        
+        // 添加空心星星
+        const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+        for (let i = 0; i < emptyStars; i++) {
+          html += '<i class="far fa-star"></i>';
+        }
+        
+        return html;
+      }
+      
+      // 添加搜索历史
+      function addSearchHistory(query) {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        const historySection = document.querySelector('.search-history');
+        if (historySection) {
+          const historyContainer = historySection.querySelector('.space-y-4');
+          
+          // 创建新的历史记录元素
+          const historyItem = document.createElement('div');
+          historyItem.className = 'flex justify-between items-center pb-3 border-b border-gray-100';
+          historyItem.innerHTML = `
+            <div>
+              <p class="font-medium">${query}</p>
+              <p class="text-gray-500 text-sm mt-1">${dateStr}</p>
+            </div>
+            <div class="flex space-x-2">
+              <button class="text-blue-500 hover:text-blue-600">
+                <i class="fas fa-search"></i>
+              </button>
+              <button class="text-gray-400 hover:text-gray-500">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          `;
+          
+          // 添加到历史记录容器的顶部
+          historyContainer.insertBefore(historyItem, historyContainer.firstChild);
+        }
+      }
+      
+      // 初始化书籍卡片交互
+      function initBookCards() {
+        const bookCards = document.querySelectorAll('.book-card');
+        
+        bookCards.forEach(card => {
+          // 阅读按钮
+          const readBtn = card.querySelector('.btn-primary');
+          if (readBtn) {
+            readBtn.addEventListener('click', function() {
+              const bookId = this.closest('.book-card').dataset.id;
+              // 跳转到阅读页面
+              window.location.href = `reader.html?id=${bookId}`;
+            });
+          }
+          
+          // 加入书架按钮
+          const addBtn = card.querySelector('.btn-secondary');
+          if (addBtn) {
+            addBtn.addEventListener('click', function() {
+              const bookId = this.closest('.book-card').dataset.id;
+              // 添加到书架（实际应用中应该通过API保存）
+              console.log('添加到书架，书籍ID:', bookId);
+              
+              // 显示成功提示
+              const toast = document.createElement('div');
+              toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+              toast.textContent = '已添加到书架';
+              document.body.appendChild(toast);
+              
+              // 2秒后移除提示
+              setTimeout(() => {
+                document.body.removeChild(toast);
+              }, 2000);
+            });
+          }
+        });
+      }
+      
+      // 初始化已有的书籍卡片
+      initBookCards();
+    });
+  </script>
+</body>
+</html> 
