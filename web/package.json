@@ -1,6 +1,7 @@
 {
   "name": "bianbian-bookstore",
   "version": "1.0.0",
+  "type": "module",
   "description": "百变书屋 - 私人智能图书馆",
   "main": "index.js",
   "scripts": {
@@ -10,13 +11,18 @@
     "preview": "vite preview",
     "api": "json-server --watch public/data/books.json --port 3001",
     "lint": "eslint src --ext .js",
-    "format": "prettier --write \"src/**/*.{js,html,css}\""
+    "format": "prettier --write \"src/**/*.{js,html,css}\"",
+    "init-db": "node src/scripts/initDb.js"
   },
   "keywords": ["books", "library", "ai", "reading"],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "alpinejs": "^3.13.3"
+    "alpinejs": "^3.13.3",
+    "bcrypt": "^5.1.1",
+    "mysql2": "^3.9.2",
+    "sequelize": "^6.37.1",
+    "vite": "^5.4.14"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.17",
@@ -26,7 +32,6 @@
     "postcss": "^8.4.35",
     "postcss-cli": "^11.0.0",
     "prettier": "^3.1.1",
-    "tailwindcss": "^3.4.1",
-    "vite": "^5.1.4"
+    "tailwindcss": "^3.4.1"
   }
 }
