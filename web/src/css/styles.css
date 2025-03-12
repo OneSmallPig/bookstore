@@ -4,111 +4,55 @@
 
 /* 自定义样式 */
 @layer components {
-  .btn {
-    @apply px-4 py-2 rounded-md font-medium transition-colors;
-  }
-  
-  .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors duration-200;
-  }
-  
-  .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded transition-colors duration-200;
-  }
-  
-  .btn-outline {
-    @apply border border-gray-300 hover:bg-gray-100;
-  }
-  
-  .card {
-    @apply bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:shadow-lg hover:-translate-y-1;
-  }
-  
-  .input {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
-  }
-  
-  /* 书籍卡片样式 */
-  .book-card {
-    @apply relative overflow-hidden transition-all duration-200 hover:shadow-md;
-  }
-  
-  .book-cover-container {
-    @apply relative overflow-hidden mb-3;
-  }
-  
-  .book-cover {
-    @apply w-full h-36 object-cover rounded;
-  }
-  
-  .book-intro {
-    @apply text-gray-600 text-sm mt-2 line-clamp-3;
-  }
-  
-  .book-card-content {
-    @apply flex flex-col flex-grow;
-  }
-  
-  .book-meta {
-    @apply mb-2;
-  }
-  
-  .book-actions {
-    @apply mt-auto flex justify-between;
-  }
-  
-  .tag {
-    @apply inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded;
-  }
-  
-  /* 导航栏样式 */
+  /* 导航样式 */
   .nav-item {
-    @apply px-3 py-2 text-gray-700 hover:text-blue-600 transition-colors duration-200;
+    @apply px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors;
   }
   
   .nav-item.active {
     @apply text-blue-600 font-medium;
   }
   
-  /* 分类卡片样式 */
-  .category-card {
-    @apply flex flex-col items-center justify-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200;
+  /* 按钮样式 */
+  .btn-primary {
+    @apply bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors;
   }
   
-  .category-icon {
-    @apply text-3xl text-blue-500 mb-2;
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors;
   }
   
-  /* 页面容器 */
+  /* 标签样式 */
+  .tag {
+    @apply bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded;
+  }
+  
+  /* 容器样式 */
   .page-container {
-    @apply container mx-auto px-4 py-6;
+    @apply max-w-7xl mx-auto px-4;
   }
   
-  /* 搜索框样式 */
+  /* 搜索输入框 */
   .search-input {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    @apply w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
   }
   
   /* 加载状态 */
   .loading {
-    @apply flex justify-center items-center py-4;
+    @apply flex justify-center items-center py-8;
   }
   
   .loading-spinner {
-    @apply animate-spin h-5 w-5 text-blue-600;
+    @apply animate-spin h-8 w-8 text-blue-500;
   }
   
-  /* 消息提示 */
-  .message {
-    @apply p-4 mb-4 rounded;
-  }
-  
+  /* 消息样式 */
   .message-success {
-    @apply bg-green-100 text-green-700;
+    @apply bg-green-100 text-green-800 p-4 rounded mb-4;
   }
   
   .message-error {
-    @apply bg-red-100 text-red-700;
+    @apply bg-red-100 text-red-800 p-4 rounded mb-4;
   }
   
   /* 表单样式 */
@@ -117,11 +61,11 @@
   }
   
   .form-label {
-    @apply block text-gray-700 text-sm font-medium mb-2;
+    @apply block text-gray-700 mb-2;
   }
   
   .form-input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    @apply w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500;
   }
   
   /* 评分样式 */
@@ -134,68 +78,52 @@
     @apply mb-8;
   }
   
-  .progress-bar {
-    @apply h-2 bg-gray-200 rounded-full overflow-hidden;
-  }
-  
-  .progress-value {
-    @apply h-full bg-blue-500;
-  }
-  
   /* 评论样式 */
   .comment {
-    @apply border-b border-gray-200 py-4;
+    @apply border-b pb-4 mb-4;
   }
   
   .comment-header {
-    @apply flex justify-between items-center mb-2;
+    @apply flex justify-between mb-2;
   }
   
-  .comment-user {
-    @apply font-medium text-gray-800;
+  .comment-author {
+    @apply font-medium;
   }
   
   .comment-date {
-    @apply text-sm text-gray-500;
-  }
-  
-  .comment-content {
-    @apply text-gray-700;
+    @apply text-gray-500 text-sm;
   }
   
   /* 用户资料样式 */
   .profile-header {
-    @apply flex flex-col md:flex-row items-center md:items-start gap-6 mb-8;
+    @apply flex items-center mb-6;
   }
   
   .profile-avatar {
-    @apply w-24 h-24 rounded-full object-cover;
+    @apply w-20 h-20 rounded-full mr-4 object-cover;
   }
   
   .profile-stats {
-    @apply flex gap-4 mt-4;
-  }
-  
-  .stat-item {
-    @apply flex flex-col items-center;
+    @apply flex gap-4 text-center;
   }
   
   .stat-value {
-    @apply font-bold text-xl;
+    @apply text-xl font-bold;
   }
   
   .stat-label {
-    @apply text-sm text-gray-600;
+    @apply text-gray-600 text-sm;
   }
   
   /* 响应式调整 */
   @media (max-width: 768px) {
     .book-cover {
-      @apply h-40;
+      @apply h-32;
     }
     
     .category-icon {
-      @apply text-2xl;
+      @apply text-xl;
     }
   }
 }

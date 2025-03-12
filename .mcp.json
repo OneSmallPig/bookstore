@@ -2,7 +2,8 @@
   "version": "1.0.0",
   "browserConnector": {
     "port": 9222,
-    "host": "localhost"
+    "host": "localhost",
+    "autoLaunch": true
   },
   "devServer": {
     "port": 3000,

@@ -42,3 +42,4 @@ coverage/
 # 其他
 .tmp/
 temp/ 
+.mcp.json
