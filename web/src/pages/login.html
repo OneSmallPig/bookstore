@@ -38,13 +38,17 @@
         <div id="error-message" class="message-error hidden"></div>
         
         <form class="login-form">
+          <!-- 添加隐藏字段来欺骗浏览器的自动填充功能 -->
+          <input type="text" style="display:none" name="fakeusernameremembered">
+          <input type="password" style="display:none" name="fakepasswordremembered">
+          
           <div class="form-group">
-            <label for="username" class="form-label">用户名</label>
+            <label for="username" class="form-label">邮箱</label>
             <div class="relative">
               <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
-                <i class="fas fa-user"></i>
+                <i class="fas fa-envelope"></i>
               </span>
-              <input type="text" id="username" name="username" class="form-input" placeholder="请输入用户名" required>
+              <input type="email" id="username" name="username" class="form-input" placeholder="请输入邮箱" autocomplete="off" required>
             </div>
             <p id="username-error" class="field-error hidden"></p>
           </div>
@@ -55,7 +59,7 @@
               <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
                 <i class="fas fa-lock"></i>
               </span>
-              <input type="password" id="password" name="password" class="form-input" placeholder="请输入密码" required>
+              <input type="password" id="password" name="password" class="form-input" placeholder="请输入密码" autocomplete="off" required>
               <button type="button" id="toggle-password" class="toggle-password absolute inset-y-0 right-0 flex items-center pr-3">
                 <i class="fas fa-eye"></i>
               </button>
@@ -146,6 +150,10 @@
       const errorMessage = document.getElementById('error-message');
       const togglePasswordBtn = document.getElementById('toggle-password');
       
+      // 确保表单字段为空
+      usernameInput.value = '';
+      passwordInput.value = '';
+      
       // 切换密码可见性
       togglePasswordBtn.addEventListener('click', () => {
         const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
@@ -157,9 +165,17 @@
       function validateForm() {
         let isValid = true;
         
-        // 验证用户名
-        if (!usernameInput.value.trim()) {
-          usernameError.textContent = '请输入用户名';
+        // 验证邮箱
+        const email = usernameInput.value.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        
+        if (!email) {
+          usernameError.textContent = '请输入邮箱';
+          usernameError.classList.remove('hidden');
+          usernameInput.classList.add('error');
+          isValid = false;
+        } else if (!emailRegex.test(email)) {
+          usernameError.textContent = '请输入有效的邮箱地址';
           usernameError.classList.remove('hidden');
           usernameInput.classList.add('error');
           isValid = false;
@@ -189,8 +205,15 @@
       
       // 输入框失去焦点时验证
       usernameInput.addEventListener('blur', () => {
-        if (!usernameInput.value.trim()) {
-          usernameError.textContent = '请输入用户名';
+        const email = usernameInput.value.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        
+        if (!email) {
+          usernameError.textContent = '请输入邮箱';
+          usernameError.classList.remove('hidden');
+          usernameInput.classList.add('error');
+        } else if (!emailRegex.test(email)) {
+          usernameError.textContent = '请输入有效的邮箱地址';
           usernameError.classList.remove('hidden');
           usernameInput.classList.add('error');
         } else {

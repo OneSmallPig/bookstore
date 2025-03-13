@@ -95,13 +95,14 @@ export function saveAuth(user, token, expiresIn = 86400) {
 
 /**
  * 用户登录
- * @param {string} username 用户名
+ * @param {string} username 用户名或邮箱
  * @param {string} password 密码
  * @returns {Promise<Object>} 登录结果
  */
 export async function login(username, password) {
   try {
-    const response = await userApi.login({ username, password });
+    // 将username作为email传递给API
+    const response = await userApi.login({ email: username, password });
     
     // 保存认证信息
     saveAuth(response.user, response.token, response.expiresIn);
@@ -142,11 +143,7 @@ export function logout() {
     window.dispatchEvent(new CustomEvent('auth:logout'));
     
     // 重定向到登录页面
-    if (window.location.pathname !== '/web/src/pages/login.html' && 
-        window.location.pathname !== '/web/src/index.html' && 
-        window.location.pathname !== '/web/src/') {
-      window.location.href = '/web/src/pages/login.html';
-    }
+    window.location.href = '/src/pages/login.html';
   } catch (error) {
     console.error('登出失败:', error);
   }
@@ -166,7 +163,7 @@ export function requireAuth(redirect = true) {
     sessionStorage.setItem('auth_redirect', currentPath);
     
     // 重定向到登录页面
-    window.location.href = '/web/src/pages/login.html';
+    window.location.href = '/src/pages/login.html';
   }
   
   return loggedIn;
@@ -183,11 +180,12 @@ export function redirectAfterLogin() {
     if (redirectPath) {
       window.location.href = redirectPath;
     } else {
-      window.location.href = '/web/src/index.html';
+      // 直接重定向到首页
+      window.location.href = 'index.html';
     }
   } catch (error) {
     console.error('重定向失败:', error);
-    window.location.href = '/web/src/index.html';
+    window.location.href = 'index.html';
   }
 }
 
@@ -230,11 +228,15 @@ export function updateAuthUI() {
       if (isLoggedIn) {
         button.setAttribute('data-logged-in', 'true');
         button.setAttribute('data-username', user.username);
-        button.setAttribute('href', '/web/src/pages/profile.html');
+        
+        // 设置href
+        button.setAttribute('href', '/src/pages/profile.html');
       } else {
         button.setAttribute('data-logged-in', 'false');
         button.removeAttribute('data-username');
-        button.setAttribute('href', '/web/src/pages/login.html');
+        
+        // 设置href
+        button.setAttribute('href', '/src/pages/login.html');
       }
     });
     

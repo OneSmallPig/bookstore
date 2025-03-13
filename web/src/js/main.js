@@ -826,7 +826,7 @@ function showLoginPrompt() {
     sessionStorage.setItem('auth_redirect', currentPath);
     
     // 跳转到登录页面
-    window.location.href = '/web/src/pages/login.html';
+    window.location.href = '/src/pages/login.html';
   });
   
   // 点击背景关闭模态框
