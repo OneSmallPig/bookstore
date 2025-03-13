@@ -45,6 +45,14 @@ const User = sequelize.define('User', {
   },
   lastLogin: {
     type: DataTypes.DATE
+  },
+  resetCode: {
+    type: DataTypes.STRING(6),
+    allowNull: true
+  },
+  resetCodeExpires: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   tableName: 'users',

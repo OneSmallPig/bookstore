@@ -7,20 +7,23 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="../css/output.css">
 </head>
-<body>
+<body class="bg-gray-50">
   <!-- 导航栏 -->
-  <nav class="navbar">
-    <div class="navbar-container">
-      <a href="/" class="navbar-logo">
-        <i class="fas fa-book-open mr-2"></i>
-        百变书屋
+  <nav class="navbar bg-white shadow-sm">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <a href="/" class="flex items-center">
+        <i class="fas fa-book-open text-blue-500 text-xl mr-2"></i>
+        <span class="text-lg font-bold">百变书屋</span>
       </a>
-      <div class="navbar-menu">
-        <a href="/" class="navbar-link">首页</a>
-        <a href="search.html" class="navbar-link">智能搜索</a>
-        <a href="bookshelf.html" class="navbar-link">我的书架</a>
-        <a href="community.html" class="navbar-link">阅读社区</a>
+      <div class="hidden md:flex items-center space-x-6">
+        <a href="/" class="nav-item">首页</a>
+        <a href="search.html" class="nav-item">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item">我的书架</a>
+        <a href="community.html" class="nav-item">阅读社区</a>
       </div>
+      <button class="md:hidden text-gray-600">
+        <i class="fas fa-bars text-xl"></i>
+      </button>
     </div>
   </nav>
 
@@ -30,87 +33,120 @@
       <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-8">
         <h1 class="text-2xl font-bold text-center mb-6">创建账号</h1>
         
+        <!-- 错误消息 -->
+        <div id="error-message" class="message-error hidden"></div>
+        
         <form class="register-form">
-          <div class="mb-4">
-            <label for="username" class="block text-gray-700 mb-2">用户名</label>
-            <input type="text" id="username" name="username" class="input" placeholder="请输入用户名" required>
-          </div>
-          
-          <div class="mb-4">
-            <label for="email" class="block text-gray-700 mb-2">邮箱</label>
-            <input type="email" id="email" name="email" class="input" placeholder="请输入邮箱" required>
-          </div>
-          
-          <div class="mb-4">
-            <label for="password" class="block text-gray-700 mb-2">密码</label>
-            <input type="password" id="password" name="password" class="input" placeholder="请输入密码" required>
-          </div>
-          
-          <div class="mb-6">
-            <label for="confirmPassword" class="block text-gray-700 mb-2">确认密码</label>
-            <input type="password" id="confirmPassword" name="confirmPassword" class="input" placeholder="请再次输入密码" required>
-          </div>
-          
-          <div class="mb-6">
-            <div class="flex items-center">
-              <input type="checkbox" id="agreement" name="agreement" class="mr-2" required>
-              <label for="agreement" class="text-gray-700">我已阅读并同意<a href="#" class="text-primary-600 hover:text-primary-800">用户协议</a>和<a href="#" class="text-primary-600 hover:text-primary-800">隐私政策</a></label>
+          <div class="form-group">
+            <label for="username" class="form-label">用户名</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                <i class="fas fa-user"></i>
+              </span>
+              <input type="text" id="username" name="username" class="form-input pl-10" placeholder="请输入用户名" required>
             </div>
+            <p id="username-error" class="text-red-500 text-xs mt-1 hidden"></p>
           </div>
           
-          <button type="submit" class="btn btn-primary w-full py-3">注册</button>
+          <div class="form-group">
+            <label for="email" class="form-label">邮箱</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                <i class="fas fa-envelope"></i>
+              </span>
+              <input type="email" id="email" name="email" class="form-input pl-10" placeholder="请输入邮箱" required>
+            </div>
+            <p id="email-error" class="text-red-500 text-xs mt-1 hidden"></p>
+          </div>
+          
+          <div class="form-group">
+            <label for="password" class="form-label">密码</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                <i class="fas fa-lock"></i>
+              </span>
+              <input type="password" id="password" name="password" class="form-input pl-10" placeholder="请输入密码" required>
+              <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <p id="password-error" class="text-red-500 text-xs mt-1 hidden"></p>
+            <p class="text-gray-500 text-xs mt-1">密码长度至少6位，包含字母和数字</p>
+          </div>
+          
+          <div class="form-group">
+            <label for="confirmPassword" class="form-label">确认密码</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                <i class="fas fa-lock"></i>
+              </span>
+              <input type="password" id="confirmPassword" name="confirmPassword" class="form-input pl-10" placeholder="请再次输入密码" required>
+            </div>
+            <p id="confirm-password-error" class="text-red-500 text-xs mt-1 hidden"></p>
+          </div>
+          
+          <div class="form-group flex items-start">
+            <input type="checkbox" id="agreement" name="agreement" class="mt-1 mr-2" required>
+            <label for="agreement" class="text-gray-700 text-sm">
+              我已阅读并同意<a href="#" class="text-blue-500 hover:text-blue-700">用户协议</a>和<a href="#" class="text-blue-500 hover:text-blue-700">隐私政策</a>
+            </label>
+          </div>
+          
+          <button type="submit" class="btn-primary w-full py-3 mt-4 flex justify-center items-center">
+            <span>注册</span>
+          </button>
         </form>
         
         <div class="mt-6 text-center">
-          <p class="text-gray-600">已有账号？ <a href="login.html" class="text-primary-600 hover:text-primary-800">立即登录</a></p>
+          <p class="text-gray-600">已有账号？ <a href="login.html" class="text-blue-500 hover:text-blue-700">立即登录</a></p>
         </div>
       </div>
     </div>
   </main>
 
   <!-- 页脚 -->
-  <footer class="footer">
-    <div class="footer-container">
-      <div class="footer-links">
-        <div class="footer-column">
-          <h4>百变书屋</h4>
-          <ul>
-            <li><a href="/">首页</a></li>
-            <li><a href="search.html">智能搜索</a></li>
-            <li><a href="bookshelf.html">我的书架</a></li>
-            <li><a href="community.html">阅读社区</a></li>
+  <footer class="bg-gray-800 text-white py-8 mt-12">
+    <div class="container mx-auto px-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div class="md:col-span-1">
+          <h4 class="text-lg font-bold mb-4">百变书屋</h4>
+          <ul class="space-y-2">
+            <li><a href="/" class="text-gray-300 hover:text-white">首页</a></li>
+            <li><a href="search.html" class="text-gray-300 hover:text-white">智能搜索</a></li>
+            <li><a href="bookshelf.html" class="text-gray-300 hover:text-white">我的书架</a></li>
+            <li><a href="community.html" class="text-gray-300 hover:text-white">阅读社区</a></li>
           </ul>
         </div>
-        <div class="footer-column">
-          <h4>帮助中心</h4>
-          <ul>
-            <li><a href="#">使用指南</a></li>
-            <li><a href="#">常见问题</a></li>
-            <li><a href="#">联系我们</a></li>
-            <li><a href="#">意见反馈</a></li>
+        <div class="md:col-span-1">
+          <h4 class="text-lg font-bold mb-4">帮助中心</h4>
+          <ul class="space-y-2">
+            <li><a href="#" class="text-gray-300 hover:text-white">使用指南</a></li>
+            <li><a href="#" class="text-gray-300 hover:text-white">常见问题</a></li>
+            <li><a href="#" class="text-gray-300 hover:text-white">联系我们</a></li>
+            <li><a href="#" class="text-gray-300 hover:text-white">意见反馈</a></li>
           </ul>
         </div>
-        <div class="footer-column">
-          <h4>关于我们</h4>
-          <ul>
-            <li><a href="#">公司介绍</a></li>
-            <li><a href="#">团队成员</a></li>
-            <li><a href="#">加入我们</a></li>
-            <li><a href="#">合作伙伴</a></li>
+        <div class="md:col-span-1">
+          <h4 class="text-lg font-bold mb-4">关于我们</h4>
+          <ul class="space-y-2">
+            <li><a href="#" class="text-gray-300 hover:text-white">公司介绍</a></li>
+            <li><a href="#" class="text-gray-300 hover:text-white">团队成员</a></li>
+            <li><a href="#" class="text-gray-300 hover:text-white">加入我们</a></li>
+            <li><a href="#" class="text-gray-300 hover:text-white">合作伙伴</a></li>
           </ul>
         </div>
-        <div class="footer-column">
-          <h4>关注我们</h4>
-          <ul>
-            <li><a href="#"><i class="fab fa-weixin mr-2"></i>微信公众号</a></li>
-            <li><a href="#"><i class="fab fa-weibo mr-2"></i>微博</a></li>
-            <li><a href="#"><i class="fab fa-zhihu mr-2"></i>知乎</a></li>
-            <li><a href="#"><i class="fab fa-github mr-2"></i>GitHub</a></li>
+        <div class="md:col-span-1">
+          <h4 class="text-lg font-bold mb-4">关注我们</h4>
+          <ul class="space-y-2">
+            <li><a href="#" class="text-gray-300 hover:text-white"><i class="fab fa-weixin mr-2"></i>微信公众号</a></li>
+            <li><a href="#" class="text-gray-300 hover:text-white"><i class="fab fa-weibo mr-2"></i>微博</a></li>
+            <li><a href="#" class="text-gray-300 hover:text-white"><i class="fab fa-zhihu mr-2"></i>知乎</a></li>
+            <li><a href="#" class="text-gray-300 hover:text-white"><i class="fab fa-github mr-2"></i>GitHub</a></li>
           </ul>
         </div>
       </div>
-      <div class="footer-bottom">
-        <p>&copy; 2024 百变书屋 版权所有</p>
+      <div class="border-t border-gray-700 mt-8 pt-6 text-center">
+        <p class="text-gray-400">&copy; 2024 百变书屋 版权所有</p>
       </div>
     </div>
   </footer>
@@ -120,41 +156,169 @@
     
     document.addEventListener('DOMContentLoaded', () => {
       const registerForm = document.querySelector('.register-form');
+      const usernameInput = document.getElementById('username');
+      const emailInput = document.getElementById('email');
+      const passwordInput = document.getElementById('password');
+      const confirmPasswordInput = document.getElementById('confirmPassword');
+      const usernameError = document.getElementById('username-error');
+      const emailError = document.getElementById('email-error');
+      const passwordError = document.getElementById('password-error');
+      const confirmPasswordError = document.getElementById('confirm-password-error');
+      const errorMessage = document.getElementById('error-message');
+      const togglePasswordBtn = document.getElementById('toggle-password');
       
+      // 切换密码可见性
+      togglePasswordBtn.addEventListener('click', () => {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        togglePasswordBtn.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+      });
+      
+      // 验证用户名
+      function validateUsername() {
+        const username = usernameInput.value.trim();
+        if (!username) {
+          usernameError.textContent = '请输入用户名';
+          usernameError.classList.remove('hidden');
+          return false;
+        } else if (username.length < 3) {
+          usernameError.textContent = '用户名长度不能少于3个字符';
+          usernameError.classList.remove('hidden');
+          return false;
+        } else {
+          usernameError.classList.add('hidden');
+          return true;
+        }
+      }
+      
+      // 验证邮箱
+      function validateEmail() {
+        const email = emailInput.value.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email) {
+          emailError.textContent = '请输入邮箱';
+          emailError.classList.remove('hidden');
+          return false;
+        } else if (!emailRegex.test(email)) {
+          emailError.textContent = '请输入有效的邮箱地址';
+          emailError.classList.remove('hidden');
+          return false;
+        } else {
+          emailError.classList.add('hidden');
+          return true;
+        }
+      }
+      
+      // 验证密码
+      function validatePassword() {
+        const password = passwordInput.value;
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/;
+        if (!password) {
+          passwordError.textContent = '请输入密码';
+          passwordError.classList.remove('hidden');
+          return false;
+        } else if (password.length < 6) {
+          passwordError.textContent = '密码长度不能少于6个字符';
+          passwordError.classList.remove('hidden');
+          return false;
+        } else if (!passwordRegex.test(password)) {
+          passwordError.textContent = '密码必须包含字母和数字';
+          passwordError.classList.remove('hidden');
+          return false;
+        } else {
+          passwordError.classList.add('hidden');
+          return true;
+        }
+      }
+      
+      // 验证确认密码
+      function validateConfirmPassword() {
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        if (!confirmPassword) {
+          confirmPasswordError.textContent = '请再次输入密码';
+          confirmPasswordError.classList.remove('hidden');
+          return false;
+        } else if (password !== confirmPassword) {
+          confirmPasswordError.textContent = '两次输入的密码不一致';
+          confirmPasswordError.classList.remove('hidden');
+          return false;
+        } else {
+          confirmPasswordError.classList.add('hidden');
+          return true;
+        }
+      }
+      
+      // 表单验证
+      function validateForm() {
+        const isUsernameValid = validateUsername();
+        const isEmailValid = validateEmail();
+        const isPasswordValid = validatePassword();
+        const isConfirmPasswordValid = validateConfirmPassword();
+        
+        return isUsernameValid && isEmailValid && isPasswordValid && isConfirmPasswordValid;
+      }
+      
+      // 输入框失去焦点时验证
+      usernameInput.addEventListener('blur', validateUsername);
+      emailInput.addEventListener('blur', validateEmail);
+      passwordInput.addEventListener('blur', validatePassword);
+      confirmPasswordInput.addEventListener('blur', validateConfirmPassword);
+      
+      // 表单提交
       registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const username = document.getElementById('username').value;
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
+        // 隐藏之前的错误消息
+        errorMessage.classList.add('hidden');
         
-        // 验证密码是否一致
-        if (password !== confirmPassword) {
-          alert('两次输入的密码不一致');
+        // 表单验证
+        if (!validateForm()) {
           return;
         }
+        
+        // 检查协议是否勾选
+        const agreement = document.getElementById('agreement');
+        if (!agreement.checked) {
+          errorMessage.textContent = '请阅读并同意用户协议和隐私政策';
+          errorMessage.classList.remove('hidden');
+          return;
+        }
+        
+        const username = usernameInput.value.trim();
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
         
         try {
           // 显示加载状态
           const submitButton = registerForm.querySelector('button[type="submit"]');
-          const originalText = submitButton.textContent;
-          submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 注册中...';
+          const originalContent = submitButton.innerHTML;
+          submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 注册中...';
           submitButton.disabled = true;
           
           // 调用注册API
           await userApi.register({ username, email, password });
           
-          // 注册成功，跳转到登录页面
-          alert('注册成功，请登录');
-          window.location.href = 'login.html';
+          // 注册成功，显示成功消息
+          errorMessage.textContent = '注册成功，即将跳转到登录页面...';
+          errorMessage.classList.remove('hidden');
+          errorMessage.classList.remove('message-error');
+          errorMessage.classList.add('message-success');
+          
+          // 3秒后跳转到登录页面
+          setTimeout(() => {
+            window.location.href = 'login.html';
+          }, 3000);
         } catch (error) {
           // 显示错误消息
-          alert(error.message || '注册失败，请稍后再试');
+          errorMessage.textContent = error.message || '注册失败，请稍后再试';
+          errorMessage.classList.remove('hidden');
+          errorMessage.classList.add('message-error');
+          errorMessage.classList.remove('message-success');
         } finally {
           // 恢复按钮状态
           const submitButton = registerForm.querySelector('button[type="submit"]');
-          submitButton.textContent = originalText;
+          submitButton.innerHTML = '<span>注册</span>';
           submitButton.disabled = false;
         }
       });

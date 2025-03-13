@@ -8,14 +8,23 @@ const logger = require('../config/logger');
  */
 const getAllBooks = async (req, res) => {
   try {
-    const { page = 1, limit = 10, category, search } = req.query;
+    const { 
+      page = 1, 
+      limit = 10, 
+      category, 
+      search, 
+      sort = 'createdAt',
+      order = 'DESC'
+    } = req.query;
     const offset = (page - 1) * limit;
     
     // 构建查询条件
     const whereClause = {};
     
     if (category) {
-      whereClause.category = category;
+      whereClause.categories = {
+        [Op.like]: `%${category}%`
+      };
     }
     
     if (search) {
@@ -26,12 +35,25 @@ const getAllBooks = async (req, res) => {
       ];
     }
     
+    // 处理特殊排序
+    let orderClause = [];
+    
+    if (sort === 'recommended') {
+      whereClause.isRecommended = true;
+      orderClause = [['rating', 'DESC']];
+    } else if (sort === 'popular') {
+      whereClause.isPopular = true;
+      orderClause = [['rating', 'DESC']];
+    } else {
+      orderClause = [[sort, order]];
+    }
+    
     // 查询书籍
     const { count, rows: books } = await Book.findAndCountAll({
       where: whereClause,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
+      order: orderClause
     });
     
     return res.status(200).json({
@@ -178,4 +200,4 @@ module.exports = {
   addToBookshelf,
   removeFromBookshelf,
   updateReadingProgress
-}; 
+};

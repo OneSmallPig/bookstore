@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
-    "test": "jest"
+    "test": "jest",
+    "init-db": "node src/scripts/init-db.js"
   },
   "keywords": [
     "bookstore",

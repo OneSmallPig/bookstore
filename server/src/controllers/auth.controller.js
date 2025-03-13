@@ -1,5 +1,5 @@
 const User = require('../models/user.model');
-const { generateToken } = require('../utils/jwt');
+const { generateToken, verifyToken } = require('../utils/jwt');
 const logger = require('../config/logger');
 
 /**
@@ -134,8 +134,132 @@ const getCurrentUser = async (req, res) => {
   }
 };
 
+/**
+ * 忘记密码 - 发送重置验证码
+ */
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // 验证请求数据
+    if (!email) {
+      return res.status(400).json({ message: '邮箱是必填项' });
+    }
+
+    // 查找用户
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      // 出于安全考虑，即使用户不存在也返回成功
+      return res.status(200).json({ message: '验证码已发送到您的邮箱' });
+    }
+
+    // 生成6位随机验证码
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // 设置验证码过期时间（15分钟）
+    const resetCodeExpires = new Date(Date.now() + 15 * 60 * 1000);
+    
+    // 保存验证码到用户记录
+    await user.update({
+      resetCode,
+      resetCodeExpires
+    });
+
+    // TODO: 发送验证码到用户邮箱
+    // 这里应该集成邮件发送服务
+    logger.info(`重置密码验证码 ${resetCode} 已生成，应发送到 ${email}`);
+
+    return res.status(200).json({ message: '验证码已发送到您的邮箱' });
+  } catch (error) {
+    logger.error(`发送重置验证码失败: ${error.message}`);
+    return res.status(500).json({ message: '发送验证码过程中发生错误' });
+  }
+};
+
+/**
+ * 验证重置密码验证码
+ */
+const verifyResetCode = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    // 验证请求数据
+    if (!email || !code) {
+      return res.status(400).json({ message: '邮箱和验证码都是必填项' });
+    }
+
+    // 查找用户
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(400).json({ message: '验证码无效或已过期' });
+    }
+
+    // 验证验证码
+    if (user.resetCode !== code) {
+      return res.status(400).json({ message: '验证码无效或已过期' });
+    }
+
+    // 验证验证码是否过期
+    if (!user.resetCodeExpires || new Date() > user.resetCodeExpires) {
+      return res.status(400).json({ message: '验证码无效或已过期' });
+    }
+
+    // 生成重置令牌
+    const token = generateToken({ id: user.id, purpose: 'reset-password' }, '15m');
+
+    return res.status(200).json({ 
+      message: '验证码验证成功',
+      token
+    });
+  } catch (error) {
+    logger.error(`验证重置验证码失败: ${error.message}`);
+    return res.status(500).json({ message: '验证验证码过程中发生错误' });
+  }
+};
+
+/**
+ * 重置密码
+ */
+const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    // 验证请求数据
+    if (!token || !password) {
+      return res.status(400).json({ message: '令牌和新密码都是必填项' });
+    }
+
+    // 验证令牌
+    const decoded = verifyToken(token);
+    if (!decoded || decoded.purpose !== 'reset-password') {
+      return res.status(400).json({ message: '无效的重置令牌' });
+    }
+
+    // 查找用户
+    const user = await User.findByPk(decoded.id);
+    if (!user) {
+      return res.status(400).json({ message: '用户不存在' });
+    }
+
+    // 更新密码
+    await user.update({
+      password,
+      resetCode: null,
+      resetCodeExpires: null
+    });
+
+    return res.status(200).json({ message: '密码重置成功' });
+  } catch (error) {
+    logger.error(`重置密码失败: ${error.message}`);
+    return res.status(500).json({ message: '重置密码过程中发生错误' });
+  }
+};
+
 module.exports = {
   register,
   login,
-  getCurrentUser
+  getCurrentUser,
+  forgotPassword,
+  verifyResetCode,
+  resetPassword
 }; 

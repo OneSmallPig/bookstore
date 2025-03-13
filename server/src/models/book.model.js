@@ -15,7 +15,7 @@ const Book = sequelize.define('Book', {
     type: DataTypes.STRING(100),
     allowNull: false
   },
-  cover: {
+  coverImage: {
     type: DataTypes.STRING,
     defaultValue: 'default-cover.png'
   },
@@ -25,8 +25,9 @@ const Book = sequelize.define('Book', {
   summary: {
     type: DataTypes.TEXT
   },
-  category: {
-    type: DataTypes.STRING(50)
+  categories: {
+    type: DataTypes.JSON,
+    defaultValue: []
   },
   rating: {
     type: DataTypes.FLOAT,
@@ -42,7 +43,7 @@ const Book = sequelize.define('Book', {
   publisher: {
     type: DataTypes.STRING(100)
   },
-  pages: {
+  pageCount: {
     type: DataTypes.INTEGER
   },
   language: {
@@ -61,6 +62,14 @@ const Book = sequelize.define('Book', {
   isPublic: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  isRecommended: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  isPopular: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 }, {
   tableName: 'books',

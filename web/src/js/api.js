@@ -89,6 +89,30 @@ const userApi = {
       method: 'POST',
       body: JSON.stringify(passwordData)
     });
+  },
+  
+  // 发送密码重置验证码
+  sendResetCode: (data) => {
+    return request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+  
+  // 验证重置密码验证码
+  verifyResetCode: (data) => {
+    return request('/auth/verify-reset-code', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+  
+  // 重置密码
+  resetPassword: (data) => {
+    return request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
   }
 };
 
