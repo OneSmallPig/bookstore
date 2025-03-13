@@ -67,12 +67,8 @@ export function createBookCard(book, tagType = '推荐') {
         </div>
         
         <!-- 书籍简介 -->
-        <div class="book-description">
+        <div class="book-description" data-description="${encodeURIComponent(fullDescription)}" data-title="${encodeURIComponent(book.title)}">
           <p>${description}</p>
-          <!-- 简介浮窗 -->
-          <div class="description-tooltip">
-            <p>${fullDescription}</p>
-          </div>
         </div>
         
         <!-- 操作按钮 -->
@@ -227,6 +223,43 @@ function generateStarRating(rating) {
  */
 export function addBookCardListeners(container) {
   if (!container) return;
+  
+  // 创建浮窗元素（如果不存在）
+  let tooltip = document.getElementById('description-tooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.id = 'description-tooltip';
+    tooltip.className = 'description-tooltip';
+    document.body.appendChild(tooltip);
+  }
+  
+  // 简介区域鼠标事件
+  container.querySelectorAll('.book-description').forEach(descElement => {
+    // 鼠标进入显示浮窗
+    descElement.addEventListener('mouseenter', (e) => {
+      const title = decodeURIComponent(descElement.getAttribute('data-title') || '');
+      const fullDescription = decodeURIComponent(descElement.getAttribute('data-description') || '');
+      
+      // 设置浮窗内容
+      tooltip.innerHTML = `
+        <h4 class="font-bold text-lg mb-2">${title}</h4>
+        <p>${fullDescription}</p>
+      `;
+      
+      // 计算位置
+      const rect = descElement.getBoundingClientRect();
+      tooltip.style.left = `${rect.left}px`;
+      tooltip.style.top = `${rect.top - 320}px`; // 显示在元素上方
+      
+      // 显示浮窗
+      tooltip.classList.add('show');
+    });
+    
+    // 鼠标离开隐藏浮窗
+    descElement.addEventListener('mouseleave', () => {
+      tooltip.classList.remove('show');
+    });
+  });
   
   // 阅读按钮点击事件
   container.querySelectorAll('.read-btn').forEach(button => {

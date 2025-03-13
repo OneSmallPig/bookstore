@@ -2191,40 +2191,39 @@ a:hover {
   /* 增加最大高度，从120px改为150px */
   position: relative;
   /* 添加相对定位 */
-  cursor: pointer;
-  /* 添加指针样式 */
 }
 
-/* 书籍简介浮窗 */
+/* 书籍简介浮窗 - 完全重写 */
 
 .description-tooltip {
-  display: none;
-  position: absolute;
-  left: 0;
-  top: 0;
+  position: fixed;
+  /* 使用固定定位而不是绝对定位 */
+  visibility: hidden;
+  opacity: 0;
+  background-color: white;
   width: 300px;
   max-height: 300px;
-  background-color: white;
   border-radius: 0.5rem;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   padding: 1rem;
-  z-index: 100;
+  z-index: 9999;
+  /* 确保在最上层 */
   overflow-y: auto;
   font-size: 0.875rem;
   color: #333;
   line-height: 1.6;
   text-align: left;
   border: 1px solid #eaeaea;
-  transform: translateY(-10px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.3s, visibility 0.3s;
+  pointer-events: none;
 }
 
-/* 显示浮窗 */
+/* 显示浮窗的JS控制类 */
 
-.book-description:hover .description-tooltip {
-  display: block;
+.description-tooltip.show {
+  visibility: visible;
   opacity: 1;
-  transform: translateY(0);
+  pointer-events: auto;
 }
 
 /* 操作按钮区域 */

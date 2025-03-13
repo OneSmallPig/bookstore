@@ -7,6 +7,8 @@ console.log('main.js 文件已加载');
 import { userApi, bookApi, bookshelfApi, communityApi } from './api.js';
 import { initAuthListeners, isLoggedIn, requireAuth } from './auth.js';
 import { showToast } from './utils.js';
+// 导入书籍卡片组件
+import BookCard from './components/BookCard.js';
 
 console.log('API服务已导入');
 
@@ -208,76 +210,33 @@ async function loadRecommendedBooks() {
     const recommendedResponse = await bookApi.getBooks({ limit: 4, sort: 'recommended' });
     const recommendedBooks = recommendedResponse.books || [];
     
-    // 调用API获取热门书籍
-    const popularResponse = await bookApi.getBooks({ limit: 6, sort: 'popular' });
+    // 调用API获取热门书籍 - 限制为4个
+    const popularResponse = await bookApi.getBooks({ limit: 4, sort: 'popular' });
     const popularBooks = popularResponse.books || [];
     
     console.log('推荐书籍:', recommendedBooks);
     console.log('热门书籍:', popularBooks);
     
-    // 更新推荐书籍DOM
+    // 更新推荐书籍DOM - 使用新的BookCard组件
     if (recommendedContainer && recommendedBooks.length > 0) {
-      recommendedContainer.innerHTML = recommendedBooks.map(book => `
-        <div class="bg-white rounded-lg shadow-sm overflow-hidden" data-book-id="${book.id}">
-          <div class="relative">
-            <img src="${book.coverImage || `https://via.placeholder.com/300x450/3b82f6/ffffff?text=${encodeURIComponent(book.title)}`}" 
-                 alt="${book.title}" class="w-full h-40 object-cover">
-            <div class="absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded">推荐</div>
-          </div>
-          <div class="p-3">
-            <h3 class="font-bold text-gray-900 mb-1">${book.title}</h3>
-            <p class="text-gray-600 text-xs mb-1">${book.author}</p>
-            <div class="flex items-center text-yellow-400 text-xs mb-2">
-              ${generateStarRating(book.rating)}
-              <span class="text-gray-600 ml-1">${book.rating}</span>
-            </div>
-            <div class="flex flex-wrap gap-1 mb-2">
-              ${Array.isArray(book.categories) ? book.categories.map(category => `<span class="tag">${category}</span>`).join('') : 
-                (typeof book.categories === 'string' ? JSON.parse(book.categories).map(category => `<span class="tag">${category}</span>`).join('') : '')}
-            </div>
-            <p class="text-gray-600 text-xs mb-3 line-clamp-2">
-              ${book.description}
-            </p>
-            <div class="flex justify-between">
-              <button class="btn-primary text-xs py-1 px-3 read-book-btn" data-book-id="${book.id}">阅读</button>
-              <button class="btn-secondary text-xs py-1 px-3 add-to-bookshelf-btn" data-book-id="${book.id}">加入书架</button>
-            </div>
-          </div>
-        </div>
-      `).join('');
+      recommendedContainer.innerHTML = recommendedBooks.map(book => 
+        BookCard.createBookCard(book, 'AI推荐')
+      ).join('');
       
       // 添加事件监听器
-      addBookCardListeners(recommendedContainer);
+      BookCard.addBookCardListeners(recommendedContainer);
     } else if (recommendedContainer) {
       recommendedContainer.innerHTML = '<div class="col-span-full text-center py-8">暂无推荐书籍</div>';
     }
     
-    // 更新热门书籍DOM
+    // 更新热门书籍DOM - 使用新的BookCard组件
     if (popularContainer && popularBooks.length > 0) {
-      popularContainer.innerHTML = popularBooks.map(book => `
-        <div class="bg-white rounded-lg shadow-sm overflow-hidden" data-book-id="${book.id}">
-          <div class="relative">
-            <img src="${book.coverImage || `https://via.placeholder.com/300x450/3b82f6/ffffff?text=${encodeURIComponent(book.title)}`}" 
-                 alt="${book.title}" class="w-full aspect-[2/3] object-cover">
-            <div class="absolute top-2 right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded">热门</div>
-          </div>
-          <div class="p-3">
-            <h3 class="font-bold mb-1 truncate">${book.title}</h3>
-            <p class="text-xs text-gray-600 mb-1">${book.author}</p>
-            <div class="flex items-center text-yellow-400 text-xs">
-              ${generateStarRating(book.rating)}
-              <span class="text-gray-600 ml-1">${book.rating}</span>
-            </div>
-            <div class="mt-3 flex justify-between">
-              <button class="btn-primary text-xs py-1 px-3 read-book-btn" data-book-id="${book.id}">阅读</button>
-              <button class="btn-secondary text-xs py-1 px-3 add-to-bookshelf-btn" data-book-id="${book.id}">加入书架</button>
-            </div>
-          </div>
-        </div>
-      `).join('');
+      popularContainer.innerHTML = popularBooks.map(book => 
+        BookCard.createBookCard(book, '热门')
+      ).join('');
       
       // 添加事件监听器
-      addBookCardListeners(popularContainer);
+      BookCard.addBookCardListeners(popularContainer);
     } else if (popularContainer) {
       popularContainer.innerHTML = '<div class="col-span-full text-center py-8">暂无热门书籍</div>';
     }
@@ -302,74 +261,6 @@ async function loadRecommendedBooks() {
     // 隐藏加载状态
     hideLoadingState();
   }
-}
-
-// 添加书籍卡片事件监听器
-function addBookCardListeners(container) {
-  if (!container) return;
-  
-  // 阅读按钮点击事件
-  container.querySelectorAll('.read-book-btn').forEach(button => {
-    button.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const bookId = button.getAttribute('data-book-id');
-      if (bookId) {
-        window.location.href = `src/pages/book-detail.html?id=${bookId}`;
-      }
-    });
-  });
-  
-  // 加入书架按钮点击事件
-  container.querySelectorAll('.add-to-bookshelf-btn').forEach(button => {
-    button.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      
-      // 检查用户是否已登录
-      const token = localStorage.getItem('token');
-      if (!token) {
-        showLoginPrompt();
-        return;
-      }
-      
-      const bookId = button.getAttribute('data-book-id');
-      if (!bookId) return;
-      
-      try {
-        // 显示加载状态
-        const originalText = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        button.disabled = true;
-        
-        // 调用API添加到书架
-        await bookshelfApi.addToBookshelf(bookId);
-        
-        // 显示成功消息
-        showSuccessMessage('已成功添加到书架');
-        
-        // 更新按钮状态
-        button.innerHTML = '<i class="fas fa-check"></i> 已添加';
-        button.classList.remove('btn-secondary');
-        button.classList.add('btn-success');
-      } catch (error) {
-        console.error('添加到书架失败:', error);
-        showErrorMessage('添加失败，请稍后再试');
-        
-        // 恢复按钮状态
-        button.innerHTML = originalText;
-        button.disabled = false;
-      }
-    });
-  });
-  
-  // 书籍卡片点击事件
-  container.querySelectorAll('[data-book-id]').forEach(card => {
-    card.addEventListener('click', () => {
-      const bookId = card.getAttribute('data-book-id');
-      if (bookId) {
-        window.location.href = `src/pages/book-detail.html?id=${bookId}`;
-      }
-    });
-  });
 }
 
 // 初始化书架页面
