@@ -847,8 +847,8 @@ export { storage };
 
 // 初始化个人资料按钮
 function initProfileButton() {
-  // 获取所有个人资料按钮
-  const profileButtons = document.querySelectorAll('a[href="src/pages/profile.html"], a[href="profile.html"]');
+  // 获取所有个人资料按钮（通过类名、图标或href属性匹配）
+  const profileButtons = document.querySelectorAll('a[href*="profile.html"], .w-8.h-8.rounded-full.bg-blue-500');
   
   profileButtons.forEach(button => {
     button.addEventListener('click', (e) => {
@@ -860,14 +860,37 @@ function initProfileButton() {
       
       if (token && user) {
         // 用户已登录，跳转到个人资料页面
-        window.location.href = button.getAttribute('href');
+        const currentPath = window.location.pathname;
+        const isInSrcPages = currentPath.includes('/src/pages/');
+        const isInRoot = currentPath === '/' || currentPath.endsWith('/index.html');
+        
+        // 根据当前路径确定个人资料页面的相对路径
+        let profilePath;
+        if (isInRoot) {
+          profilePath = 'src/pages/profile.html';
+        } else if (isInSrcPages) {
+          profilePath = 'profile.html';
+        } else {
+          profilePath = 'src/pages/profile.html';
+        }
+        
+        window.location.href = profilePath;
       } else {
         // 用户未登录，跳转到登录页面
         const currentPath = window.location.pathname;
         const isInSrcPages = currentPath.includes('/src/pages/');
+        const isInRoot = currentPath === '/' || currentPath.endsWith('/index.html');
         
         // 根据当前路径确定登录页面的相对路径
-        const loginPath = isInSrcPages ? 'login.html' : 'src/pages/login.html';
+        let loginPath;
+        if (isInRoot) {
+          loginPath = 'src/pages/login.html';
+        } else if (isInSrcPages) {
+          loginPath = 'login.html';
+        } else {
+          loginPath = 'src/pages/login.html';
+        }
+        
         window.location.href = loginPath;
       }
     });
