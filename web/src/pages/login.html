@@ -6,20 +6,21 @@
   <title>登录 - 百变书屋</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="../css/output.css">
+  <link rel="stylesheet" href="../css/auth.css">
 </head>
 <body class="bg-gray-50">
   <!-- 导航栏 -->
-  <nav class="navbar bg-white shadow-sm">
+  <nav class="navbar sticky top-0 z-10">
     <div class="container mx-auto px-4 py-3 flex justify-between items-center">
       <a href="/" class="flex items-center">
-        <i class="fas fa-book-open text-blue-500 text-xl mr-2"></i>
-        <span class="text-lg font-bold">百变书屋</span>
+        <img src="../images/logo.svg" alt="百变书屋" class="h-10">
+        <span class="ml-2 text-lg font-bold">百变书屋</span>
       </a>
       <div class="hidden md:flex items-center space-x-6">
-        <a href="/" class="nav-item">首页</a>
-        <a href="search.html" class="nav-item">智能搜索</a>
-        <a href="bookshelf.html" class="nav-item">我的书架</a>
-        <a href="community.html" class="nav-item">阅读社区</a>
+        <a href="/" class="nav-item font-medium">首页</a>
+        <a href="search.html" class="nav-item font-medium">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item font-medium">我的书架</a>
+        <a href="community.html" class="nav-item font-medium">阅读社区</a>
       </div>
       <button class="md:hidden text-gray-600">
         <i class="fas fa-bars text-xl"></i>
@@ -30,8 +31,8 @@
   <!-- 主要内容 -->
   <main class="py-16">
     <div class="container mx-auto px-4">
-      <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-8">
-        <h1 class="text-2xl font-bold text-center mb-6">登录账号</h1>
+      <div class="auth-container">
+        <h1 class="auth-title">登录账号</h1>
         
         <!-- 错误消息 -->
         <div id="error-message" class="message-error hidden"></div>
@@ -43,9 +44,9 @@
               <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
                 <i class="fas fa-user"></i>
               </span>
-              <input type="text" id="username" name="username" class="form-input pl-10" placeholder="请输入用户名" required>
+              <input type="text" id="username" name="username" class="form-input" placeholder="请输入用户名" required>
             </div>
-            <p id="username-error" class="text-red-500 text-xs mt-1 hidden"></p>
+            <p id="username-error" class="field-error hidden"></p>
           </div>
           
           <div class="form-group">
@@ -54,29 +55,32 @@
               <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
                 <i class="fas fa-lock"></i>
               </span>
-              <input type="password" id="password" name="password" class="form-input pl-10" placeholder="请输入密码" required>
-              <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
+              <input type="password" id="password" name="password" class="form-input" placeholder="请输入密码" required>
+              <button type="button" id="toggle-password" class="toggle-password absolute inset-y-0 right-0 flex items-center pr-3">
                 <i class="fas fa-eye"></i>
               </button>
             </div>
-            <p id="password-error" class="text-red-500 text-xs mt-1 hidden"></p>
+            <p id="password-error" class="field-error hidden"></p>
           </div>
           
-          <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center">
-              <input type="checkbox" id="remember" name="remember" class="mr-2">
+          <div class="checkbox-container">
+            <div class="checkbox-wrapper">
+              <input type="checkbox" id="remember" name="remember" class="checkbox-input">
               <label for="remember" class="text-gray-700 text-sm">记住我</label>
             </div>
-            <a href="reset-password.html" class="text-sm text-blue-500 hover:text-blue-700">忘记密码？</a>
+            <a href="reset-password.html" class="text-sm">忘记密码？</a>
           </div>
           
-          <button type="submit" class="btn-primary w-full py-3 flex justify-center items-center">
+          <button type="submit" class="auth-button">
             <span>登录</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
           </button>
         </form>
         
-        <div class="mt-6 text-center">
-          <p class="text-gray-600">还没有账号？ <a href="register.html" class="text-blue-500 hover:text-blue-700">立即注册</a></p>
+        <div class="auth-footer">
+          <p>还没有账号？ <a href="register.html" class="text-blue-600 hover:text-blue-800 font-medium">立即注册</a></p>
         </div>
       </div>
     </div>
@@ -130,7 +134,8 @@
   </footer>
 
   <script type="module">
-    import { userApi } from '../js/api.js';
+    import { login, redirectAfterLogin, isLoggedIn } from '../js/auth.js';
+    import { showToast } from '../js/utils.js';
     
     document.addEventListener('DOMContentLoaded', () => {
       const loginForm = document.querySelector('.login-form');
@@ -156,22 +161,27 @@
         if (!usernameInput.value.trim()) {
           usernameError.textContent = '请输入用户名';
           usernameError.classList.remove('hidden');
+          usernameInput.classList.add('error');
           isValid = false;
         } else {
           usernameError.classList.add('hidden');
+          usernameInput.classList.remove('error');
         }
         
         // 验证密码
         if (!passwordInput.value) {
           passwordError.textContent = '请输入密码';
           passwordError.classList.remove('hidden');
+          passwordInput.classList.add('error');
           isValid = false;
         } else if (passwordInput.value.length < 6) {
           passwordError.textContent = '密码长度不能少于6个字符';
           passwordError.classList.remove('hidden');
+          passwordInput.classList.add('error');
           isValid = false;
         } else {
           passwordError.classList.add('hidden');
+          passwordInput.classList.remove('error');
         }
         
         return isValid;
@@ -182,8 +192,10 @@
         if (!usernameInput.value.trim()) {
           usernameError.textContent = '请输入用户名';
           usernameError.classList.remove('hidden');
+          usernameInput.classList.add('error');
         } else {
           usernameError.classList.add('hidden');
+          usernameInput.classList.remove('error');
         }
       });
       
@@ -191,11 +203,14 @@
         if (!passwordInput.value) {
           passwordError.textContent = '请输入密码';
           passwordError.classList.remove('hidden');
+          passwordInput.classList.add('error');
         } else if (passwordInput.value.length < 6) {
           passwordError.textContent = '密码长度不能少于6个字符';
           passwordError.classList.remove('hidden');
+          passwordInput.classList.add('error');
         } else {
           passwordError.classList.add('hidden');
+          passwordInput.classList.remove('error');
         }
       });
       
@@ -219,44 +234,49 @@
           // 显示加载状态
           const submitButton = loginForm.querySelector('button[type="submit"]');
           const originalContent = submitButton.innerHTML;
-          submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 登录中...';
+          submitButton.classList.add('loading');
           submitButton.disabled = true;
           
-          // 调用登录API - 注意：后端API期望email而不是username
-          const response = await userApi.login({ email: username, password });
+          // 使用auth.js中的login函数
+          await login(username, password);
           
-          // 保存token
-          localStorage.setItem('token', response.token);
+          // 显示成功消息
+          const formContainer = document.querySelector('.auth-container');
+          const successMessage = document.createElement('div');
+          successMessage.className = 'success-message';
+          successMessage.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            登录成功，正在跳转...
+          `;
+          formContainer.insertBefore(successMessage, loginForm);
           
-          // 如果选择了"记住我"，可以设置更长的过期时间
-          if (remember) {
-            localStorage.setItem('rememberMe', 'true');
-          }
+          // 显示成功提示
+          showToast('登录成功，欢迎回来！', 'success');
           
-          // 保存用户信息
-          if (response.user) {
-            localStorage.setItem('user', JSON.stringify(response.user));
-          }
-          
-          // 登录成功，跳转到首页
-          window.location.href = '/';
+          // 重定向到之前的页面或首页
+          setTimeout(() => {
+            redirectAfterLogin();
+          }, 1500);
         } catch (error) {
           // 显示错误消息
           errorMessage.textContent = error.message || '登录失败，请检查用户名和密码';
           errorMessage.classList.remove('hidden');
+          errorMessage.classList.add('message-error');
+          errorMessage.classList.remove('message-success');
         } finally {
           // 恢复按钮状态
           const submitButton = loginForm.querySelector('button[type="submit"]');
-          submitButton.innerHTML = '<span>登录</span>';
+          submitButton.classList.remove('loading');
           submitButton.disabled = false;
         }
       });
       
       // 检查是否已登录
-      const token = localStorage.getItem('token');
-      if (token) {
-        // 可以在这里添加自动跳转到首页的逻辑
-        // window.location.href = '/';
+      if (isLoggedIn()) {
+        // 已登录，重定向到首页
+        redirectAfterLogin();
       }
     });
   </script>

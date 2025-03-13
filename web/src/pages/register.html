@@ -6,20 +6,21 @@
   <title>注册 - 百变书屋</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="../css/output.css">
+  <link rel="stylesheet" href="../css/auth.css">
 </head>
 <body class="bg-gray-50">
   <!-- 导航栏 -->
-  <nav class="navbar bg-white shadow-sm">
+  <nav class="navbar sticky top-0 z-10">
     <div class="container mx-auto px-4 py-3 flex justify-between items-center">
       <a href="/" class="flex items-center">
-        <i class="fas fa-book-open text-blue-500 text-xl mr-2"></i>
-        <span class="text-lg font-bold">百变书屋</span>
+        <img src="../images/logo.svg" alt="百变书屋" class="h-10">
+        <span class="ml-2 text-lg font-bold">百变书屋</span>
       </a>
       <div class="hidden md:flex items-center space-x-6">
-        <a href="/" class="nav-item">首页</a>
-        <a href="search.html" class="nav-item">智能搜索</a>
-        <a href="bookshelf.html" class="nav-item">我的书架</a>
-        <a href="community.html" class="nav-item">阅读社区</a>
+        <a href="/" class="nav-item font-medium">首页</a>
+        <a href="search.html" class="nav-item font-medium">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item font-medium">我的书架</a>
+        <a href="community.html" class="nav-item font-medium">阅读社区</a>
       </div>
       <button class="md:hidden text-gray-600">
         <i class="fas fa-bars text-xl"></i>
@@ -30,22 +31,25 @@
   <!-- 主要内容 -->
   <main class="py-16">
     <div class="container mx-auto px-4">
-      <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-8">
-        <h1 class="text-2xl font-bold text-center mb-6">创建账号</h1>
+      <div class="auth-container">
+        <h1 class="auth-title">创建账号</h1>
         
         <!-- 错误消息 -->
         <div id="error-message" class="message-error hidden"></div>
         
         <form class="register-form">
+          <h2 class="auth-title">创建新账户</h2>
+          <p class="auth-subtitle">请填写以下信息完成注册</p>
+          
           <div class="form-group">
             <label for="username" class="form-label">用户名</label>
             <div class="relative">
               <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
                 <i class="fas fa-user"></i>
               </span>
-              <input type="text" id="username" name="username" class="form-input pl-10" placeholder="请输入用户名" required>
+              <input type="text" id="username" name="username" class="form-input" placeholder="请输入用户名" required>
             </div>
-            <p id="username-error" class="text-red-500 text-xs mt-1 hidden"></p>
+            <p id="username-error" class="field-error hidden"></p>
           </div>
           
           <div class="form-group">
@@ -54,9 +58,9 @@
               <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
                 <i class="fas fa-envelope"></i>
               </span>
-              <input type="email" id="email" name="email" class="form-input pl-10" placeholder="请输入邮箱" required>
+              <input type="email" id="email" name="email" class="form-input" placeholder="请输入邮箱" required>
             </div>
-            <p id="email-error" class="text-red-500 text-xs mt-1 hidden"></p>
+            <p id="email-error" class="field-error hidden"></p>
           </div>
           
           <div class="form-group">
@@ -65,12 +69,12 @@
               <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
                 <i class="fas fa-lock"></i>
               </span>
-              <input type="password" id="password" name="password" class="form-input pl-10" placeholder="请输入密码" required>
-              <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
+              <input type="password" id="password" name="password" class="form-input" placeholder="请输入密码" required>
+              <button type="button" id="toggle-password" class="toggle-password absolute inset-y-0 right-0 flex items-center pr-3">
                 <i class="fas fa-eye"></i>
               </button>
             </div>
-            <p id="password-error" class="text-red-500 text-xs mt-1 hidden"></p>
+            <p id="password-error" class="field-error hidden"></p>
             <p class="text-gray-500 text-xs mt-1">密码长度至少6位，包含字母和数字</p>
           </div>
           
@@ -80,25 +84,33 @@
               <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
                 <i class="fas fa-lock"></i>
               </span>
-              <input type="password" id="confirmPassword" name="confirmPassword" class="form-input pl-10" placeholder="请再次输入密码" required>
+              <input type="password" id="confirmPassword" name="confirmPassword" class="form-input" placeholder="请再次输入密码" required>
+              <button type="button" id="toggle-confirm-password" class="toggle-password absolute inset-y-0 right-0 flex items-center pr-3">
+                <i class="fas fa-eye"></i>
+              </button>
             </div>
-            <p id="confirm-password-error" class="text-red-500 text-xs mt-1 hidden"></p>
+            <p id="confirm-password-error" class="field-error hidden"></p>
           </div>
           
-          <div class="form-group flex items-start">
-            <input type="checkbox" id="agreement" name="agreement" class="mt-1 mr-2" required>
-            <label for="agreement" class="text-gray-700 text-sm">
-              我已阅读并同意<a href="#" class="text-blue-500 hover:text-blue-700">用户协议</a>和<a href="#" class="text-blue-500 hover:text-blue-700">隐私政策</a>
-            </label>
+          <div class="checkbox-container">
+            <div class="checkbox-wrapper">
+              <input type="checkbox" id="agreement" name="agreement" class="checkbox-input" required>
+              <label for="agreement" class="text-gray-700 text-sm">
+                我已阅读并同意<a href="#" class="text-blue-500 hover:text-blue-700">用户协议</a>和<a href="#" class="text-blue-500 hover:text-blue-700">隐私政策</a>
+              </label>
+            </div>
           </div>
           
-          <button type="submit" class="btn-primary w-full py-3 mt-4 flex justify-center items-center">
-            <span>注册</span>
+          <button type="submit" class="auth-button">
+            <span>创建账户</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
           </button>
         </form>
         
-        <div class="mt-6 text-center">
-          <p class="text-gray-600">已有账号？ <a href="login.html" class="text-blue-500 hover:text-blue-700">立即登录</a></p>
+        <div class="auth-footer">
+          <p>已有账号？ <a href="login.html" class="text-blue-600 hover:text-blue-800 font-medium">立即登录</a></p>
         </div>
       </div>
     </div>
@@ -152,7 +164,8 @@
   </footer>
 
   <script type="module">
-    import { userApi } from '../js/api.js';
+    import { register, isLoggedIn, redirectAfterLogin } from '../js/auth.js';
+    import { showToast } from '../js/utils.js';
     
     document.addEventListener('DOMContentLoaded', () => {
       const registerForm = document.querySelector('.register-form');
@@ -166,6 +179,13 @@
       const confirmPasswordError = document.getElementById('confirm-password-error');
       const errorMessage = document.getElementById('error-message');
       const togglePasswordBtn = document.getElementById('toggle-password');
+      const toggleConfirmPasswordBtn = document.getElementById('toggle-confirm-password');
+      
+      // 如果已登录，重定向到首页
+      if (isLoggedIn()) {
+        redirectAfterLogin();
+        return;
+      }
       
       // 切换密码可见性
       togglePasswordBtn.addEventListener('click', () => {
@@ -174,19 +194,29 @@
         togglePasswordBtn.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
       });
       
+      // 切换确认密码可见性
+      toggleConfirmPasswordBtn.addEventListener('click', () => {
+        const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        confirmPasswordInput.setAttribute('type', type);
+        toggleConfirmPasswordBtn.innerHTML = type === 'password' ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+      });
+      
       // 验证用户名
       function validateUsername() {
         const username = usernameInput.value.trim();
         if (!username) {
           usernameError.textContent = '请输入用户名';
           usernameError.classList.remove('hidden');
+          usernameInput.classList.add('error');
           return false;
         } else if (username.length < 3) {
           usernameError.textContent = '用户名长度不能少于3个字符';
           usernameError.classList.remove('hidden');
+          usernameInput.classList.add('error');
           return false;
         } else {
           usernameError.classList.add('hidden');
+          usernameInput.classList.remove('error');
           return true;
         }
       }
@@ -198,13 +228,16 @@
         if (!email) {
           emailError.textContent = '请输入邮箱';
           emailError.classList.remove('hidden');
+          emailInput.classList.add('error');
           return false;
         } else if (!emailRegex.test(email)) {
           emailError.textContent = '请输入有效的邮箱地址';
           emailError.classList.remove('hidden');
+          emailInput.classList.add('error');
           return false;
         } else {
           emailError.classList.add('hidden');
+          emailInput.classList.remove('error');
           return true;
         }
       }
@@ -212,21 +245,20 @@
       // 验证密码
       function validatePassword() {
         const password = passwordInput.value;
-        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/;
+        // 修改密码验证规则，只要求长度大于等于6位
         if (!password) {
           passwordError.textContent = '请输入密码';
           passwordError.classList.remove('hidden');
+          passwordInput.classList.add('error');
           return false;
         } else if (password.length < 6) {
           passwordError.textContent = '密码长度不能少于6个字符';
           passwordError.classList.remove('hidden');
-          return false;
-        } else if (!passwordRegex.test(password)) {
-          passwordError.textContent = '密码必须包含字母和数字';
-          passwordError.classList.remove('hidden');
+          passwordInput.classList.add('error');
           return false;
         } else {
           passwordError.classList.add('hidden');
+          passwordInput.classList.remove('error');
           return true;
         }
       }
@@ -238,13 +270,16 @@
         if (!confirmPassword) {
           confirmPasswordError.textContent = '请再次输入密码';
           confirmPasswordError.classList.remove('hidden');
+          confirmPasswordInput.classList.add('error');
           return false;
         } else if (password !== confirmPassword) {
           confirmPasswordError.textContent = '两次输入的密码不一致';
           confirmPasswordError.classList.remove('hidden');
+          confirmPasswordInput.classList.add('error');
           return false;
         } else {
           confirmPasswordError.classList.add('hidden');
+          confirmPasswordInput.classList.remove('error');
           return true;
         }
       }
@@ -292,18 +327,26 @@
         try {
           // 显示加载状态
           const submitButton = registerForm.querySelector('button[type="submit"]');
-          const originalContent = submitButton.innerHTML;
-          submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 注册中...';
+          submitButton.classList.add('loading');
           submitButton.disabled = true;
           
-          // 调用注册API
-          await userApi.register({ username, email, password });
+          // 使用auth.js中的register函数
+          await register(username, email, password);
           
           // 注册成功，显示成功消息
-          errorMessage.textContent = '注册成功，即将跳转到登录页面...';
-          errorMessage.classList.remove('hidden');
-          errorMessage.classList.remove('message-error');
-          errorMessage.classList.add('message-success');
+          const formContainer = document.querySelector('.auth-container');
+          const successMessage = document.createElement('div');
+          successMessage.className = 'success-message';
+          successMessage.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            注册成功，即将跳转到登录页面...
+          `;
+          formContainer.insertBefore(successMessage, registerForm);
+          
+          // 显示成功提示
+          showToast('注册成功！请登录您的账号', 'success');
           
           // 3秒后跳转到登录页面
           setTimeout(() => {
@@ -313,12 +356,10 @@
           // 显示错误消息
           errorMessage.textContent = error.message || '注册失败，请稍后再试';
           errorMessage.classList.remove('hidden');
-          errorMessage.classList.add('message-error');
-          errorMessage.classList.remove('message-success');
         } finally {
           // 恢复按钮状态
           const submitButton = registerForm.querySelector('button[type="submit"]');
-          submitButton.innerHTML = '<span>注册</span>';
+          submitButton.classList.remove('loading');
           submitButton.disabled = false;
         }
       });

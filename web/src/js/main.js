@@ -1,8 +1,14 @@
 // 导入样式
 import '../css/styles.css';
 
+console.log('main.js 文件已加载');
+
 // 导入API服务
 import { userApi, bookApi, bookshelfApi, communityApi } from './api.js';
+import { initAuthListeners, isLoggedIn, requireAuth } from './auth.js';
+import { showToast } from './utils.js';
+
+console.log('API服务已导入');
 
 // 导入Alpine.js
 import Alpine from 'alpinejs';
@@ -41,11 +47,19 @@ function generateStarRating(rating) {
 
 // 导航栏活跃链接处理
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOMContentLoaded 事件触发');
+  
+  // 初始化认证监听器
+  initAuthListeners();
+  console.log('认证监听器已初始化');
+  
   // 获取当前页面路径
   const currentPath = window.location.pathname;
+  console.log('当前页面路径:', currentPath);
   
   // 获取所有导航链接
   const navLinks = document.querySelectorAll('.navbar-link');
+  console.log('找到的导航链接数量:', navLinks.length);
   
   // 遍历链接并设置活跃状态
   navLinks.forEach(link => {
@@ -67,9 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
       mobileMenu.classList.toggle('active');
     });
   }
-  
-  // 初始化个人资料按钮
-  initProfileButton();
   
   // 初始化首页功能
   initHomePage();
@@ -780,34 +791,49 @@ function showMessage(message, type) {
 
 // 显示登录提示
 function showLoginPrompt() {
-  // 创建登录提示元素
-  const loginPrompt = document.createElement('div');
-  loginPrompt.className = 'login-prompt';
-  loginPrompt.innerHTML = `
-    <div class="login-prompt-content">
-      <h3>请先登录</h3>
-      <p>您需要登录才能使用此功能</p>
-      <div class="login-prompt-buttons">
-        <button class="btn btn-primary login-btn">登录</button>
-        <button class="btn btn-outline cancel-btn">取消</button>
+  const modalHtml = `
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="login-modal">
+      <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+        <div class="text-center mb-4">
+          <i class="fas fa-user-lock text-blue-500 text-4xl mb-3"></i>
+          <h3 class="text-xl font-bold">需要登录</h3>
+          <p class="text-gray-600 mt-2">请登录后继续操作</p>
+        </div>
+        <div class="flex justify-center space-x-4 mt-6">
+          <button class="btn-secondary px-4 py-2" id="cancel-login">取消</button>
+          <button class="btn-primary px-4 py-2" id="confirm-login">去登录</button>
+        </div>
       </div>
     </div>
   `;
   
-  // 添加到页面
-  document.body.appendChild(loginPrompt);
+  // 添加模态框到页面
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
   
-  // 登录按钮点击事件
-  const loginBtn = loginPrompt.querySelector('.login-btn');
-  loginBtn.addEventListener('click', () => {
-    window.location.href = '/src/pages/login.html';
-    loginPrompt.remove();
+  // 获取模态框元素
+  const modal = document.getElementById('login-modal');
+  const cancelBtn = document.getElementById('cancel-login');
+  const confirmBtn = document.getElementById('confirm-login');
+  
+  // 添加事件监听器
+  cancelBtn.addEventListener('click', () => {
+    modal.remove();
   });
   
-  // 取消按钮点击事件
-  const cancelBtn = loginPrompt.querySelector('.cancel-btn');
-  cancelBtn.addEventListener('click', () => {
-    loginPrompt.remove();
+  confirmBtn.addEventListener('click', () => {
+    // 保存当前URL，登录后可以返回
+    const currentPath = window.location.pathname + window.location.search;
+    sessionStorage.setItem('auth_redirect', currentPath);
+    
+    // 跳转到登录页面
+    window.location.href = '/web/src/pages/login.html';
+  });
+  
+  // 点击背景关闭模态框
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove();
+    }
   });
 }
 
@@ -847,51 +873,32 @@ export { storage };
 
 // 初始化个人资料按钮
 function initProfileButton() {
+  console.log('initProfileButton 函数被调用');
+  
   // 获取所有个人资料按钮（通过类名、图标或href属性匹配）
   const profileButtons = document.querySelectorAll('a[href*="profile.html"], .w-8.h-8.rounded-full.bg-blue-500');
+  console.log('找到的个人资料按钮数量:', profileButtons.length);
+  console.log('找到的个人资料按钮:', profileButtons);
   
-  profileButtons.forEach(button => {
+  profileButtons.forEach((button, index) => {
+    console.log(`为第 ${index + 1} 个按钮添加点击事件`);
     button.addEventListener('click', (e) => {
+      console.log('个人资料按钮被点击');
       e.preventDefault();
       
       // 检查用户是否已登录
       const token = localStorage.getItem('token');
       const user = localStorage.getItem('user');
+      console.log('用户登录状态:', { token: !!token, user: !!user });
       
       if (token && user) {
         // 用户已登录，跳转到个人资料页面
-        const currentPath = window.location.pathname;
-        const isInSrcPages = currentPath.includes('/src/pages/');
-        const isInRoot = currentPath === '/' || currentPath.endsWith('/index.html');
-        
-        // 根据当前路径确定个人资料页面的相对路径
-        let profilePath;
-        if (isInRoot) {
-          profilePath = 'src/pages/profile.html';
-        } else if (isInSrcPages) {
-          profilePath = 'profile.html';
-        } else {
-          profilePath = 'src/pages/profile.html';
-        }
-        
-        window.location.href = profilePath;
+        console.log('用户已登录，跳转到个人资料页面');
+        window.location.href = '/src/pages/profile.html';
       } else {
         // 用户未登录，跳转到登录页面
-        const currentPath = window.location.pathname;
-        const isInSrcPages = currentPath.includes('/src/pages/');
-        const isInRoot = currentPath === '/' || currentPath.endsWith('/index.html');
-        
-        // 根据当前路径确定登录页面的相对路径
-        let loginPath;
-        if (isInRoot) {
-          loginPath = 'src/pages/login.html';
-        } else if (isInSrcPages) {
-          loginPath = 'login.html';
-        } else {
-          loginPath = 'src/pages/login.html';
-        }
-        
-        window.location.href = loginPath;
+        console.log('用户未登录，跳转到登录页面');
+        window.location.href = '/src/pages/login.html';
       }
     });
   });
