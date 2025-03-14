@@ -17,7 +17,9 @@ async function request(endpoint, options = {}) {
   };
   
   // 如果有token，添加到请求头
-  const token = localStorage.getItem('token');
+  // 使用auth.js中的getAuthToken函数获取认证令牌
+  const token = localStorage.getItem('bookstore_auth') ? 
+    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -147,29 +149,29 @@ const bookApi = {
 const bookshelfApi = {
   // 获取用户书架
   getBookshelf: () => {
-    return request('/bookshelf');
+    return request('/users/bookshelf');
   },
   
   // 添加书籍到书架
   addToBookshelf: (bookId) => {
-    return request('/bookshelf/books', {
+    return request(`/books/${bookId}/bookshelf`, {
       method: 'POST',
-      body: JSON.stringify({ bookId })
+      body: JSON.stringify({})
     });
   },
   
   // 从书架移除书籍
   removeFromBookshelf: (bookId) => {
-    return request(`/bookshelf/books/${bookId}`, {
+    return request(`/books/${bookId}/bookshelf`, {
       method: 'DELETE'
     });
   },
   
   // 更新阅读进度
   updateReadingProgress: (bookId, progress) => {
-    return request(`/bookshelf/books/${bookId}/progress`, {
+    return request(`/books/${bookId}/reading-progress`, {
       method: 'PUT',
-      body: JSON.stringify({ progress })
+      body: JSON.stringify(progress)
     });
   }
 };

@@ -43,3 +43,6 @@ coverage/
 .tmp/
 temp/ 
 .mcp.json
+
+# Onlook
+bun.lock

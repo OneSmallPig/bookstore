@@ -6,6 +6,45 @@
   <title>我的书架 - 百变书屋</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="../css/output.css">
+  <style>
+    /* 自定义样式 - 让书籍卡片靠左排列，更紧凑 */
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: flex-start;
+    }
+    
+    .book-card {
+      width: 220px;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .book-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    /* 筛选和排序下拉菜单样式 */
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      margin-top: 0.5rem;
+      width: 200px;
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      z-index: 10;
+    }
+    
+    .dropdown-menu.show {
+      display: block;
+    }
+  </style>
 </head>
 <body>
   <!-- 导航栏 -->
@@ -88,56 +127,59 @@
         <!-- 筛选和排序 -->
         <div class="flex space-x-2">
           <div class="relative">
-            <button class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
+            <button id="filter-btn" class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
               <i class="fas fa-filter mr-2"></i>
               <span>筛选</span>
               <i class="fas fa-chevron-down ml-2 text-xs"></i>
             </button>
             <!-- 筛选下拉菜单 -->
-            <div class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-10">
+            <div id="filter-menu" class="dropdown-menu">
               <div class="p-3">
                 <div class="font-medium mb-2">阅读状态</div>
                 <div class="space-y-2">
                   <label class="flex items-center">
-                    <input type="checkbox" class="mr-2">
+                    <input type="checkbox" name="filter-status" value="all" checked class="mr-2">
                     <span>全部</span>
                   </label>
                   <label class="flex items-center">
-                    <input type="checkbox" class="mr-2">
+                    <input type="checkbox" name="filter-status" value="unread" class="mr-2">
                     <span>未读</span>
                   </label>
                   <label class="flex items-center">
-                    <input type="checkbox" class="mr-2">
+                    <input type="checkbox" name="filter-status" value="reading" class="mr-2">
                     <span>阅读中</span>
                   </label>
                   <label class="flex items-center">
-                    <input type="checkbox" class="mr-2">
+                    <input type="checkbox" name="filter-status" value="finished" class="mr-2">
                     <span>已读完</span>
                   </label>
+                </div>
+                <div class="mt-4 flex justify-end">
+                  <button id="apply-filter" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">应用</button>
                 </div>
               </div>
             </div>
           </div>
           
           <div class="relative">
-            <button class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
+            <button id="sort-btn" class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
               <i class="fas fa-sort mr-2"></i>
               <span>排序</span>
               <i class="fas fa-chevron-down ml-2 text-xs"></i>
             </button>
             <!-- 排序下拉菜单 -->
-            <div class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-10">
+            <div id="sort-menu" class="dropdown-menu">
               <div class="py-1">
-                <a href="#" class="block px-4 py-2 hover:bg-gray-100">添加时间（最新）</a>
-                <a href="#" class="block px-4 py-2 hover:bg-gray-100">添加时间（最早）</a>
-                <a href="#" class="block px-4 py-2 hover:bg-gray-100">书名（A-Z）</a>
-                <a href="#" class="block px-4 py-2 hover:bg-gray-100">书名（Z-A）</a>
-                <a href="#" class="block px-4 py-2 hover:bg-gray-100">阅读进度</a>
+                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="date-desc">添加时间（最新）</a>
+                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="date-asc">添加时间（最早）</a>
+                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="title-asc">书名（A-Z）</a>
+                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="title-desc">书名（Z-A）</a>
+                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="progress">阅读进度</a>
               </div>
             </div>
           </div>
           
-          <button class="bg-blue-500 text-white rounded-lg px-4 py-2 flex items-center">
+          <button id="add-book-btn" class="bg-blue-500 text-white rounded-lg px-4 py-2 flex items-center">
             <i class="fas fa-plus mr-2"></i>
             <span>添加书籍</span>
           </button>
@@ -148,7 +190,7 @@
     <!-- 分类标签 -->
     <section class="mb-6">
       <div class="border-b border-gray-200">
-        <ul class="flex flex-wrap -mb-px">
+        <ul id="category-tabs" class="flex flex-wrap -mb-px">
           <li class="mr-2">
             <a href="#" class="category-tab active inline-block py-2 px-4 border-b-2 border-blue-500 font-medium text-blue-500" data-category="all">全部书籍</a>
           </li>
@@ -501,5 +543,6 @@
   
   <script type="module" src="../js/main.js"></script>
   <script type="module" src="../js/profile-button.js"></script>
+  <script type="module" src="../js/bookshelf.js"></script>
 </body>
 </html> 

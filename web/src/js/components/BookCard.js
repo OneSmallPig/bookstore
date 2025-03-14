@@ -12,9 +12,10 @@ import { bookshelfApi } from '../api.js';
  * 创建书籍卡片HTML
  * @param {Object} book - 书籍对象
  * @param {string} [tagType='推荐'] - 标签类型，如'推荐'、'AI推荐'等
+ * @param {boolean} [isInBookshelf=false] - 书籍是否已在用户的书架中
  * @returns {string} 书籍卡片的HTML字符串
  */
-export function createBookCard(book, tagType = '推荐') {
+export function createBookCard(book, tagType = '推荐', isInBookshelf = false) {
   // 处理rating可能为空的情况
   const rating = book.rating || 0;
   
@@ -28,7 +29,11 @@ export function createBookCard(book, tagType = '推荐') {
   const fullDescription = book.description || '暂无简介';
   
   // 获取封面图片URL，如果没有则使用默认图标
-  const coverImage = book.coverImage || '';
+  const coverImage = book.coverImage || book.cover_image || '';
+  
+  // 根据是否已在书架中设置按钮文本和样式
+  const addBtnText = isInBookshelf ? '已加入书架' : '加入书架';
+  const addBtnClass = isInBookshelf ? 'add-btn added' : 'add-btn';
   
   return `
     <div class="book-card-wrapper">
@@ -74,7 +79,7 @@ export function createBookCard(book, tagType = '推荐') {
         <!-- 操作按钮 -->
         <div class="book-actions">
           <button class="read-btn" data-book-id="${book.id}">阅读</button>
-          <button class="add-btn" data-book-id="${book.id}">加入书架</button>
+          <button class="${addBtnClass}" data-book-id="${book.id}">${addBtnText}</button>
         </div>
       </div>
     </div>
@@ -277,6 +282,12 @@ export function addBookCardListeners(container) {
       e.preventDefault();
       e.stopPropagation();
       
+      // 如果按钮已经有added类，说明书籍已经在书架中，不需要再次添加
+      if (button.classList.contains('added')) {
+        showToast('该书籍已在您的书架中', 'info');
+        return;
+      }
+      
       // 检查用户是否已登录
       if (!isLoggedIn()) {
         showLoginPrompt();
@@ -289,15 +300,36 @@ export function addBookCardListeners(container) {
         button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         button.disabled = true;
         
+        console.log(`正在添加书籍到书架，ID: ${bookId}`);
+        
         // 调用API添加到书架
         await bookshelfApi.addToBookshelf(bookId);
         
         // 显示成功消息
         showToast('书籍已添加到书架', 'success');
         
-        // 恢复按钮状态
+        // 更新按钮状态
         button.innerHTML = '已加入书架';
         button.classList.add('added');
+        
+        console.log(`书籍已成功添加到书架，ID: ${bookId}，正在更新所有相关按钮`);
+        
+        // 更新所有相同书籍的按钮状态 - 包括首页和详情页的按钮
+        document.querySelectorAll(`.add-btn[data-book-id="${bookId}"]`).forEach(btn => {
+          console.log(`更新按钮:`, btn);
+          btn.innerHTML = '已加入书架';
+          btn.classList.add('added');
+        });
+        
+        // 更新详情页的按钮
+        const detailPageButton = document.getElementById('add-to-bookshelf-btn');
+        if (detailPageButton && detailPageButton.getAttribute('data-book-id') === bookId) {
+          console.log(`更新详情页按钮:`, detailPageButton);
+          detailPageButton.innerHTML = '<i class="fas fa-check"></i> 已添加';
+          detailPageButton.classList.remove('btn-secondary');
+          detailPageButton.classList.add('btn-success');
+          detailPageButton.disabled = true;
+        }
       } catch (error) {
         console.error('添加到书架失败:', error);
         showToast('添加到书架失败', 'error');

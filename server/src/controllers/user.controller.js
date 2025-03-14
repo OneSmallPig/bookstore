@@ -108,7 +108,7 @@ const getBookshelf = async (req, res) => {
       include: [
         {
           model: require('../models/book.model'),
-          attributes: ['id', 'title', 'author', 'cover', 'category', 'rating']
+          attributes: ['id', 'title', 'author', 'cover_image', 'categories', 'rating']
         }
       ]
     });
