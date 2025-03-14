@@ -14,7 +14,7 @@
 </head>
 <body>
   <!-- 导航栏 -->
-  <nav class="navbar sticky top-0 z-10 px-4 py-3">
+  <nav class="navbar sticky top-0 z-50 px-4 py-3">
     <div class="container mx-auto flex justify-between items-center">
       <div class="flex items-center">
         <img src="src/images/logo.svg" alt="百变书屋" class="h-10">
@@ -81,7 +81,7 @@
         </a>
       </div>
       
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- 推荐书籍将通过JavaScript动态加载 -->
       </div>
     </section>
@@ -90,7 +90,7 @@
     <section class="mb-10">
       <h2 class="text-xl font-bold mb-4">热门分类</h2>
       
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
         <a href="#" class="category-card bg-blue-500">
           <i class="fas fa-laptop-code category-icon"></i>
           <div class="category-name">计算机科学</div>
@@ -126,7 +126,7 @@
           查看更多 <i class="fas fa-chevron-right ml-1 text-xs"></i>
         </a>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- 热门书籍将通过JavaScript动态加载 -->
       </div>
     </section>
@@ -140,97 +140,101 @@
         </a>
       </div>
       
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- 热门讨论 -->
         <div class="community-card">
           <h3>热门讨论</h3>
-          <div class="discussion-item">
-            <a href="#">
-              <div class="discussion-title">
-                <span>《原子习惯》读后感分享</span>
-                <span class="discussion-replies">42 回复</span>
-              </div>
-              <div class="discussion-preview">
-                <span class="discussion-author">@读书爱好者</span> 这本书彻底改变了我的生活习惯...
-              </div>
-            </a>
-          </div>
-          <div class="discussion-item">
-            <a href="#">
-              <div class="discussion-title">
-                <span>有没有适合初学者的心理学书籍推荐？</span>
-                <span class="discussion-replies">28 回复</span>
-              </div>
-              <div class="discussion-preview">
-                <span class="discussion-author">@心理学爱好者</span> 想入门心理学，求推荐几本经典书籍...
-              </div>
-            </a>
-          </div>
-          <div class="discussion-item">
-            <a href="#">
-              <div class="discussion-title">
-                <span>历史类书籍交流群</span>
-                <span class="discussion-replies">56 回复</span>
-              </div>
-              <div class="discussion-preview">
-                <span class="discussion-author">@历史研究者</span> 欢迎对历史感兴趣的朋友加入我们的讨论...
-              </div>
-            </a>
+          <div class="discussion-items-container">
+            <div class="discussion-item">
+              <a href="#">
+                <div class="discussion-title">
+                  <span>《原子习惯》读后感分享</span>
+                  <span class="discussion-replies">42 回复</span>
+                </div>
+                <div class="discussion-preview">
+                  <span class="discussion-author">@读书爱好者</span> 这本书彻底改变了我的生活习惯...
+                </div>
+              </a>
+            </div>
+            <div class="discussion-item">
+              <a href="#">
+                <div class="discussion-title">
+                  <span>有没有适合初学者的心理学书籍推荐？</span>
+                  <span class="discussion-replies">28 回复</span>
+                </div>
+                <div class="discussion-preview">
+                  <span class="discussion-author">@心理学爱好者</span> 想入门心理学，求推荐几本经典书籍...
+                </div>
+              </a>
+            </div>
+            <div class="discussion-item">
+              <a href="#">
+                <div class="discussion-title">
+                  <span>历史类书籍交流群</span>
+                  <span class="discussion-replies">56 回复</span>
+                </div>
+                <div class="discussion-preview">
+                  <span class="discussion-author">@历史研究者</span> 欢迎对历史感兴趣的朋友加入我们的讨论...
+                </div>
+              </a>
+            </div>
           </div>
         </div>
         
         <!-- 最新书评 -->
         <div class="community-card">
           <h3>最新书评</h3>
-          <div class="review-item">
-            <img src="src/images/book-covers/atomic-habits.svg" alt="原子习惯" class="review-book-cover">
-            <div class="review-content">
-              <div class="review-book-title">
-                <span>原子习惯</span>
-                <div class="review-rating">
-                  <i class="fas fa-star"></i>
-                  <i class="fas fa-star"></i>
-                  <i class="fas fa-star"></i>
-                  <i class="fas fa-star"></i>
-                  <i class="fas fa-star"></i>
+          <div class="review-items-container">
+            <div class="review-item">
+              <img src="src/images/book-covers/atomic-habits.svg" alt="原子习惯" class="review-book-cover">
+              <div class="review-content">
+                <div class="review-book-title">
+                  <span>原子习惯</span>
+                  <div class="review-rating">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                  </div>
                 </div>
+                <p class="review-text">这本书提供了非常实用的建议，帮助我建立了良好的习惯。强烈推荐！</p>
+                <div class="review-author">来自 @生活改变者</div>
               </div>
-              <p class="review-text">这本书提供了非常实用的建议，帮助我建立了良好的习惯。强烈推荐！</p>
-              <div class="review-author">来自 @生活改变者</div>
             </div>
-          </div>
-          <div class="review-item">
-            <img src="src/images/book-covers/deep-learning.svg" alt="深度学习" class="review-book-cover">
-            <div class="review-content">
-              <div class="review-book-title">
-                <span>深度学习</span>
-                <div class="review-rating">
-                  <i class="fas fa-star"></i>
-                  <i class="fas fa-star"></i>
-                  <i class="fas fa-star"></i>
-                  <i class="fas fa-star"></i>
-                  <i class="fas fa-star-half-alt"></i>
+            <div class="review-item">
+              <img src="src/images/book-covers/deep-learning.svg" alt="深度学习" class="review-book-cover">
+              <div class="review-content">
+                <div class="review-book-title">
+                  <span>深度学习</span>
+                  <div class="review-rating">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star-half-alt"></i>
+                  </div>
                 </div>
+                <p class="review-text">内容深入浅出，对初学者非常友好，但部分章节还是有些难度。</p>
+                <div class="review-author">来自 @AI研究员</div>
               </div>
-              <p class="review-text">内容深入浅出，对初学者非常友好，但部分章节还是有些难度。</p>
-              <div class="review-author">来自 @AI研究员</div>
             </div>
-          </div>
-          <div class="review-item">
-            <img src="src/images/book-covers/psychology-book.svg" alt="思考，快与慢" class="review-book-cover">
-            <div class="review-content">
-              <div class="review-book-title">
-                <span>思考，快与慢</span>
-                <div class="review-rating">
-                  <i class="fas fa-star"></i>
-                  <i class="fas fa-star"></i>
-                  <i class="fas fa-star"></i>
-                  <i class="fas fa-star"></i>
-                  <i class="fas fa-star"></i>
+            <div class="review-item">
+              <img src="src/images/book-covers/psychology-book.svg" alt="思考，快与慢" class="review-book-cover">
+              <div class="review-content">
+                <div class="review-book-title">
+                  <span>思考，快与慢</span>
+                  <div class="review-rating">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                  </div>
                 </div>
+                <p class="review-text">卡尼曼的这本书让我对自己的思维方式有了全新的认识，值得反复阅读。</p>
+                <div class="review-author">来自 @心理学爱好者</div>
               </div>
-              <p class="review-text">卡尼曼的这本书让我对自己的思维方式有了全新的认识，值得反复阅读。</p>
-              <div class="review-author">来自 @心理学爱好者</div>
             </div>
           </div>
         </div>

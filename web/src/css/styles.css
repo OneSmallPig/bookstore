@@ -152,6 +152,9 @@ a {
 /* 导航栏样式 */
 .navbar {
   @apply bg-white shadow-md py-4;
+  position: sticky;
+  top: 0;
+  z-index: 1000; /* 确保导航栏始终在最上层 */
 }
 
 .navbar-container {
@@ -207,8 +210,10 @@ a {
 .book-card-wrapper {
   display: flex;
   flex-direction: column;
-  width: 260px;
+  width: 280px; /* 保留增加的卡片宽度 */
   margin: 0 auto;
+  position: relative; /* 确保包装器有相对定位 */
+  overflow: hidden; /* 防止内容溢出 */
 }
 
 .book-card {
@@ -222,6 +227,7 @@ a {
   cursor: pointer;
   height: 400px;
   position: relative;
+  z-index: 1; /* 确保卡片在正常层级 */
 }
 
 .book-card:hover {
@@ -250,6 +256,12 @@ a {
   align-items: center;
   color: white;
   overflow: hidden;
+  transition: transform 0.3s ease; /* 保留过渡效果 */
+}
+
+/* 悬停时封面放大效果 */
+.book-card:hover .book-cover {
+  transform: scale(1.05);
 }
 
 /* 封面图片 */
@@ -288,6 +300,12 @@ a {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #1f2937; /* 保留加深标题颜色 */
+  transition: color 0.3s ease; /* 保留颜色过渡效果 */
+}
+
+.book-card:hover .info-title {
+  color: #3B82F6; /* 保留悬停时标题变为蓝色 */
 }
 
 .info-author {
@@ -361,6 +379,7 @@ a {
   min-height: 120px; /* 增加最小高度，从80px改为120px */
   max-height: 150px; /* 增加最大高度，从120px改为150px */
   position: relative; /* 添加相对定位 */
+  margin-bottom: 50px; /* 为底部操作按钮留出空间 */
 }
 
 /* 书籍简介浮窗 - 完全重写 */
@@ -402,7 +421,8 @@ a {
   left: 0;
   right: 0;
   background: white;
-  z-index: 10;
+  z-index: 2; /* 确保按钮在卡片内部，但高于其他内容 */
+  height: 50px; /* 固定高度 */
 }
 
 /* 按钮样式 */
@@ -417,7 +437,7 @@ a {
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
   display: block;
   text-align: center;
 }
@@ -426,6 +446,8 @@ a {
 .book-actions .add-btn:hover,
 .book-actions button:hover {
   background-color: rgba(59, 130, 246, 0.1);
+  color: #2563eb; /* 保留悬停时颜色加深 */
+  font-weight: 600; /* 保留悬停时字体加粗 */
 }
 
 .book-actions .add-btn.added,
@@ -498,25 +520,37 @@ a {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
+  padding: 1rem;
   border-radius: 0.5rem;
   color: white;
   text-align: center;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.3s ease;
+  /* 调整高度，使用更合适的宽高比 */
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
 }
 
 .category-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
 .category-icon {
-  font-size: 2rem;
-  margin-bottom: 0.75rem;
+  font-size: 1.75rem;
+  margin-bottom: 0.5rem;
+  transition: transform 0.2s ease;
+}
+
+.category-card:hover .category-icon {
+  transform: scale(1.1);
 }
 
 .category-name {
   font-weight: 500;
+  font-size: 0.95rem;
 }
 
 /* 社区动态样式 */
@@ -524,25 +558,61 @@ a {
   margin-bottom: 2.5rem;
 }
 
+/* 调整网格布局 */
+.community-section .grid {
+  display: grid;
+  gap: 1rem;
+}
+
+/* 确保两列等宽 */
+@media (min-width: 768px) {
+  .community-section .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .community-card {
   background-color: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  padding: 1.25rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  min-height: 380px; /* 设置最小高度确保卡片一致 */
+  width: 100%; /* 确保卡片占满网格单元格 */
+}
+
+.community-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
 .community-card h3 {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   color: #333;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+/* 讨论项目容器 */
+.discussion-items-container {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  justify-content: space-between; /* 均匀分布内容 */
 }
 
 .discussion-item {
-  padding-bottom: 0.75rem;
-  margin-bottom: 0.75rem;
+  padding: 0.75rem 0;
+  margin-bottom: 0; /* 移除底部边距 */
   border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* 让每个项目平均分配空间 */
 }
 
 .discussion-item:last-child {
@@ -550,33 +620,65 @@ a {
   border-bottom: none;
 }
 
+.discussion-item a {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.discussion-item a:hover {
+  color: #3B82F6;
+}
+
 .discussion-title {
   font-weight: 500;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
   display: flex;
   justify-content: space-between;
+  align-items: center;
+}
+
+.discussion-title span:first-child {
+  flex: 1;
+  margin-right: 0.5rem;
 }
 
 .discussion-replies {
   font-size: 0.75rem;
   color: #666;
+  background-color: #f3f4f6;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  white-space: nowrap;
 }
 
 .discussion-preview {
   font-size: 0.875rem;
   color: #666;
+  line-height: 1.5;
 }
 
 .discussion-author {
   color: #3B82F6;
+  font-weight: 500;
+}
+
+/* 书评项目容器 */
+.review-items-container {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  justify-content: space-between; /* 均匀分布内容 */
 }
 
 .review-item {
   display: flex;
   gap: 0.75rem;
-  padding-bottom: 0.75rem;
-  margin-bottom: 0.75rem;
+  padding: 0.75rem 0;
+  margin-bottom: 0; /* 移除底部边距 */
   border-bottom: 1px solid #f0f0f0;
+  flex: 1; /* 让每个项目平均分配空间 */
 }
 
 .review-item:last-child {
@@ -585,21 +687,25 @@ a {
 }
 
 .review-book-cover {
-  width: 3rem;
-  height: 4rem;
+  width: 3.5rem;
+  height: 4.5rem;
   object-fit: cover;
   border-radius: 0.25rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .review-content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .review-book-title {
   font-weight: 500;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
   display: flex;
   justify-content: space-between;
+  align-items: center;
 }
 
 .review-rating {
@@ -614,10 +720,25 @@ a {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+  flex-grow: 1;
 }
 
 .review-author {
   font-size: 0.75rem;
   color: #666;
+  align-self: flex-end;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .community-card {
+    min-height: auto; /* 在移动设备上取消最小高度限制 */
+    margin-bottom: 1rem; /* 减小底部间距 */
+  }
+  
+  .community-section .grid {
+    gap: 1rem; /* 在移动设备上保持较小的间距 */
+  }
 } 
