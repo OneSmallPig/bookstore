@@ -228,11 +228,13 @@ a {
   height: 400px;
   position: relative;
   z-index: 1; /* 确保卡片在正常层级 */
+  border: 1px solid #e5e7eb; /* 添加简单的边框 */
 }
 
 .book-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  /* 不添加边框变色效果 */
 }
 
 /* 书籍封面容器 */
