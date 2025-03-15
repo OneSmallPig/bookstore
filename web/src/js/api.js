@@ -6,6 +6,12 @@
 // API基础URL
 const API_BASE_URL = 'http://localhost:3001/api';
 
+// 获取认证令牌函数
+function getToken() {
+  return localStorage.getItem('bookstore_auth') ? 
+    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+}
+
 // 通用请求函数
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -18,8 +24,7 @@ async function request(endpoint, options = {}) {
   
   // 如果有token，添加到请求头
   // 使用auth.js中的getAuthToken函数获取认证令牌
-  const token = localStorage.getItem('bookstore_auth') ? 
-    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+  const token = getToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
