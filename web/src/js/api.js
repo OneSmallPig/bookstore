@@ -148,31 +148,138 @@ const bookApi = {
 // 书架相关API
 const bookshelfApi = {
   // 获取用户书架
-  getBookshelf: () => {
-    return request('/users/bookshelf');
+  async getBookshelf(status = null, sort = null, order = null) {
+    try {
+      // 构建查询参数
+      const queryParams = new URLSearchParams();
+      if (status) queryParams.append('status', status);
+      if (sort) queryParams.append('sort', sort);
+      if (order) queryParams.append('order', order);
+      
+      const queryString = queryParams.toString();
+      const url = `${API_BASE_URL}/users/bookshelf${queryString ? `?${queryString}` : ''}`;
+      
+      console.log('获取书架API请求URL:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`获取书架失败: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('获取书架API响应:', data);
+      return data;
+    } catch (error) {
+      console.error('获取书架错误:', error);
+      throw error;
+    }
   },
   
   // 添加书籍到书架
-  addToBookshelf: (bookId) => {
-    return request(`/books/${bookId}/bookshelf`, {
-      method: 'POST',
-      body: JSON.stringify({})
-    });
+  async addToBookshelf(bookId, status = 'toRead') {
+    try {
+      const response = await fetch(`${API_BASE_URL}/books/${bookId}/bookshelf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`
+        },
+        body: JSON.stringify({ status })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`添加书籍到书架失败: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('添加书籍到书架错误:', error);
+      throw error;
+    }
   },
   
   // 从书架移除书籍
-  removeFromBookshelf: (bookId) => {
-    return request(`/books/${bookId}/bookshelf`, {
-      method: 'DELETE'
-    });
+  async removeFromBookshelf(bookId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/books/${bookId}/bookshelf`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`从书架移除书籍失败: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('从书架移除书籍错误:', error);
+      throw error;
+    }
   },
   
   // 更新阅读进度
-  updateReadingProgress: (bookId, progress) => {
-    return request(`/books/${bookId}/reading-progress`, {
-      method: 'PUT',
-      body: JSON.stringify(progress)
-    });
+  async updateReadingProgress(bookId, progress) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/books/${bookId}/reading-progress`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`
+        },
+        body: JSON.stringify({ progress })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`更新阅读进度失败: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('更新阅读进度错误:', error);
+      throw error;
+    }
+  },
+  
+  // 搜索书架
+  async searchBookshelf(query) {
+    try {
+      // 构建查询参数
+      const queryParams = new URLSearchParams();
+      queryParams.append('q', query);
+      
+      const url = `${API_BASE_URL}/users/bookshelf/search?${queryParams.toString()}`;
+      
+      console.log('搜索书架API请求URL:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`搜索书架失败: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('搜索书架API响应:', data);
+      return data;
+    } catch (error) {
+      console.error('搜索书架错误:', error);
+      throw error;
+    }
   }
 };
 

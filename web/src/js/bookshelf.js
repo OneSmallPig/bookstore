@@ -29,27 +29,93 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   console.log('初始化书架页面');
   
-  // 加载用户书架数据
-  const bookshelfData = await loadUserBookshelf();
-  if (bookshelfData) {
-    currentBookshelfData = bookshelfData;
-    console.log('书架数据已加载:', currentBookshelfData);
-  } else {
-    console.log('书架数据加载失败或用户未登录');
-    currentBookshelfData = window.currentBookshelfData || [];
+  // 显示加载状态
+  const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
+  if (bookshelfContent) {
+    bookshelfContent.innerHTML = `
+      <div class="text-center py-8">
+        <i class="fas fa-spinner fa-spin mr-2"></i> 加载中...
+      </div>
+    `;
   }
   
-  // 初始化过滤下拉菜单
-  initFilterDropdown();
+  try {
+    // 加载用户书架数据
+    const bookshelfData = await loadUserBookshelf();
+    if (bookshelfData) {
+      currentBookshelfData = bookshelfData;
+      console.log('书架数据已加载:', currentBookshelfData);
+      
+      // 更新书架显示
+      updateBookshelfDisplay(currentBookshelfData);
+      
+      // 更新统计数据
+      updateBookshelfStats(currentBookshelfData);
+    } else {
+      console.log('书架数据加载失败或用户未登录');
+      currentBookshelfData = window.currentBookshelfData || [];
+      
+      // 显示空书架提示
+      if (bookshelfContent) {
+        bookshelfContent.innerHTML = `
+          <div class="text-center py-8">
+            您的书架还没有书籍
+          </div>
+        `;
+      }
+    }
+  } catch (error) {
+    console.error('加载书架数据失败:', error);
+    
+    // 显示错误信息
+    if (bookshelfContent) {
+      bookshelfContent.innerHTML = `
+        <div class="text-center py-8 text-red-500">
+          <i class="fas fa-exclamation-circle mr-2"></i> 加载书架失败，请稍后再试
+        </div>
+      `;
+    }
+  }
   
-  // 初始化排序下拉菜单
-  initSortDropdown();
-  
-  // 初始化添加书籍按钮
-  initAddBookButton();
-  
-  // 初始化分类标签
-  initCategoryTabs();
+  // 确保在页面完全加载后初始化这些功能
+  setTimeout(() => {
+    console.log('延迟初始化筛选和排序功能');
+    // 初始化过滤下拉菜单
+    initFilterDropdown();
+    
+    // 初始化排序下拉菜单
+    initSortDropdown();
+    
+    // 初始化添加书籍按钮
+    initAddBookButton();
+    
+    // 初始化分类标签
+    initCategoryTabs();
+    
+    // 初始化搜索功能
+    initSearchFunction();
+    
+    // 添加全局函数，以便HTML中的内联事件能够调用
+    window.applyFilter = applyFilter;
+    window.applySorting = applySorting;
+    window.showAddBookDialog = showAddBookDialog;
+    
+    // 点击页面其他地方关闭下拉菜单
+    document.addEventListener('click', (e) => {
+      const filterMenu = document.getElementById('filter-menu');
+      const sortMenu = document.getElementById('sort-menu');
+      const filterBtn = document.getElementById('filter-btn');
+      const sortBtn = document.getElementById('sort-btn');
+      
+      if (filterMenu && !filterBtn.contains(e.target) && !filterMenu.contains(e.target)) {
+        filterMenu.classList.remove('show');
+      }
+      
+      if (sortMenu && !sortBtn.contains(e.target) && !sortMenu.contains(e.target)) {
+        sortMenu.classList.remove('show');
+      }
+    });
+  }, 500);
 });
 
 // 初始化筛选下拉菜单
@@ -58,37 +124,67 @@ function initFilterDropdown() {
   const filterMenu = document.getElementById('filter-menu');
   const applyFilterBtn = document.getElementById('apply-filter');
   
-  if (!filterBtn || !filterMenu) return;
+  console.log('初始化筛选下拉菜单:', { 
+    filterBtn: !!filterBtn, 
+    filterMenu: !!filterMenu, 
+    applyFilterBtn: !!applyFilterBtn 
+  });
+  
+  if (!filterBtn || !filterMenu) {
+    console.error('筛选按钮或菜单未找到:', { 
+      filterBtnId: 'filter-btn', 
+      filterMenuId: 'filter-menu',
+      filterBtnElement: filterBtn,
+      filterMenuElement: filterMenu
+    });
+    return;
+  }
+  
+  // 移除可能存在的旧事件监听器
+  const newFilterBtn = filterBtn.cloneNode(true);
+  filterBtn.parentNode.replaceChild(newFilterBtn, filterBtn);
   
   // 点击筛选按钮显示/隐藏下拉菜单
-  filterBtn.addEventListener('click', () => {
+  newFilterBtn.onclick = function(e) {
+    console.log('筛选按钮被点击 (使用onclick)');
+    e.stopPropagation(); // 阻止事件冒泡
     filterMenu.classList.toggle('show');
+    console.log('筛选菜单显示状态:', filterMenu.classList.contains('show'));
     // 隐藏排序下拉菜单
-    document.getElementById('sort-menu')?.classList.remove('show');
-  });
+    const sortMenu = document.getElementById('sort-menu');
+    if (sortMenu) sortMenu.classList.remove('show');
+  };
   
   // 点击应用筛选按钮
-  applyFilterBtn?.addEventListener('click', () => {
-    // 获取选中的筛选条件
-    const checkedFilters = document.querySelectorAll('input[name="filter-status"]:checked');
-    const statusFilters = Array.from(checkedFilters).map(input => input.value);
+  if (applyFilterBtn) {
+    const newApplyFilterBtn = applyFilterBtn.cloneNode(true);
+    applyFilterBtn.parentNode.replaceChild(newApplyFilterBtn, applyFilterBtn);
     
-    // 更新当前筛选条件
-    currentFilter = statusFilters.length > 0 ? statusFilters[0] : 'all';
-    
-    // 应用筛选
-    applyFiltersAndSort();
-    
-    // 隐藏下拉菜单
-    filterMenu.classList.remove('show');
-  });
+    newApplyFilterBtn.onclick = function() {
+      console.log('应用筛选按钮被点击 (使用onclick)');
+      // 获取选中的筛选条件
+      const checkedFilters = document.querySelectorAll('input[name="filter-status"]:checked');
+      const statusFilters = Array.from(checkedFilters).map(input => input.value);
+      console.log('选中的筛选条件:', statusFilters);
+      
+      // 更新当前筛选条件
+      currentFilter = statusFilters.length > 0 ? statusFilters[0] : 'all';
+      console.log('更新后的筛选条件:', currentFilter);
+      
+      // 应用筛选
+      applyFiltersAndSort();
+      
+      // 隐藏下拉菜单
+      filterMenu.classList.remove('show');
+    };
+  }
   
   // 点击页面其他地方关闭下拉菜单
-  document.addEventListener('click', (e) => {
-    if (!filterBtn.contains(e.target) && !filterMenu.contains(e.target)) {
+  document.onclick = function(e) {
+    if (newFilterBtn && !newFilterBtn.contains(e.target) && filterMenu && !filterMenu.contains(e.target)) {
       filterMenu.classList.remove('show');
     }
-  });
+  };
 }
 
 // 初始化排序下拉菜单
@@ -97,25 +193,53 @@ function initSortDropdown() {
   const sortMenu = document.getElementById('sort-menu');
   const sortOptions = document.querySelectorAll('.sort-option');
   
-  if (!sortBtn || !sortMenu) return;
+  console.log('初始化排序下拉菜单:', { 
+    sortBtn: !!sortBtn, 
+    sortMenu: !!sortMenu, 
+    sortOptionsCount: sortOptions.length 
+  });
+  
+  if (!sortBtn || !sortMenu) {
+    console.error('排序按钮或菜单未找到:', { 
+      sortBtnId: 'sort-btn', 
+      sortMenuId: 'sort-menu',
+      sortBtnElement: sortBtn,
+      sortMenuElement: sortMenu
+    });
+    return;
+  }
+  
+  // 移除可能存在的旧事件监听器
+  const newSortBtn = sortBtn.cloneNode(true);
+  sortBtn.parentNode.replaceChild(newSortBtn, sortBtn);
   
   // 点击排序按钮显示/隐藏下拉菜单
-  sortBtn.addEventListener('click', () => {
+  newSortBtn.onclick = function(e) {
+    console.log('排序按钮被点击 (使用onclick)');
+    e.stopPropagation(); // 阻止事件冒泡
     sortMenu.classList.toggle('show');
+    console.log('排序菜单显示状态:', sortMenu.classList.contains('show'));
     // 隐藏筛选下拉菜单
-    document.getElementById('filter-menu')?.classList.remove('show');
-  });
+    const filterMenu = document.getElementById('filter-menu');
+    if (filterMenu) filterMenu.classList.remove('show');
+  };
   
   // 点击排序选项
   sortOptions.forEach(option => {
-    option.addEventListener('click', (e) => {
+    const newOption = option.cloneNode(true);
+    option.parentNode.replaceChild(newOption, option);
+    
+    newOption.onclick = function(e) {
+      console.log('排序选项被点击 (使用onclick):', newOption.getAttribute('data-sort'));
       e.preventDefault();
+      e.stopPropagation(); // 阻止事件冒泡
       
       // 获取排序方式
-      const sortValue = option.getAttribute('data-sort');
+      const sortValue = newOption.getAttribute('data-sort');
       if (sortValue) {
         // 更新当前排序方式
         currentSort = sortValue;
+        console.log('更新后的排序方式:', currentSort);
         
         // 应用排序
         applyFiltersAndSort();
@@ -123,14 +247,7 @@ function initSortDropdown() {
         // 隐藏下拉菜单
         sortMenu.classList.remove('show');
       }
-    });
-  });
-  
-  // 点击页面其他地方关闭下拉菜单
-  document.addEventListener('click', (e) => {
-    if (!sortBtn.contains(e.target) && !sortMenu.contains(e.target)) {
-      sortMenu.classList.remove('show');
-    }
+    };
   });
 }
 
@@ -354,72 +471,203 @@ function initCategoryTabs() {
   });
 }
 
-// 应用筛选和排序
-function applyFiltersAndSort() {
-  // 获取当前书架数据
-  const books = [...currentBookshelfData];
+// 初始化搜索功能
+function initSearchFunction() {
+  const searchInput = document.getElementById('search-input');
+  const searchButton = document.getElementById('search-button');
   
-  // 如果没有书籍数据，尝试从页面获取
-  if (books.length === 0) {
-    const bookCards = document.querySelectorAll('.book-card');
-    bookCards.forEach(card => {
-      const bookId = card.getAttribute('data-book-id');
-      const title = card.querySelector('h3')?.textContent || '';
-      const author = card.querySelector('p')?.textContent || '';
-      const progressText = card.querySelector('.flex.justify-between span:last-child')?.textContent || '0%';
-      const progress = parseInt(progressText) || 0;
-      
-      books.push({
-        id: bookId,
-        title,
-        author,
-        readingProgress: progress
-      });
-    });
-    
-    // 更新当前书架数据
-    currentBookshelfData = books;
+  if (!searchInput || !searchButton) {
+    console.error('搜索元素未找到');
+    return;
   }
   
-  // 应用筛选
-  let filteredBooks = books;
+  // 搜索按钮点击事件
+  searchButton.addEventListener('click', () => {
+    const query = searchInput.value.trim();
+    if (query) {
+      performBookshelfSearch(query);
+    }
+  });
   
+  // 输入框回车事件
+  searchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      const query = searchInput.value.trim();
+      if (query) {
+        performBookshelfSearch(query);
+      }
+    }
+  });
+}
+
+// 执行书架搜索
+async function performBookshelfSearch(query) {
+  console.log('执行书架搜索:', query);
+  
+  // 显示加载状态
+  const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
+  if (bookshelfContent) {
+    bookshelfContent.innerHTML = `
+      <div class="text-center py-8">
+        <i class="fas fa-spinner fa-spin mr-2"></i> 搜索中...
+      </div>
+    `;
+  }
+  
+  try {
+    // 调用API搜索书架
+    const searchResult = await bookshelfApi.searchBookshelf(query);
+    
+    // 处理搜索结果 - 确保正确处理API响应结构
+    let searchBooks = [];
+    if (searchResult && searchResult.data && searchResult.data.books) {
+      searchBooks = searchResult.data.books;
+    } else if (searchResult && searchResult.books) {
+      searchBooks = searchResult.books;
+    } else if (Array.isArray(searchResult)) {
+      searchBooks = searchResult;
+    }
+    
+    console.log('搜索结果:', searchBooks);
+    
+    // 更新书架显示
+    if (searchBooks.length > 0) {
+      updateBookshelfDisplay(searchBooks);
+    } else {
+      // 显示无结果提示
+      if (bookshelfContent) {
+        bookshelfContent.innerHTML = `
+          <div class="text-center py-8">
+            没有找到匹配 "${query}" 的书籍
+          </div>
+        `;
+      }
+    }
+  } catch (error) {
+    console.error('搜索书架失败:', error);
+    
+    // 显示错误信息
+    if (bookshelfContent) {
+      bookshelfContent.innerHTML = `
+        <div class="text-center py-8 text-red-500">
+          <i class="fas fa-exclamation-circle mr-2"></i> 搜索失败，请稍后再试
+        </div>
+      `;
+    }
+    
+    showToast('搜索失败，请稍后再试', 'error');
+  }
+}
+
+// 应用筛选和排序
+function applyFiltersAndSort() {
+  console.log('应用筛选和排序');
+  console.log('当前筛选条件:', currentFilter);
+  console.log('当前排序方式:', currentSort);
+  
+  // 确保有数据可以处理
+  if (!currentBookshelfData || !Array.isArray(currentBookshelfData) || currentBookshelfData.length === 0) {
+    console.log('没有书架数据可以筛选和排序');
+    updateBookshelfDisplay([]);
+    return;
+  }
+  
+  // 创建一个副本以避免修改原始数据
+  let filteredBooks = [...currentBookshelfData];
+  console.log('筛选前的书籍数量:', filteredBooks.length);
+  
+  // 应用筛选
   if (currentFilter !== 'all') {
     if (currentFilter === 'reading') {
-      filteredBooks = books.filter(book => book.readingProgress > 0 && book.readingProgress < 100);
+      // 阅读中：进度大于0且小于100
+      filteredBooks = filteredBooks.filter(book => {
+        const bookInfo = book.Book || book;
+        const progress = bookInfo.readingProgress || bookInfo.progress || 0;
+        const status = bookInfo.status || bookInfo.readingStatus || '';
+        
+        return (progress > 0 && progress < 100) || status === 'reading';
+      });
     } else if (currentFilter === 'finished') {
-      filteredBooks = books.filter(book => book.readingProgress === 100);
-    } else if (currentFilter === 'unread') {
-      filteredBooks = books.filter(book => book.readingProgress === 0);
+      // 已读完：进度等于100或状态为completed
+      filteredBooks = filteredBooks.filter(book => {
+        const bookInfo = book.Book || book;
+        const progress = bookInfo.readingProgress || bookInfo.progress || 0;
+        const status = bookInfo.status || bookInfo.readingStatus || '';
+        
+        return progress === 100 || status === 'completed';
+      });
+    } else if (currentFilter === 'unread' || currentFilter === 'wishlist') {
+      // 未读/想读：进度等于0或状态为toRead
+      filteredBooks = filteredBooks.filter(book => {
+        const bookInfo = book.Book || book;
+        const progress = bookInfo.readingProgress || bookInfo.progress || 0;
+        const status = bookInfo.status || bookInfo.readingStatus || '';
+        
+        return progress === 0 || status === 'toRead';
+      });
     }
   }
   
   // 应用排序
   if (currentSort === 'date-desc') {
-    // 默认排序，不做处理
+    // 按添加时间降序（最新的在前面）
+    filteredBooks.sort((a, b) => {
+      const dateA = new Date(a.addedAt || a.lastReadAt || 0);
+      const dateB = new Date(b.addedAt || b.lastReadAt || 0);
+      return dateB - dateA;
+    });
   } else if (currentSort === 'date-asc') {
-    filteredBooks.reverse();
+    // 按添加时间升序（最早的在前面）
+    filteredBooks.sort((a, b) => {
+      const dateA = new Date(a.addedAt || a.lastReadAt || 0);
+      const dateB = new Date(b.addedAt || b.lastReadAt || 0);
+      return dateA - dateB;
+    });
   } else if (currentSort === 'title-asc') {
-    filteredBooks.sort((a, b) => a.title.localeCompare(b.title));
+    // 按书名升序（A-Z）
+    filteredBooks.sort((a, b) => {
+      const bookInfoA = a.Book || a;
+      const bookInfoB = b.Book || b;
+      return (bookInfoA.title || '').localeCompare(bookInfoB.title || '');
+    });
   } else if (currentSort === 'title-desc') {
-    filteredBooks.sort((a, b) => b.title.localeCompare(a.title));
+    // 按书名降序（Z-A）
+    filteredBooks.sort((a, b) => {
+      const bookInfoA = a.Book || a;
+      const bookInfoB = b.Book || b;
+      return (bookInfoB.title || '').localeCompare(bookInfoA.title || '');
+    });
   } else if (currentSort === 'progress') {
-    filteredBooks.sort((a, b) => b.readingProgress - a.readingProgress);
+    // 按阅读进度降序
+    filteredBooks.sort((a, b) => {
+      const bookInfoA = a.Book || a;
+      const bookInfoB = b.Book || b;
+      const progressA = bookInfoA.readingProgress || bookInfoA.progress || 0;
+      const progressB = bookInfoB.readingProgress || bookInfoB.progress || 0;
+      return progressB - progressA;
+    });
   }
   
-  // 更新显示
+  // 更新书架显示
   updateBookshelfDisplay(filteredBooks);
+  
+  // 更新统计数据
+  updateBookshelfStats(currentBookshelfData);
 }
 
 // 更新书架显示
 function updateBookshelfDisplay(books) {
-  const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
-  if (!bookshelfContent) return;
-  
   console.log('更新书架显示，书籍数量:', books.length);
   
-  // 检查书架数据
-  if (!Array.isArray(books) || books.length === 0) {
+  // 获取书架内容容器
+  const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
+  if (!bookshelfContent) {
+    console.error('书架内容容器未找到');
+    return;
+  }
+  
+  // 如果没有书籍，显示空提示
+  if (!books || books.length === 0) {
     bookshelfContent.innerHTML = `
       <div class="text-center py-8">
         您的书架还没有书籍
@@ -428,101 +676,286 @@ function updateBookshelfDisplay(books) {
     return;
   }
   
-  // 更新书架内容
+  // 生成书架卡片HTML
+  let cardsHtml = '';
+  books.forEach(book => {
+    cardsHtml += generateBookshelfCard(book);
+  });
+  
+  // 更新DOM
   bookshelfContent.innerHTML = `
     <div class="grid">
-      ${books.map(book => {
-        // 获取书籍信息，考虑可能的数据结构
-        const bookInfo = book.Book || book;
-        return generateBookshelfCard(bookInfo);
-      }).join('')}
+      ${cardsHtml}
     </div>
   `;
   
   // 添加事件监听器
-  addBookshelfCardListeners();
-  
-  // 更新统计数据
-  updateBookshelfStats(books);
+  attachBookCardEventListeners();
 }
 
 // 生成书架卡片HTML
-function generateBookshelfCard(book) {
-  // 确保我们有正确的书籍ID
-  const bookId = book.id || book.bookId || book.book_id || '';
+function generateBookshelfCard(bookData) {
+  // 确保我们有正确的书籍数据结构
+  const book = bookData.Book || bookData;
+  const progress = bookData.progress || 0;
+  const status = bookData.status || 'toRead';
   
-  // 处理阅读进度
-  const progress = book.readingProgress || 0;
-  const statusClass = progress === 100 ? 'bg-green-100 text-green-800' : 
-                      progress > 0 ? 'bg-blue-100 text-blue-800' : 
-                      'bg-yellow-100 text-yellow-800';
-  const statusText = progress === 100 ? '已读完' : 
-                     progress > 0 ? '阅读中' : 
-                     '未读';
-  const actionText = progress === 100 ? '重新阅读' : 
-                     progress > 0 ? '继续阅读' : 
-                     '开始阅读';
+  // 获取书籍信息
+  const bookId = book.id || bookData.bookId || '';
+  const title = book.title || '未知标题';
+  const author = book.author || '未知作者';
+  const cover = book.coverUrl || book.cover || '/images/default-cover.jpg';
   
-  // 处理封面图片
-  const coverImage = book.coverImage || book.cover_image || '';
+  // 根据状态设置标签
+  let statusLabel = '';
+  let statusClass = '';
   
+  if (status === 'reading') {
+    statusLabel = '阅读中';
+    statusClass = 'bg-blue-500';
+  } else if (status === 'completed' || status === 'finished') {
+    statusLabel = '已完成';
+    statusClass = 'bg-green-500';
+  } else {
+    statusLabel = '未读';
+    statusClass = 'bg-gray-500';
+  }
+  
+  // 生成进度条HTML
+  const progressHtml = `
+    <div class="progress-bar mt-2">
+      <div class="progress-bar-inner" style="width: ${progress}%"></div>
+    </div>
+    <div class="text-xs text-right mt-1">${progress}%</div>
+  `;
+  
+  // 返回卡片HTML
   return `
-    <div class="book-card bg-white p-4 relative" data-book-id="${bookId}">
-      <div class="absolute top-4 right-4 flex space-x-2">
-        <button class="text-gray-400 hover:text-gray-600 book-options-btn">
-          <i class="fas fa-ellipsis-h"></i>
-        </button>
-      </div>
-      
-      <div class="flex flex-col items-center mb-4">
-        <img src="${coverImage || 'https://via.placeholder.com/150x225/3b82f6/ffffff?text=' + encodeURIComponent(book.title)}" 
-             alt="${book.title}" class="book-cover w-32 h-48 mb-3">
-        <div class="text-center">
-          <h3 class="font-bold">${book.title}</h3>
-          <p class="text-gray-600 text-sm">${book.author}</p>
+    <div class="book-card" data-book-id="${bookId}">
+      <div class="book-card-inner">
+        <div class="book-cover">
+          <img src="${cover}" alt="${title}" onerror="this.src='/images/default-cover.jpg'">
+          <span class="status-badge ${statusClass}">${statusLabel}</span>
         </div>
-      </div>
-      
-      <div class="mt-2">
-        <div class="flex justify-between text-sm text-gray-500 mb-1">
-          <span>阅读进度</span>
-          <span>${progress}%</span>
+        <div class="book-info">
+          <h3 class="book-title">${title}</h3>
+          <p class="book-author">${author}</p>
+          ${status === 'reading' ? progressHtml : ''}
         </div>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: ${progress}%"></div>
+        <div class="book-actions">
+          <button class="action-btn view-btn" data-book-id="${bookId}">
+            <i class="fas fa-eye"></i>
+          </button>
+          <button class="action-btn remove-btn" data-book-id="${bookId}">
+            <i class="fas fa-trash"></i>
+          </button>
         </div>
-      </div>
-      
-      <div class="mt-4 flex justify-between">
-        <span class="inline-block ${statusClass} text-xs px-2 py-1 rounded-full">${statusText}</span>
-        <button class="btn-primary text-sm py-1 px-3 read-book-btn" data-book-id="${bookId}">${actionText}</button>
       </div>
     </div>
   `;
 }
 
 // 添加书架卡片事件监听器
-function addBookshelfCardListeners() {
-  // 阅读按钮点击事件
-  document.querySelectorAll('.read-book-btn').forEach(button => {
-    button.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const bookId = button.getAttribute('data-book-id');
+function attachBookCardEventListeners() {
+  // 查看书籍按钮
+  const viewButtons = document.querySelectorAll('.view-btn');
+  viewButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const bookId = btn.getAttribute('data-book-id');
       if (bookId) {
-        window.location.href = `book-detail.html?id=${bookId}`;
+        window.location.href = `/book-detail.html?id=${bookId}`;
       }
     });
   });
   
-  // 书籍卡片点击事件
-  document.querySelectorAll('.book-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const bookId = card.getAttribute('data-book-id');
-      if (bookId) {
-        window.location.href = `book-detail.html?id=${bookId}`;
+  // 移除书籍按钮
+  const removeButtons = document.querySelectorAll('.remove-btn');
+  removeButtons.forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const bookId = btn.getAttribute('data-book-id');
+      if (bookId && confirm('确定要从书架中移除这本书吗？')) {
+        try {
+          await bookshelfApi.removeFromBookshelf(bookId);
+          showToast('书籍已从书架中移除', 'success');
+          
+          // 重新加载书架数据
+          const bookshelfData = await loadUserBookshelf();
+          if (bookshelfData) {
+            currentBookshelfData = bookshelfData;
+            updateBookshelfDisplay(currentBookshelfData);
+            updateBookshelfStats(currentBookshelfData);
+          }
+        } catch (error) {
+          console.error('移除书籍失败:', error);
+          showToast('移除书籍失败，请稍后再试', 'error');
+        }
       }
     });
   });
+}
+
+// 应用筛选函数（供HTML内联事件调用）
+async function applyFilter() {
+  console.log('应用筛选函数被调用');
+  // 获取选中的筛选条件
+  const checkedFilters = document.querySelectorAll('input[name="filter-status"]:checked');
+  const statusFilters = Array.from(checkedFilters).map(input => input.value);
+  console.log('选中的筛选条件:', statusFilters);
+  
+  // 更新当前筛选条件
+  currentFilter = statusFilters.length > 0 ? statusFilters[0] : 'all';
+  console.log('更新后的筛选条件:', currentFilter);
+  
+  try {
+    // 显示加载状态
+    const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
+    if (bookshelfContent) {
+      bookshelfContent.innerHTML = `
+        <div class="text-center py-8">
+          <i class="fas fa-spinner fa-spin mr-2"></i> 加载中...
+        </div>
+      `;
+    }
+    
+    // 调用API获取筛选后的书架数据
+    let status = null;
+    if (currentFilter === 'reading') {
+      status = 'reading';
+    } else if (currentFilter === 'finished') {
+      status = 'completed';
+    } else if (currentFilter === 'unread') {
+      status = 'toRead';
+    }
+    
+    // 如果有筛选条件，则调用API
+    let bookshelfData;
+    if (status) {
+      bookshelfData = await bookshelfApi.getBookshelf(status);
+    } else {
+      bookshelfData = await bookshelfApi.getBookshelf();
+    }
+    
+    // 更新当前书架数据 - 确保正确处理API响应结构
+    if (bookshelfData && bookshelfData.data && bookshelfData.data.bookshelf) {
+      currentBookshelfData = bookshelfData.data.bookshelf;
+    } else if (bookshelfData && bookshelfData.bookshelf) {
+      currentBookshelfData = bookshelfData.bookshelf;
+    } else if (Array.isArray(bookshelfData)) {
+      currentBookshelfData = bookshelfData;
+    } else {
+      currentBookshelfData = [];
+    }
+    
+    console.log('筛选后的书架数据:', currentBookshelfData);
+    
+    // 应用排序
+    applyFiltersAndSort();
+    
+  } catch (error) {
+    console.error('获取筛选书架数据失败:', error);
+    showToast('筛选失败，请稍后再试', 'error');
+  }
+  
+  // 隐藏下拉菜单
+  const filterMenu = document.getElementById('filter-menu');
+  if (filterMenu) filterMenu.classList.remove('show');
+}
+
+// 应用排序函数（供HTML内联事件调用）
+async function applySorting(sortValue) {
+  console.log('应用排序函数被调用:', sortValue);
+  
+  // 更新当前排序方式
+  currentSort = sortValue;
+  console.log('更新后的排序方式:', currentSort);
+  
+  try {
+    // 显示加载状态
+    const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
+    if (bookshelfContent) {
+      bookshelfContent.innerHTML = `
+        <div class="text-center py-8">
+          <i class="fas fa-spinner fa-spin mr-2"></i> 加载中...
+        </div>
+      `;
+    }
+    
+    // 将排序方式转换为API参数
+    let sort, order;
+    
+    if (currentSort === 'date-desc') {
+      sort = 'addedAt';
+      order = 'desc';
+    } else if (currentSort === 'date-asc') {
+      sort = 'addedAt';
+      order = 'asc';
+    } else if (currentSort === 'title-asc') {
+      sort = 'title';
+      order = 'asc';
+    } else if (currentSort === 'title-desc') {
+      sort = 'title';
+      order = 'desc';
+    } else if (currentSort === 'progress') {
+      sort = 'progress';
+      order = 'desc';
+    }
+    
+    // 调用API获取排序后的书架数据
+    const bookshelfData = await bookshelfApi.getBookshelf(null, sort, order);
+    
+    // 更新当前书架数据 - 确保正确处理API响应结构
+    if (bookshelfData && bookshelfData.data && bookshelfData.data.bookshelf) {
+      currentBookshelfData = bookshelfData.data.bookshelf;
+    } else if (bookshelfData && bookshelfData.bookshelf) {
+      currentBookshelfData = bookshelfData.bookshelf;
+    } else if (Array.isArray(bookshelfData)) {
+      currentBookshelfData = bookshelfData;
+    } else {
+      currentBookshelfData = [];
+    }
+    
+    console.log('排序后的书架数据:', currentBookshelfData);
+    
+    // 应用筛选和排序
+    applyFiltersAndSort();
+    
+  } catch (error) {
+    console.error('获取排序书架数据失败:', error);
+    showToast('排序失败，请稍后再试', 'error');
+  }
+  
+  // 隐藏下拉菜单
+  const sortMenu = document.getElementById('sort-menu');
+  if (sortMenu) sortMenu.classList.remove('show');
+}
+
+// 加载用户书架数据
+async function loadUserBookshelf() {
+  if (!isLoggedIn()) {
+    console.log('用户未登录，无法加载书架');
+    return null;
+  }
+  
+  try {
+    console.log('开始加载用户书架数据');
+    const bookshelfData = await bookshelfApi.getBookshelf();
+    console.log('书架数据加载成功:', bookshelfData);
+    
+    // 处理不同的API响应结构
+    if (bookshelfData && bookshelfData.data && bookshelfData.data.bookshelf) {
+      return bookshelfData.data.bookshelf;
+    } else if (bookshelfData && bookshelfData.bookshelf) {
+      return bookshelfData.bookshelf;
+    } else if (Array.isArray(bookshelfData)) {
+      return bookshelfData;
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('加载用户书架数据失败:', error);
+    showToast('加载书架失败，请稍后再试', 'error');
+    return null;
+  }
 }
 
 // 导出函数

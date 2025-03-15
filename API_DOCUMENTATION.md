@@ -570,7 +570,7 @@ Authorization: Bearer <your_token>
 #### 获取用户书架
 
 ```
-GET /bookshelf
+GET /users/bookshelf
 ```
 
 获取当前用户的书架内容。
@@ -586,6 +586,8 @@ Authorization: Bearer <your_token>
 | 参数名 | 类型 | 必填 | 描述 |
 |--------|------|------|------|
 | status | string | 否 | 筛选阅读状态，可选值：reading, completed, toRead |
+| sort | string | 否 | 排序字段，可选值：title, author, addedAt, progress |
+| order | string | 否 | 排序方向，可选值：asc, desc，默认为desc |
 
 **响应示例**
 
@@ -599,9 +601,9 @@ Authorization: Bearer <your_token>
         "bookId": 42,
         "title": "三体",
         "author": "刘慈欣",
-        "cover": "https://example.com/covers/42.jpg",
+        "cover_image": "https://example.com/covers/42.jpg",
         "status": "reading",
-        "progress": 0.35,
+        "progress": 35,
         "rating": null,
         "addedAt": "2023-05-01T10:30:00Z",
         "lastReadAt": "2023-05-05T18:45:00Z"
@@ -615,7 +617,7 @@ Authorization: Bearer <your_token>
 #### 添加书籍到书架
 
 ```
-POST /bookshelf/books
+POST /books/:bookId/bookshelf
 ```
 
 将书籍添加到用户的书架。
@@ -626,18 +628,22 @@ POST /bookshelf/books
 Authorization: Bearer <your_token>
 ```
 
+**路径参数**
+
+| 参数名 | 类型 | 描述 |
+|--------|------|------|
+| bookId | number | 要添加的书籍ID |
+
 **请求参数**
 
 | 参数名 | 类型 | 必填 | 描述 |
 |--------|------|------|------|
-| bookId | number | 是 | 要添加的书籍ID |
 | status | string | 否 | 阅读状态，可选值：reading, completed, toRead，默认为toRead |
 
 **请求示例**
 
 ```json
 {
-  "bookId": 42,
   "status": "reading"
 }
 ```
@@ -663,7 +669,7 @@ Authorization: Bearer <your_token>
 #### 从书架移除书籍
 
 ```
-DELETE /bookshelf/books/:bookId
+DELETE /books/:bookId/bookshelf
 ```
 
 从用户的书架中移除指定书籍。
@@ -692,7 +698,7 @@ Authorization: Bearer <your_token>
 #### 更新阅读进度
 
 ```
-PUT /bookshelf/books/:bookId/progress
+PUT /books/:bookId/reading-progress
 ```
 
 更新书架中书籍的阅读进度。
@@ -713,7 +719,7 @@ Authorization: Bearer <your_token>
 
 | 参数名 | 类型 | 必填 | 描述 |
 |--------|------|------|------|
-| progress | number | 是 | 阅读进度，0-1之间的小数 |
+| progress | number | 是 | 阅读进度，0-100之间的整数 |
 | currentPage | number | 否 | 当前阅读页码 |
 | readingTime | number | 否 | 本次阅读时长(秒) |
 
@@ -721,7 +727,7 @@ Authorization: Bearer <your_token>
 
 ```json
 {
-  "progress": 0.45,
+  "progress": 45,
   "currentPage": 102,
   "readingTime": 1800
 }
@@ -733,7 +739,7 @@ Authorization: Bearer <your_token>
 {
   "success": true,
   "data": {
-    "progress": 0.45,
+    "progress": 45,
     "currentPage": 102,
     "lastReadAt": "2023-05-10T16:45:00Z",
     "totalReadingTime": 5400

@@ -39,10 +39,26 @@
       border-radius: 0.5rem;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       z-index: 10;
+      border: 2px solid #3b82f6; /* 添加边框使其更明显 */
     }
     
     .dropdown-menu.show {
-      display: block;
+      display: block !important; /* 使用!important确保显示 */
+    }
+    
+    /* 调试样式 */
+    #filter-btn, #sort-btn {
+      position: relative;
+      z-index: 9;
+    }
+    
+    #filter-menu, #sort-menu {
+      z-index: 999; /* 确保下拉菜单在最上层 */
+    }
+    
+    /* 确保相对定位正确 */
+    .relative {
+      position: relative !important;
     }
   </style>
 </head>
@@ -96,38 +112,38 @@
           <div class="bg-white rounded-lg shadow-sm px-4 py-3 flex items-center">
             <div class="mr-6">
               <div class="text-gray-500 text-sm">收藏书籍</div>
-              <div class="font-bold text-xl">24</div>
+              <div class="font-bold text-xl" id="total-books">0</div>
             </div>
             <div class="mr-6">
               <div class="text-gray-500 text-sm">已读完</div>
-              <div class="font-bold text-xl">12</div>
+              <div class="font-bold text-xl" id="finished-books">0</div>
             </div>
             <div>
               <div class="text-gray-500 text-sm">阅读中</div>
-              <div class="font-bold text-xl">5</div>
+              <div class="font-bold text-xl" id="reading-books">0</div>
             </div>
           </div>
         </div>
       </div>
     </section>
     
-    <!-- 搜索和筛选 -->
+    <!-- 搜索栏 -->
+    <div class="search-container mb-6">
+      <div class="relative">
+        <input type="text" id="search-input" class="search-input w-full px-4 py-2 border rounded-lg" placeholder="搜索书籍...">
+        <button id="search-button" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
+          <i class="fas fa-search"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- 筛选和排序 -->
     <section class="mb-8">
       <div class="flex flex-col md:flex-row justify-between items-center">
-        <!-- 搜索框 -->
-        <div class="w-full md:w-1/2 mb-4 md:mb-0">
-          <div class="search-container flex items-center">
-            <input type="text" class="search-input" placeholder="搜索您的书架...">
-            <button class="bg-blue-500 text-white p-2 rounded-r-lg">
-              <i class="fas fa-search"></i>
-            </button>
-          </div>
-        </div>
-        
         <!-- 筛选和排序 -->
         <div class="flex space-x-2">
           <div class="relative">
-            <button id="filter-btn" class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
+            <button id="filter-btn" onclick="document.getElementById('filter-menu').classList.toggle('show'); document.getElementById('sort-menu').classList.remove('show'); event.stopPropagation();" class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
               <i class="fas fa-filter mr-2"></i>
               <span>筛选</span>
               <i class="fas fa-chevron-down ml-2 text-xs"></i>
@@ -155,14 +171,14 @@
                   </label>
                 </div>
                 <div class="mt-4 flex justify-end">
-                  <button id="apply-filter" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">应用</button>
+                  <button id="apply-filter" onclick="window.applyFilter(); event.stopPropagation();" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">应用</button>
                 </div>
               </div>
             </div>
           </div>
           
           <div class="relative">
-            <button id="sort-btn" class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
+            <button id="sort-btn" onclick="document.getElementById('sort-menu').classList.toggle('show'); document.getElementById('filter-menu').classList.remove('show'); event.stopPropagation();" class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
               <i class="fas fa-sort mr-2"></i>
               <span>排序</span>
               <i class="fas fa-chevron-down ml-2 text-xs"></i>
@@ -170,16 +186,16 @@
             <!-- 排序下拉菜单 -->
             <div id="sort-menu" class="dropdown-menu">
               <div class="py-1">
-                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="date-desc">添加时间（最新）</a>
-                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="date-asc">添加时间（最早）</a>
-                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="title-asc">书名（A-Z）</a>
-                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="title-desc">书名（Z-A）</a>
-                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="progress">阅读进度</a>
+                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" onclick="window.applySorting('date-desc'); event.preventDefault(); event.stopPropagation();" data-sort="date-desc">添加时间（最新）</a>
+                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" onclick="window.applySorting('date-asc'); event.preventDefault(); event.stopPropagation();" data-sort="date-asc">添加时间（最早）</a>
+                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" onclick="window.applySorting('title-asc'); event.preventDefault(); event.stopPropagation();" data-sort="title-asc">书名（A-Z）</a>
+                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" onclick="window.applySorting('title-desc'); event.preventDefault(); event.stopPropagation();" data-sort="title-desc">书名（Z-A）</a>
+                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" onclick="window.applySorting('progress'); event.preventDefault(); event.stopPropagation();" data-sort="progress">阅读进度</a>
               </div>
             </div>
           </div>
           
-          <button id="add-book-btn" class="bg-blue-500 text-white rounded-lg px-4 py-2 flex items-center">
+          <button id="add-book-btn" onclick="window.showAddBookDialog(); event.stopPropagation();" class="bg-blue-500 text-white rounded-lg px-4 py-2 flex items-center">
             <i class="fas fa-plus mr-2"></i>
             <span>添加书籍</span>
           </button>

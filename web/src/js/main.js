@@ -601,32 +601,43 @@ function displayBookshelf(bookshelfData) {
 
 // 更新书架统计数据
 function updateBookshelfStats(books) {
-  const totalBooksElement = document.querySelector('.bookshelf-container .font-bold.text-xl:nth-child(1)');
-  const finishedBooksElement = document.querySelector('.bookshelf-container .font-bold.text-xl:nth-child(2)');
-  const readingBooksElement = document.querySelector('.bookshelf-container .font-bold.text-xl:nth-child(3)');
+  console.log('更新书架统计数据:', books);
   
-  if (totalBooksElement) {
-    totalBooksElement.textContent = books.length;
+  // 确保books是数组
+  if (!books || !Array.isArray(books)) {
+    console.error('无效的书架数据:', books);
+    return;
   }
   
-  if (finishedBooksElement) {
-    const finishedCount = books.filter(book => {
-      // 获取书籍信息，考虑可能的数据结构
-      const bookInfo = book.Book || book;
-      return bookInfo.readingStatus === '已完成' || bookInfo.readingProgress === 100;
-    }).length;
-    finishedBooksElement.textContent = finishedCount;
-  }
+  // 计算统计数据
+  const totalBooks = books.length;
   
-  if (readingBooksElement) {
-    const readingCount = books.filter(book => {
-      // 获取书籍信息，考虑可能的数据结构
-      const bookInfo = book.Book || book;
-      return bookInfo.readingStatus === '阅读中' || 
-             (bookInfo.readingProgress > 0 && bookInfo.readingProgress < 100);
-    }).length;
-    readingBooksElement.textContent = readingCount;
-  }
+  let finishedBooks = 0;
+  let readingBooks = 0;
+  
+  books.forEach(book => {
+    // 处理不同的数据结构
+    const bookInfo = book.Book || book;
+    const progress = book.progress || bookInfo.progress || bookInfo.readingProgress || 0;
+    const status = book.status || bookInfo.status || '';
+    
+    if (progress === 100 || status === 'completed' || status === 'finished') {
+      finishedBooks++;
+    } else if (progress > 0 || status === 'reading') {
+      readingBooks++;
+    }
+  });
+  
+  console.log(`统计结果: 总计 ${totalBooks} 本, 已完成 ${finishedBooks} 本, 阅读中 ${readingBooks} 本`);
+  
+  // 更新DOM元素
+  const totalElement = document.getElementById('total-books');
+  const finishedElement = document.getElementById('finished-books');
+  const readingElement = document.getElementById('reading-books');
+  
+  if (totalElement) totalElement.textContent = totalBooks;
+  if (finishedElement) finishedElement.textContent = finishedBooks;
+  if (readingElement) readingElement.textContent = readingBooks;
 }
 
 // 初始化书籍详情页面
