@@ -54,6 +54,12 @@ async function request(endpoint, options = {}) {
   }
 }
 
+// 获取认证令牌函数
+function getToken() {
+  return localStorage.getItem('bookstore_auth') ? 
+    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+}
+
 // 用户相关API
 const userApi = {
   // 用户注册
@@ -161,11 +167,14 @@ const bookshelfApi = {
       
       console.log('获取书架API请求URL:', url);
       
+      // 获取认证令牌
+      const token = getToken();
+      
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken()}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
       });
       
@@ -185,11 +194,14 @@ const bookshelfApi = {
   // 添加书籍到书架
   async addToBookshelf(bookId, status = 'toRead') {
     try {
+      // 获取认证令牌
+      const token = getToken();
+      
       const response = await fetch(`${API_BASE_URL}/books/${bookId}/bookshelf`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken()}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ status })
       });
@@ -208,11 +220,14 @@ const bookshelfApi = {
   // 从书架移除书籍
   async removeFromBookshelf(bookId) {
     try {
+      // 获取认证令牌
+      const token = getToken();
+      
       const response = await fetch(`${API_BASE_URL}/books/${bookId}/bookshelf`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken()}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
       });
       
@@ -230,11 +245,14 @@ const bookshelfApi = {
   // 更新阅读进度
   async updateReadingProgress(bookId, progress) {
     try {
+      // 获取认证令牌
+      const token = getToken();
+      
       const response = await fetch(`${API_BASE_URL}/books/${bookId}/reading-progress`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken()}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ progress })
       });
@@ -261,11 +279,14 @@ const bookshelfApi = {
       
       console.log('搜索书架API请求URL:', url);
       
+      // 获取认证令牌
+      const token = getToken();
+      
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken()}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
       });
       

@@ -189,14 +189,13 @@ function initHomePage() {
 // 加载推荐书籍
 async function loadRecommendedBooks() {
   try {
-    // 显示加载状态
     showLoadingState();
     
-    // 获取推荐书籍 - 使用getBooks方法并传入适当的参数
+    // 获取推荐书籍
     const recommendedResponse = await bookApi.getBooks({ limit: 4, sort: 'recommended' });
     const recommendedBooks = recommendedResponse.books || [];
     
-    // 获取热门书籍 - 使用getBooks方法并传入适当的参数
+    // 获取热门书籍
     const popularResponse = await bookApi.getBooks({ limit: 4, sort: 'popular' });
     const popularBooks = popularResponse.books || [];
     
@@ -211,127 +210,96 @@ async function loadRecommendedBooks() {
     
     if (token) {
       try {
-        userBookshelf = await bookshelfApi.getBookshelf();
-        console.log('获取到的书架数据类型:', typeof userBookshelf);
-        console.log('获取到的书架数据:', JSON.stringify(userBookshelf, null, 2));
+        const bookshelfData = await bookshelfApi.getBookshelf();
+        console.log('获取到的书架数据:', bookshelfData);
         
-        // 确保我们正确处理bookshelf数据
-        const bookshelfItems = userBookshelf.bookshelf || userBookshelf || [];
-        console.log('处理后的书架数据:', bookshelfItems);
+        // 处理不同的API响应结构
+        if (bookshelfData && bookshelfData.data && bookshelfData.data.bookshelf) {
+          userBookshelf = bookshelfData.data.bookshelf;
+        } else if (bookshelfData && bookshelfData.bookshelf) {
+          userBookshelf = bookshelfData.bookshelf;
+        } else if (Array.isArray(bookshelfData)) {
+          userBookshelf = bookshelfData;
+        } else {
+          userBookshelf = [];
+        }
+        
+        console.log('处理后的书架数据:', userBookshelf);
         
         // 创建一个书籍ID集合，用于快速检查书籍是否在书架中
-        // 考虑所有可能的ID属性
-        bookshelfItems.forEach(item => {
-          console.log('处理书架项目:', item);
+        userBookshelf.forEach(item => {
+          // 获取书籍ID，考虑不同的数据结构
+          const bookInfo = item.Book || item;
+          const bookId = item.bookId || bookInfo.id || bookInfo.bookId;
           
-          // 直接的ID属性
-          if (item.bookId) {
-            bookshelfBookIds.add(Number(item.bookId));
-            console.log(`添加bookId: ${item.bookId}`);
-          }
-          if (item.book_id) {
-            bookshelfBookIds.add(Number(item.book_id));
-            console.log(`添加book_id: ${item.book_id}`);
-          }
-          
-          // 关联的Book对象
-          if (item.Book) {
-            if (item.Book.id) {
-              bookshelfBookIds.add(Number(item.Book.id));
-              console.log(`添加Book.id: ${item.Book.id}`);
-            }
+          if (bookId) {
+            bookshelfBookIds.add(Number(bookId));
+            console.log(`添加书架中的书籍ID: ${bookId}`);
           }
         });
-        
-        console.log('书架中的书籍ID:', Array.from(bookshelfBookIds));
-        console.log('推荐书籍ID:', recommendedBooks.map(book => book.id));
-        console.log('热门书籍ID:', popularBooks.map(book => book.id));
       } catch (error) {
-        console.error('获取用户书架失败:', error);
+        console.error('获取用户书架数据失败:', error);
       }
     }
     
-    // 获取推荐书籍容器
-    const recommendedSection = document.querySelector('.recommended-section');
-    const popularSection = document.querySelector('.popular-section');
-    
-    // 更新推荐书籍DOM - 使用新的BookCard组件
-    if (recommendedSection) {
-      const recommendedContainer = recommendedSection.querySelector('.grid');
-      if (recommendedContainer && recommendedBooks.length > 0) {
-        // 检查每本书是否在书架中
-        recommendedBooks.forEach(book => {
-          const isInShelf = bookshelfBookIds.has(Number(book.id));
-          console.log(`书籍 ${book.title} (ID: ${book.id}) 是否在书架中: ${isInShelf}`);
-        });
-        
-        recommendedContainer.innerHTML = '';
-        
-        // 使用BookCard组件创建书籍卡片
-        recommendedBooks.forEach(book => {
-          const isInBookshelf = bookshelfBookIds.has(Number(book.id));
-          const bookCardHtml = BookCard.createBookCard(book, '推荐', isInBookshelf);
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = bookCardHtml;
-          recommendedContainer.appendChild(tempDiv.firstElementChild);
-        });
-        
-        // 添加事件监听器
-        BookCard.addBookCardListeners(recommendedContainer);
-      } else if (recommendedContainer) {
-        recommendedContainer.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">暂无推荐书籍</div>';
-      }
+    // 更新推荐书籍区域
+    const recommendedContainer = document.querySelector('#recommended-books .book-grid');
+    if (recommendedContainer) {
+      recommendedContainer.innerHTML = recommendedBooks.map(book => {
+        const isInBookshelf = bookshelfBookIds.has(Number(book.id));
+        return generateBookCard(book, isInBookshelf);
+      }).join('');
     }
     
-    // 更新热门书籍DOM - 使用新的BookCard组件
-    if (popularSection) {
-      const popularContainer = popularSection.querySelector('.grid');
-      if (popularContainer && popularBooks.length > 0) {
-        // 检查每本书是否在书架中
-        popularBooks.forEach(book => {
-          const isInShelf = bookshelfBookIds.has(Number(book.id));
-          console.log(`书籍 ${book.title} (ID: ${book.id}) 是否在书架中: ${isInShelf}`);
-        });
-        
-        popularContainer.innerHTML = '';
-        
-        // 使用BookCard组件创建书籍卡片
-        popularBooks.forEach(book => {
-          const isInBookshelf = bookshelfBookIds.has(Number(book.id));
-          const bookCardHtml = BookCard.createBookCard(book, '热门', isInBookshelf);
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = bookCardHtml;
-          popularContainer.appendChild(tempDiv.firstElementChild);
-        });
-        
-        // 添加事件监听器
-        BookCard.addBookCardListeners(popularContainer);
-      } else if (popularContainer) {
-        popularContainer.innerHTML = '<div class="col-span-full text-center py-8 text-gray-500">暂无热门书籍</div>';
-      }
+    // 更新热门书籍区域
+    const popularContainer = document.querySelector('#popular-books .book-grid');
+    if (popularContainer) {
+      popularContainer.innerHTML = popularBooks.map(book => {
+        const isInBookshelf = bookshelfBookIds.has(Number(book.id));
+        return generateBookCard(book, isInBookshelf);
+      }).join('');
     }
+    
+    // 添加事件监听器
+    document.querySelectorAll('.add-to-bookshelf').forEach(button => {
+      button.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!isLoggedIn()) {
+          showLoginPrompt();
+          return;
+        }
+        
+        const bookId = button.getAttribute('data-book-id');
+        const bookCard = button.closest('.book-card');
+        
+        try {
+          if (button.classList.contains('in-bookshelf')) {
+            // 从书架中移除
+            await bookshelfApi.removeFromBookshelf(bookId);
+            button.classList.remove('in-bookshelf');
+            button.innerHTML = '<i class="fas fa-plus"></i>';
+            showToast('已从书架中移除', 'success');
+          } else {
+            // 添加到书架
+            await bookshelfApi.addToBookshelf(bookId);
+            button.classList.add('in-bookshelf');
+            button.innerHTML = '<i class="fas fa-check"></i>';
+            showToast('已添加到书架', 'success');
+          }
+        } catch (error) {
+          console.error('书架操作失败:', error);
+          showToast('操作失败，请稍后再试', 'error');
+        }
+      });
+    });
+    
+    hideLoadingState();
   } catch (error) {
     console.error('加载推荐书籍失败:', error);
-    
-    // 显示错误信息
-    const recommendedSection = document.querySelector('.recommended-section');
-    if (recommendedSection) {
-      const recommendedContainer = recommendedSection.querySelector('.grid');
-      if (recommendedContainer) {
-        recommendedContainer.innerHTML = '<div class="col-span-full text-center py-8 text-red-500"><i class="fas fa-exclamation-circle mr-2"></i> 加载推荐书籍失败</div>';
-      }
-    }
-    
-    const popularSection = document.querySelector('.popular-section');
-    if (popularSection) {
-      const popularContainer = popularSection.querySelector('.grid');
-      if (popularContainer) {
-        popularContainer.innerHTML = '<div class="col-span-full text-center py-8 text-red-500"><i class="fas fa-exclamation-circle mr-2"></i> 加载热门书籍失败</div>';
-      }
-    }
-  } finally {
-    // 隐藏加载状态
     hideLoadingState();
+    showErrorMessage('加载推荐书籍失败，请稍后再试');
   }
 }
 
