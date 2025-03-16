@@ -74,8 +74,16 @@ function updateProfileButton(button) {
     button.setAttribute('data-logged-in', 'true');
     button.setAttribute('data-username', user.username);
     
-    // 设置href
-    button.setAttribute('href', '/src/pages/profile.html');
+    // 设置href - 使用正确的相对路径
+    // 检查当前页面路径，确定正确的相对路径
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/src/pages/')) {
+      // 如果当前在pages目录下，使用相对路径
+      button.setAttribute('href', 'profile.html');
+    } else {
+      // 如果不在pages目录下，使用带目录的路径
+      button.setAttribute('href', '/src/pages/profile.html');
+    }
     
     // 如果按钮有头像元素，可以更新头像
     const avatar = button.querySelector('.avatar');
@@ -94,8 +102,15 @@ function updateProfileButton(button) {
     button.setAttribute('data-logged-in', 'false');
     button.removeAttribute('data-username');
     
-    // 设置href
-    button.setAttribute('href', '/src/pages/login.html');
+    // 设置href - 使用正确的相对路径
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/src/pages/')) {
+      // 如果当前在pages目录下，使用相对路径
+      button.setAttribute('href', 'login.html');
+    } else {
+      // 如果不在pages目录下，使用带目录的路径
+      button.setAttribute('href', '/src/pages/login.html');
+    }
     
     // 重置头像
     const avatar = button.querySelector('.avatar');
@@ -118,7 +133,16 @@ function profileButtonClickHandler(e) {
   if (loggedIn) {
     // 用户已登录，跳转到个人资料页面
     console.log('跳转到个人资料页面');
-    window.location.href = '/src/pages/profile.html';
+    
+    // 检查当前页面路径，确定正确的相对路径
+    const currentPath = window.location.pathname;
+    if (currentPath.includes('/src/pages/')) {
+      // 如果当前在pages目录下，使用相对路径
+      window.location.href = 'profile.html';
+    } else {
+      // 如果不在pages目录下，使用带目录的路径
+      window.location.href = '/src/pages/profile.html';
+    }
   } else {
     // 用户未登录，跳转到登录页面
     console.log('跳转到登录页面');
@@ -127,8 +151,15 @@ function profileButtonClickHandler(e) {
     const currentPath = window.location.pathname + window.location.search;
     sessionStorage.setItem('auth_redirect', currentPath);
     
-    // 跳转到登录页面
-    window.location.href = '/src/pages/login.html';
+    // 检查当前页面路径，确定正确的相对路径
+    const pagePath = window.location.pathname;
+    if (pagePath.includes('/src/pages/')) {
+      // 如果当前在pages目录下，使用相对路径
+      window.location.href = 'login.html';
+    } else {
+      // 如果不在pages目录下，使用带目录的路径
+      window.location.href = '/src/pages/login.html';
+    }
   }
 }
 

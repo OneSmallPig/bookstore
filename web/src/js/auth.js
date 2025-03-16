@@ -143,7 +143,16 @@ export function logout() {
     window.dispatchEvent(new CustomEvent('auth:logout'));
     
     // 重定向到登录页面
-    window.location.href = '/src/pages/login.html';
+    // 检查当前路径，确定正确的登录页面路径
+    const currentPath = window.location.pathname;
+    
+    if (currentPath.includes('/src/pages/')) {
+      // 如果当前在pages目录下，使用相对路径
+      window.location.href = 'login.html';
+    } else {
+      // 如果不在pages目录下，使用带目录的路径
+      window.location.href = '/src/pages/login.html';
+    }
   } catch (error) {
     console.error('登出失败:', error);
   }
@@ -163,7 +172,16 @@ export function requireAuth(redirect = true) {
     sessionStorage.setItem('auth_redirect', currentPath);
     
     // 重定向到登录页面
-    window.location.href = '/src/pages/login.html';
+    // 检查当前路径，确定正确的登录页面路径
+    const pagePath = window.location.pathname;
+    
+    if (pagePath.includes('/src/pages/')) {
+      // 如果当前在pages目录下，使用相对路径
+      window.location.href = 'login.html';
+    } else {
+      // 如果不在pages目录下，使用带目录的路径
+      window.location.href = '/src/pages/login.html';
+    }
   }
   
   return loggedIn;
@@ -178,14 +196,30 @@ export function redirectAfterLogin() {
     sessionStorage.removeItem('auth_redirect');
     
     if (redirectPath) {
-      window.location.href = redirectPath;
+      // 检查路径是否包含重复的src/pages
+      if (redirectPath.includes('/src/pages/src/pages/')) {
+        // 修复路径
+        const fixedPath = redirectPath.replace('/src/pages/src/pages/', '/src/pages/');
+        window.location.href = fixedPath;
+      } else {
+        window.location.href = redirectPath;
+      }
     } else {
       // 直接重定向到首页
-      window.location.href = 'index.html';
+      // 检查当前路径，确定正确的首页路径
+      const currentPath = window.location.pathname;
+      
+      if (currentPath.includes('/src/pages/')) {
+        // 如果当前在pages目录下，需要返回上级目录
+        window.location.href = '/';
+      } else {
+        // 如果不在pages目录下，直接跳转到根目录
+        window.location.href = '/';
+      }
     }
   } catch (error) {
     console.error('重定向失败:', error);
-    window.location.href = 'index.html';
+    window.location.href = '/';
   }
 }
 
@@ -229,14 +263,28 @@ export function updateAuthUI() {
         button.setAttribute('data-logged-in', 'true');
         button.setAttribute('data-username', user.username);
         
-        // 设置href
-        button.setAttribute('href', '/src/pages/profile.html');
+        // 设置href - 检查当前页面路径，确定正确的相对路径
+        const currentPath = window.location.pathname;
+        if (currentPath.includes('/src/pages/')) {
+          // 如果当前在pages目录下，使用相对路径
+          button.setAttribute('href', 'profile.html');
+        } else {
+          // 如果不在pages目录下，使用带目录的路径
+          button.setAttribute('href', '/src/pages/profile.html');
+        }
       } else {
         button.setAttribute('data-logged-in', 'false');
         button.removeAttribute('data-username');
         
-        // 设置href
-        button.setAttribute('href', '/src/pages/login.html');
+        // 设置href - 检查当前页面路径，确定正确的相对路径
+        const currentPath = window.location.pathname;
+        if (currentPath.includes('/src/pages/')) {
+          // 如果当前在pages目录下，使用相对路径
+          button.setAttribute('href', 'login.html');
+        } else {
+          // 如果不在pages目录下，使用带目录的路径
+          button.setAttribute('href', '/src/pages/login.html');
+        }
       }
     });
     
