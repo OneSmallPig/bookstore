@@ -9,14 +9,13 @@
   <style>
     /* 自定义样式 - 让书籍卡片靠左排列，更紧凑 */
     .grid {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
       gap: 1rem;
-      justify-content: flex-start;
     }
     
     .book-card {
-      width: 220px;
+      width: 100%;
       margin-bottom: 1rem;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       transition: transform 0.2s, box-shadow 0.2s;
@@ -166,8 +165,8 @@
     <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
       <!-- 搜索栏 -->
       <div class="relative md:w-1/2 lg:w-2/5 w-full">
-        <input type="text" id="search-input" class="search-input w-full px-4 py-2 border rounded-lg" placeholder="搜索书籍名称、作者或简介...">
-        <button id="search-button" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
+        <input type="text" id="search-input" class="search-input w-full px-4 py-2 pr-16 border rounded-lg" placeholder="搜索书籍名称、作者或简介..." onkeypress="if(event.key === 'Enter') { event.preventDefault(); window.inlinePerformSearch(this.value.trim()); }">
+        <button id="search-button" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700" onclick="window.inlinePerformSearch(document.getElementById('search-input').value.trim());">
           <i class="fas fa-search"></i>
         </button>
       </div>
@@ -202,8 +201,8 @@
                   <span>已读完</span>
                 </label>
               </div>
-              <div class="mt-4 flex justify-end">
-                <button id="apply-filter" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">应用</button>
+              <div class="mt-3 flex justify-end">
+                <button id="apply-filter" class="bg-blue-500 text-white px-3 py-1 rounded text-sm">应用</button>
               </div>
             </div>
           </div>
@@ -217,17 +216,30 @@
           </button>
           <!-- 排序下拉菜单 -->
           <div id="sort-menu" class="dropdown-menu">
-            <div class="py-1">
-              <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="date-desc">添加时间（最新）</a>
-              <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="date-asc">添加时间（最早）</a>
-              <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="title-asc">书名（A-Z）</a>
-              <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="title-desc">书名（Z-A）</a>
-              <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="progress">阅读进度</a>
+            <div class="p-3">
+              <div class="font-medium mb-2">排序方式</div>
+              <div class="space-y-2">
+                <a href="#" class="sort-option block py-1 hover:text-blue-500" data-sort="date-desc">
+                  <i class="fas fa-check mr-2 text-blue-500 invisible"></i>最近添加
+                </a>
+                <a href="#" class="sort-option block py-1 hover:text-blue-500" data-sort="date-asc">
+                  <i class="fas fa-check mr-2 text-blue-500 invisible"></i>最早添加
+                </a>
+                <a href="#" class="sort-option block py-1 hover:text-blue-500" data-sort="title-asc">
+                  <i class="fas fa-check mr-2 text-blue-500 invisible"></i>书名 A-Z
+                </a>
+                <a href="#" class="sort-option block py-1 hover:text-blue-500" data-sort="title-desc">
+                  <i class="fas fa-check mr-2 text-blue-500 invisible"></i>书名 Z-A
+                </a>
+                <a href="#" class="sort-option block py-1 hover:text-blue-500" data-sort="progress">
+                  <i class="fas fa-check mr-2 text-blue-500 invisible"></i>阅读进度
+                </a>
+              </div>
             </div>
           </div>
         </div>
         
-        <button id="add-book-btn" class="bg-blue-500 text-white rounded-lg px-4 py-2 flex items-center">
+        <button id="add-book-btn" class="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-4 py-2 flex items-center">
           <i class="fas fa-plus mr-2"></i>
           <span>添加书籍</span>
         </button>
@@ -235,16 +247,14 @@
     </div>
     
     <!-- 分类标签 -->
-    <section class="mb-8">
-      <div class="border-b border-gray-200">
-        <nav class="flex -mb-px">
-          <a href="#" class="category-tab active border-b-2 border-blue-500 text-blue-500 px-4 py-2 text-sm font-medium" data-category="all">全部</a>
-          <a href="#" class="category-tab border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 px-4 py-2 text-sm font-medium" data-category="reading">阅读中</a>
-          <a href="#" class="category-tab border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 px-4 py-2 text-sm font-medium" data-category="finished">已读完</a>
-          <a href="#" class="category-tab border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 px-4 py-2 text-sm font-medium" data-category="unread">未读</a>
-        </nav>
+    <div class="mb-6 border-b">
+      <div class="flex space-x-6">
+        <a href="#" class="category-tab active border-b-2 border-blue-500 text-blue-500 py-2 font-medium" data-category="all">全部</a>
+        <a href="#" class="category-tab border-b-2 border-transparent text-gray-500 py-2 font-medium" data-category="reading">阅读中</a>
+        <a href="#" class="category-tab border-b-2 border-transparent text-gray-500 py-2 font-medium" data-category="completed">已读完</a>
+        <a href="#" class="category-tab border-b-2 border-transparent text-gray-500 py-2 font-medium" data-category="toRead">未读</a>
       </div>
-    </section>
+    </div>
     
     <!-- 书架内容 -->
     <section class="mb-8">
@@ -263,14 +273,14 @@
       </div>
       
       <!-- 已读完 -->
-      <div class="category-content hidden" data-category="finished">
+      <div class="category-content hidden" data-category="completed">
         <div class="grid">
           <!-- 书籍将通过JavaScript动态加载 -->
         </div>
       </div>
       
       <!-- 未读 -->
-      <div class="category-content hidden" data-category="unread">
+      <div class="category-content hidden" data-category="toRead">
         <div class="grid">
           <!-- 书籍将通过JavaScript动态加载 -->
         </div>
@@ -337,5 +347,356 @@
   <script type="module" src="../js/main.js"></script>
   <script type="module" src="../js/profile-button.js"></script>
   <script type="module" src="../js/bookshelf.js"></script>
+  
+  <!-- 调试脚本 -->
+  <script>
+    console.log('调试脚本已加载');
+    
+    // 模拟数据，用于在API不可用时进行测试
+    const mockBooks = [
+      {
+        id: '1',
+        title: '三体',
+        author: '刘慈欣',
+        description: '地球文明向宇宙发出的一声啼鸣，以及以此为开端，地球文明与三体文明间的恩怨情仇。',
+        coverUrl: 'https://img9.doubanio.com/view/subject/s/public/s2768378.jpg',
+        status: 'reading',
+        progress: 45
+      },
+      {
+        id: '2',
+        title: '活着',
+        author: '余华',
+        description: '《活着》是余华的代表作，讲述了一个人历尽世间沧桑和磨难的一生。',
+        coverUrl: 'https://img9.doubanio.com/view/subject/s/public/s29053580.jpg',
+        status: 'completed',
+        progress: 100
+      },
+      {
+        id: '3',
+        title: '百年孤独',
+        author: '加西亚·马尔克斯',
+        description: '《百年孤独》是魔幻现实主义文学的代表作，描写了布恩迪亚家族七代人的传奇故事。',
+        coverUrl: 'https://img9.doubanio.com/view/subject/s/public/s6384944.jpg',
+        status: 'toRead',
+        progress: 0
+      },
+      {
+        id: '4',
+        title: '人类简史',
+        author: '尤瓦尔·赫拉利',
+        description: '从认知革命、农业革命、科学革命到人工智能，重新审视现代社会的问题。',
+        coverUrl: 'https://img9.doubanio.com/view/subject/s/public/s27814883.jpg',
+        status: 'reading',
+        progress: 30
+      }
+    ];
+    
+    // 定义一个内联的搜索函数作为备份
+    window.inlinePerformSearch = function(query) {
+      console.log('内联搜索函数被调用，关键词:', query);
+      
+      if (!query) {
+        console.log('搜索关键词为空，显示所有书籍');
+        displayAllBooks();
+        return;
+      }
+      
+      // 显示加载状态
+      const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
+      if (bookshelfContent) {
+        console.log('显示搜索加载状态');
+        bookshelfContent.innerHTML = `
+          <div class="text-center py-8">
+            <i class="fas fa-spinner fa-spin mr-2"></i> 搜索中...
+          </div>
+        `;
+        
+        // 如果模块中的搜索函数可用，则使用它
+        if (window.performBookshelfSearch) {
+          console.log('使用模块搜索函数');
+          try {
+            window.performBookshelfSearch(query);
+          } catch (error) {
+            console.error('模块搜索函数执行失败:', error);
+            // 使用本地搜索作为备份
+            setTimeout(function() {
+              performLocalSearch(query);
+            }, 500);
+          }
+        } else {
+          console.log('模块搜索函数未定义，使用内联搜索');
+          // 使用本地搜索
+          setTimeout(function() {
+            performLocalSearch(query);
+          }, 500);
+        }
+      } else {
+        console.error('未找到书架内容容器');
+        alert('未找到书架内容容器，请刷新页面重试');
+      }
+    };
+    
+    // 本地搜索函数
+    function performLocalSearch(query) {
+      console.log('执行本地搜索，关键词:', query);
+      
+      // 使用模拟数据或window.currentBookshelfData
+      const booksToSearch = window.currentBookshelfData || mockBooks;
+      
+      // 过滤匹配的书籍
+      const searchResults = booksToSearch.filter(book => {
+        const bookInfo = book.Book || book;
+        const title = (bookInfo.title || '').toLowerCase();
+        const author = (bookInfo.author || '').toLowerCase();
+        const description = (bookInfo.description || '').toLowerCase();
+        
+        const searchQuery = query.toLowerCase();
+        return title.includes(searchQuery) || 
+               author.includes(searchQuery) || 
+               description.includes(searchQuery);
+      });
+      
+      console.log('搜索结果:', searchResults);
+      
+      // 显示搜索结果
+      displaySearchResults(searchResults, query);
+    }
+    
+    // 显示搜索结果
+    function displaySearchResults(books, query) {
+      const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
+      if (!bookshelfContent) return;
+      
+      // 清除加载状态
+      bookshelfContent.innerHTML = '';
+      
+      // 如果没有结果
+      if (!books || books.length === 0) {
+        bookshelfContent.innerHTML = `
+          <div class="text-center py-8">
+            <div class="text-gray-500 mb-4">
+              <i class="fas fa-search fa-3x mb-3"></i>
+              <p class="text-xl font-medium">没有找到匹配 "${query}" 的书籍</p>
+            </div>
+            <button id="clear-search-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg">
+              <i class="fas fa-times mr-2"></i>清除搜索
+            </button>
+          </div>
+        `;
+        
+        // 添加清除搜索按钮事件
+        const clearSearchBtn = bookshelfContent.querySelector('#clear-search-btn');
+        if (clearSearchBtn) {
+          clearSearchBtn.addEventListener('click', () => {
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) {
+              searchInput.value = '';
+              // 直接刷新页面
+              window.location.reload();
+            }
+          });
+        }
+        return;
+      }
+      
+      // 显示搜索结果标题和清除按钮
+      const searchResultHeader = document.createElement('div');
+      searchResultHeader.className = 'w-full mb-4';
+      searchResultHeader.innerHTML = `
+        <div class="flex items-center">
+          <div class="text-gray-700">
+            找到 <span class="font-medium">${books.length}</span> 本匹配 "${query}" 的书籍
+          </div>
+          <button id="clear-search-btn-header" class="text-blue-500 hover:text-blue-700 flex items-center ml-3">
+            <i class="fas fa-times mr-1"></i>清除搜索
+          </button>
+        </div>
+      `;
+      bookshelfContent.appendChild(searchResultHeader);
+      
+      // 添加标题中清除搜索按钮事件
+      const clearSearchBtnHeader = searchResultHeader.querySelector('#clear-search-btn-header');
+      if (clearSearchBtnHeader) {
+        clearSearchBtnHeader.addEventListener('click', () => {
+          const searchInput = document.getElementById('search-input');
+          if (searchInput) {
+            searchInput.value = '';
+            // 直接刷新页面
+            window.location.reload();
+          }
+        });
+      }
+      
+      // 创建书籍网格容器
+      const booksContainer = document.createElement('div');
+      booksContainer.className = 'grid';
+      bookshelfContent.appendChild(booksContainer);
+      
+      // 添加书籍卡片
+      books.forEach(book => {
+        const bookCard = generateBookCard(book);
+        booksContainer.appendChild(bookCard);
+      });
+    }
+    
+    // 显示所有书籍
+    function displayAllBooks() {
+      const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
+      if (!bookshelfContent) return;
+      
+      // 清除加载状态和所有内容
+      bookshelfContent.innerHTML = '';
+      
+      // 使用模拟数据或window.currentBookshelfData
+      const books = window.currentBookshelfData || mockBooks;
+      
+      // 如果没有书籍
+      if (!books || books.length === 0) {
+        bookshelfContent.innerHTML = `
+          <div class="text-center py-8">
+            <div class="text-gray-500 mb-4">
+              <i class="fas fa-book-open fa-3x mb-3"></i>
+              <p class="text-xl font-medium">您的书架还没有书籍</p>
+            </div>
+            <button id="add-book-btn-empty" class="bg-blue-500 text-white px-4 py-2 rounded-lg">
+              <i class="fas fa-plus mr-2"></i>添加书籍
+            </button>
+          </div>
+        `;
+        return;
+      }
+      
+      // 创建书籍网格容器
+      const booksContainer = document.createElement('div');
+      booksContainer.className = 'grid';
+      bookshelfContent.appendChild(booksContainer);
+      
+      // 添加书籍卡片
+      books.forEach(book => {
+        const bookCard = generateBookCard(book);
+        booksContainer.appendChild(bookCard);
+      });
+    }
+    
+    // 生成书架卡片
+    function generateBookCard(bookData) {
+      // 确保我们有正确的书籍数据结构
+      const book = bookData.Book || bookData;
+      const progress = bookData.progress || 0;
+      const status = bookData.status || 'toRead';
+      
+      // 获取书籍信息
+      const bookId = book.id || bookData.bookId || '';
+      const title = book.title || '未知标题';
+      const author = book.author || '未知作者';
+      const cover = book.coverUrl || book.cover || '../images/default-cover.jpg';
+      
+      // 根据状态设置标签
+      let statusLabel = '';
+      let statusClass = '';
+      
+      if (status === 'reading') {
+        statusLabel = '阅读中';
+        statusClass = 'bg-blue-100 text-blue-800';
+      } else if (status === 'completed' || status === 'finished') {
+        statusLabel = '已完成';
+        statusClass = 'bg-green-100 text-green-800';
+      } else {
+        statusLabel = '未读';
+        statusClass = 'bg-yellow-100 text-yellow-800';
+      }
+      
+      // 创建卡片元素
+      const cardElement = document.createElement('div');
+      cardElement.className = 'book-card bg-white p-4 relative rounded-lg';
+      cardElement.dataset.bookId = bookId;
+      
+      // 设置卡片内容
+      cardElement.innerHTML = `
+        <div class="absolute top-4 right-4 flex space-x-2">
+          <button class="text-gray-400 hover:text-gray-600 book-options-btn">
+            <i class="fas fa-ellipsis-h"></i>
+          </button>
+        </div>
+        
+        <div class="flex flex-col items-center mb-4">
+          <img src="${cover}" alt="${title}" class="book-cover w-32 h-48 mb-3 object-cover rounded">
+          <div class="text-center">
+            <h3 class="font-bold">${title}</h3>
+            <p class="text-gray-600 text-sm">${author}</p>
+          </div>
+        </div>
+        
+        <div class="mt-2">
+          <div class="flex justify-between text-sm text-gray-500 mb-1">
+            <span>阅读进度</span>
+            <span>${progress}%</span>
+          </div>
+          <div class="bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div class="bg-blue-500 h-full" style="width: ${progress}%"></div>
+          </div>
+        </div>
+        
+        <div class="mt-4 flex justify-between items-center">
+          <span class="inline-block ${statusClass} text-xs px-2 py-1 rounded-full">${statusLabel}</span>
+          <button class="bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded continue-reading-btn">
+            ${status === 'reading' ? '继续阅读' : status === 'completed' ? '重新阅读' : '开始阅读'}
+          </button>
+        </div>
+      `;
+      
+      return cardElement;
+    }
+    
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('页面已完全加载');
+      
+      // 检查搜索元素
+      const searchInput = document.getElementById('search-input');
+      const searchButton = document.getElementById('search-button');
+      
+      console.log('搜索输入框:', searchInput);
+      console.log('搜索按钮:', searchButton);
+      
+      // 等待一小段时间，确保模块脚本已加载完成
+      setTimeout(function() {
+        console.log('检查全局函数是否可用:', {
+          performBookshelfSearch: typeof window.performBookshelfSearch === 'function'
+        });
+        
+        // 直接添加事件监听器
+        if (searchButton) {
+          console.log('为搜索按钮添加点击事件');
+          searchButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('搜索按钮被点击（内联脚本）');
+            const query = searchInput ? searchInput.value.trim() : '';
+            console.log('搜索关键词:', query);
+            
+            // 调用内联搜索函数
+            window.inlinePerformSearch(query);
+          });
+        }
+        
+        // 为输入框添加回车事件
+        if (searchInput) {
+          console.log('为搜索输入框添加回车事件');
+          searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              console.log('搜索输入框回车键被按下（内联脚本）');
+              const query = searchInput.value.trim();
+              console.log('搜索关键词:', query);
+              
+              // 调用内联搜索函数
+              window.inlinePerformSearch(query);
+            }
+          });
+        }
+      }, 500); // 等待500毫秒，确保模块脚本已加载
+    });
+  </script>
 </body>
 </html> 

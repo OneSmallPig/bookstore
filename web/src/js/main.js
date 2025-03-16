@@ -128,55 +128,21 @@ function initSearchPage() {
   }
 }
 
-// 首页功能初始化
+// 初始化首页功能
 function initHomePage() {
-  // 获取首页书籍卡片
-  const bookCards = document.querySelectorAll('.card');
-  
-  // 为每个书籍卡片添加点击事件
-  bookCards.forEach(card => {
-    card.addEventListener('click', () => {
-      const bookTitle = card.querySelector('h3')?.textContent || '未知书籍';
-      window.location.href = `src/pages/book-detail.html?title=${encodeURIComponent(bookTitle)}`;
-    });
-  });
-  
-  // 智能搜索表单
-  const searchInput = document.querySelector('.input');
-  const searchButton = document.querySelector('.btn-primary');
-  
-  if (searchInput && searchButton) {
-    searchButton.addEventListener('click', () => {
-      const query = searchInput.value.trim();
-      if (query) {
-        window.location.href = `src/pages/search.html?q=${encodeURIComponent(query)}`;
-      }
-    });
-    
-    // 回车键提交
-    searchInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        const query = searchInput.value.trim();
-        if (query) {
-          window.location.href = `src/pages/search.html?q=${encodeURIComponent(query)}`;
-        }
-      }
-    });
+  // 检查是否在首页
+  const welcomeSection = document.querySelector('.bg-gradient-to-r.from-blue-500.to-purple-600');
+  if (!welcomeSection) {
+    console.log('不在首页，跳过首页初始化');
+    return;
   }
   
-  // 确保"查看我的书架"按钮正常工作
-  const viewBookshelfBtn = document.querySelector('a[href="src/pages/bookshelf.html"]');
-  if (viewBookshelfBtn) {
-    viewBookshelfBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      window.location.href = 'src/pages/bookshelf.html';
-    });
-  }
+  console.log('初始化首页功能');
   
-  // 确保"智能搜索"按钮正常工作
-  const smartSearchBtn = document.querySelector('a[href="src/pages/search.html"]');
-  if (smartSearchBtn) {
-    smartSearchBtn.addEventListener('click', (e) => {
+  // 初始化搜索框
+  const searchForm = document.querySelector('.hero-search-form');
+  if (searchForm) {
+    searchForm.addEventListener('submit', (e) => {
       e.preventDefault();
       window.location.href = 'src/pages/search.html';
     });
@@ -190,6 +156,23 @@ function initHomePage() {
 async function loadRecommendedBooks() {
   try {
     console.log('开始加载推荐书籍');
+    
+    // 检查是否在首页
+    const recommendedContainer = document.querySelector('.recommended-section .grid');
+    const popularContainer = document.querySelector('.popular-section .grid');
+    
+    console.log('推荐书籍容器:', recommendedContainer ? '找到' : '未找到');
+    console.log('热门书籍容器:', popularContainer ? '找到' : '未找到');
+    
+    // 尝试查找其他元素，确认是否在首页
+    const welcomeBanner = document.querySelector('.bg-gradient-to-r.from-blue-500.to-purple-600');
+    console.log('欢迎横幅:', welcomeBanner ? '找到' : '未找到');
+    
+    if (!recommendedContainer || !popularContainer) {
+      console.log('未找到推荐书籍容器或热门书籍容器，可能不在首页');
+      return;
+    }
+    
     showLoadingState();
     
     // 获取推荐书籍
@@ -244,7 +227,6 @@ async function loadRecommendedBooks() {
     }
     
     // 更新推荐书籍区域
-    const recommendedContainer = document.querySelector('.recommended-section .grid');
     if (recommendedContainer) {
       console.log('找到推荐书籍容器，开始生成书籍卡片');
       
@@ -267,7 +249,6 @@ async function loadRecommendedBooks() {
     }
     
     // 更新热门书籍区域
-    const popularContainer = document.querySelector('.popular-section .grid');
     if (popularContainer) {
       console.log('找到热门书籍容器，开始生成书籍卡片');
       
