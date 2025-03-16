@@ -189,6 +189,7 @@ function initHomePage() {
 // 加载推荐书籍
 async function loadRecommendedBooks() {
   try {
+    console.log('开始加载推荐书籍');
     showLoadingState();
     
     // 获取推荐书籍
@@ -243,25 +244,53 @@ async function loadRecommendedBooks() {
     }
     
     // 更新推荐书籍区域
-    const recommendedContainer = document.querySelector('#recommended-books .book-grid');
+    const recommendedContainer = document.querySelector('.recommended-section .grid');
     if (recommendedContainer) {
-      recommendedContainer.innerHTML = recommendedBooks.map(book => {
-        const isInBookshelf = bookshelfBookIds.has(Number(book.id));
-        return generateBookCard(book, isInBookshelf);
-      }).join('');
+      console.log('找到推荐书籍容器，开始生成书籍卡片');
+      
+      // 检查是否有BookCard组件
+      if (typeof BookCard !== 'undefined' && BookCard.createBookCard) {
+        console.log('使用BookCard组件生成卡片');
+        recommendedContainer.innerHTML = recommendedBooks.map(book => {
+          const isInBookshelf = bookshelfBookIds.has(Number(book.id));
+          return BookCard.createBookCard(book, '推荐', isInBookshelf);
+        }).join('');
+      } else {
+        console.log('使用内部函数生成卡片');
+        recommendedContainer.innerHTML = recommendedBooks.map(book => {
+          const isInBookshelf = bookshelfBookIds.has(Number(book.id));
+          return generateBookCard(book, isInBookshelf);
+        }).join('');
+      }
+    } else {
+      console.error('未找到推荐书籍容器');
     }
     
     // 更新热门书籍区域
-    const popularContainer = document.querySelector('#popular-books .book-grid');
+    const popularContainer = document.querySelector('.popular-section .grid');
     if (popularContainer) {
-      popularContainer.innerHTML = popularBooks.map(book => {
-        const isInBookshelf = bookshelfBookIds.has(Number(book.id));
-        return generateBookCard(book, isInBookshelf);
-      }).join('');
+      console.log('找到热门书籍容器，开始生成书籍卡片');
+      
+      // 检查是否有BookCard组件
+      if (typeof BookCard !== 'undefined' && BookCard.createBookCard) {
+        console.log('使用BookCard组件生成卡片');
+        popularContainer.innerHTML = popularBooks.map(book => {
+          const isInBookshelf = bookshelfBookIds.has(Number(book.id));
+          return BookCard.createBookCard(book, '热门', isInBookshelf);
+        }).join('');
+      } else {
+        console.log('使用内部函数生成卡片');
+        popularContainer.innerHTML = popularBooks.map(book => {
+          const isInBookshelf = bookshelfBookIds.has(Number(book.id));
+          return generateBookCard(book, isInBookshelf);
+        }).join('');
+      }
+    } else {
+      console.error('未找到热门书籍容器');
     }
     
     // 添加事件监听器
-    document.querySelectorAll('.add-to-bookshelf').forEach(button => {
+    document.querySelectorAll('.add-to-bookshelf, .add-btn').forEach(button => {
       button.addEventListener('click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -275,16 +304,16 @@ async function loadRecommendedBooks() {
         const bookCard = button.closest('.book-card');
         
         try {
-          if (button.classList.contains('in-bookshelf')) {
+          if (button.classList.contains('in-bookshelf') || button.classList.contains('added')) {
             // 从书架中移除
             await bookshelfApi.removeFromBookshelf(bookId);
-            button.classList.remove('in-bookshelf');
+            button.classList.remove('in-bookshelf', 'added');
             button.innerHTML = '<i class="fas fa-plus"></i>';
             showToast('已从书架中移除', 'success');
           } else {
             // 添加到书架
             await bookshelfApi.addToBookshelf(bookId);
-            button.classList.add('in-bookshelf');
+            button.classList.add('in-bookshelf', 'added');
             button.innerHTML = '<i class="fas fa-check"></i>';
             showToast('已添加到书架', 'success');
           }
@@ -295,12 +324,65 @@ async function loadRecommendedBooks() {
       });
     });
     
+    // 添加书籍卡片点击事件
+    document.querySelectorAll('.book-card, .book-card-wrapper').forEach(card => {
+      card.addEventListener('click', (e) => {
+        // 如果点击的是按钮，不处理
+        if (e.target.closest('button')) return;
+        
+        const bookId = card.getAttribute('data-book-id');
+        if (bookId) {
+          window.location.href = `src/pages/book-detail.html?id=${bookId}`;
+        }
+      });
+    });
+    
     hideLoadingState();
   } catch (error) {
     console.error('加载推荐书籍失败:', error);
     hideLoadingState();
     showErrorMessage('加载推荐书籍失败，请稍后再试');
   }
+}
+
+// 生成书籍卡片HTML
+function generateBookCard(book, isInBookshelf = false) {
+  // 处理rating可能为空的情况
+  const rating = book.rating || 0;
+  
+  // 处理简介，增加字数限制
+  const description = book.description ? 
+    (book.description.length > 100 ? book.description.substring(0, 100) + '...' : book.description) : 
+    '暂无简介';
+  
+  // 获取封面图片URL，如果没有则使用默认图片
+  const coverImage = book.coverImage || book.cover_image || 'src/images/default-book-cover.svg';
+  
+  // 根据是否已在书架中设置按钮文本和样式
+  const addBtnClass = isInBookshelf ? 'add-to-bookshelf in-bookshelf' : 'add-to-bookshelf';
+  const addBtnIcon = isInBookshelf ? '<i class="fas fa-check"></i>' : '<i class="fas fa-plus"></i>';
+  
+  return `
+    <div class="book-card" data-book-id="${book.id}">
+      <div class="relative">
+        <img src="${coverImage}" alt="${book.title}" class="w-full h-48 object-cover rounded-t-lg">
+        <div class="absolute top-2 right-2">
+          <button class="${addBtnClass}" data-book-id="${book.id}">
+            ${addBtnIcon}
+          </button>
+        </div>
+      </div>
+      <div class="p-4">
+        <h3 class="font-bold text-lg mb-1">${book.title}</h3>
+        <p class="text-gray-600 text-sm mb-2">${book.author}</p>
+        <div class="flex items-center mb-2">
+          ${generateStarRating(rating)}
+          <span class="text-gray-600 text-sm ml-1">${rating.toFixed(1)}</span>
+        </div>
+        <p class="text-gray-700 text-sm line-clamp-3">${description}</p>
+      </div>
+    </div>
+  `;
 }
 
 // 初始化书架页面
