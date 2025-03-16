@@ -38,27 +38,62 @@
       background-color: white;
       border-radius: 0.5rem;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      z-index: 10;
-      border: 2px solid #3b82f6; /* 添加边框使其更明显 */
+      z-index: 9999;
+      border: 1px solid #e5e7eb;
     }
     
     .dropdown-menu.show {
       display: block !important; /* 使用!important确保显示 */
     }
     
-    /* 调试样式 */
-    #filter-btn, #sort-btn {
-      position: relative;
-      z-index: 9;
-    }
-    
-    #filter-menu, #sort-menu {
-      z-index: 999; /* 确保下拉菜单在最上层 */
+    /* 搜索框和按钮布局 */
+    @media (max-width: 768px) {
+      .flex-col.md\:flex-row {
+        gap: 1rem;
+      }
     }
     
     /* 确保相对定位正确 */
     .relative {
       position: relative !important;
+    }
+    
+    /* 移动设备适配 */
+    @media (max-width: 768px) {
+      .flex.space-x-2 {
+        margin-top: 0.5rem;
+        justify-content: space-between;
+        width: 100%;
+      }
+      
+      #filter-btn, #sort-btn, #add-book-btn {
+        padding: 0.5rem;
+        font-size: 0.875rem;
+      }
+      
+      #filter-btn span, #sort-btn span, #add-book-btn span {
+        display: none;
+      }
+      
+      #filter-btn i, #sort-btn i, #add-book-btn i {
+        margin-right: 0;
+      }
+      
+      .dropdown-menu {
+        width: 180px;
+        right: auto;
+        left: 0;
+      }
+    }
+    
+    /* 按钮悬停效果 */
+    #filter-btn:hover, #sort-btn:hover {
+      background-color: #f9fafb;
+      border-color: #d1d5db;
+    }
+    
+    #add-book-btn:hover {
+      background-color: #3b82f6;
     }
   </style>
 </head>
@@ -127,388 +162,130 @@
       </div>
     </section>
     
-    <!-- 搜索栏 -->
-    <div class="search-container mb-6">
-      <div class="relative">
-        <input type="text" id="search-input" class="search-input w-full px-4 py-2 border rounded-lg" placeholder="搜索书籍...">
+    <!-- 搜索栏和操作按钮 -->
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+      <!-- 搜索栏 -->
+      <div class="relative md:w-1/2 lg:w-2/5 w-full">
+        <input type="text" id="search-input" class="search-input w-full px-4 py-2 border rounded-lg" placeholder="搜索书籍名称、作者或简介...">
         <button id="search-button" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700">
           <i class="fas fa-search"></i>
         </button>
       </div>
+      
+      <!-- 筛选和排序按钮 -->
+      <div class="flex space-x-2 flex-shrink-0">
+        <div class="relative">
+          <button id="filter-btn" class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
+            <i class="fas fa-filter mr-2"></i>
+            <span>筛选</span>
+            <i class="fas fa-chevron-down ml-2 text-xs"></i>
+          </button>
+          <!-- 筛选下拉菜单 -->
+          <div id="filter-menu" class="dropdown-menu">
+            <div class="p-3">
+              <div class="font-medium mb-2">阅读状态</div>
+              <div class="space-y-2">
+                <label class="flex items-center">
+                  <input type="radio" name="filter-status" value="all" checked class="mr-2">
+                  <span>全部</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="radio" name="filter-status" value="toRead" class="mr-2">
+                  <span>未读</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="radio" name="filter-status" value="reading" class="mr-2">
+                  <span>阅读中</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="radio" name="filter-status" value="completed" class="mr-2">
+                  <span>已读完</span>
+                </label>
+              </div>
+              <div class="mt-4 flex justify-end">
+                <button id="apply-filter" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">应用</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="relative">
+          <button id="sort-btn" class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
+            <i class="fas fa-sort mr-2"></i>
+            <span>排序</span>
+            <i class="fas fa-chevron-down ml-2 text-xs"></i>
+          </button>
+          <!-- 排序下拉菜单 -->
+          <div id="sort-menu" class="dropdown-menu">
+            <div class="py-1">
+              <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="date-desc">添加时间（最新）</a>
+              <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="date-asc">添加时间（最早）</a>
+              <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="title-asc">书名（A-Z）</a>
+              <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="title-desc">书名（Z-A）</a>
+              <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" data-sort="progress">阅读进度</a>
+            </div>
+          </div>
+        </div>
+        
+        <button id="add-book-btn" class="bg-blue-500 text-white rounded-lg px-4 py-2 flex items-center">
+          <i class="fas fa-plus mr-2"></i>
+          <span>添加书籍</span>
+        </button>
+      </div>
     </div>
     
-    <!-- 筛选和排序 -->
-    <section class="mb-8">
-      <div class="flex flex-col md:flex-row justify-between items-center">
-        <!-- 筛选和排序 -->
-        <div class="flex space-x-2">
-          <div class="relative">
-            <button id="filter-btn" onclick="document.getElementById('filter-menu').classList.toggle('show'); document.getElementById('sort-menu').classList.remove('show'); event.stopPropagation();" class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
-              <i class="fas fa-filter mr-2"></i>
-              <span>筛选</span>
-              <i class="fas fa-chevron-down ml-2 text-xs"></i>
-            </button>
-            <!-- 筛选下拉菜单 -->
-            <div id="filter-menu" class="dropdown-menu">
-              <div class="p-3">
-                <div class="font-medium mb-2">阅读状态</div>
-                <div class="space-y-2">
-                  <label class="flex items-center">
-                    <input type="checkbox" name="filter-status" value="all" checked class="mr-2">
-                    <span>全部</span>
-                  </label>
-                  <label class="flex items-center">
-                    <input type="checkbox" name="filter-status" value="unread" class="mr-2">
-                    <span>未读</span>
-                  </label>
-                  <label class="flex items-center">
-                    <input type="checkbox" name="filter-status" value="reading" class="mr-2">
-                    <span>阅读中</span>
-                  </label>
-                  <label class="flex items-center">
-                    <input type="checkbox" name="filter-status" value="finished" class="mr-2">
-                    <span>已读完</span>
-                  </label>
-                </div>
-                <div class="mt-4 flex justify-end">
-                  <button id="apply-filter" onclick="window.applyFilter(); event.stopPropagation();" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm">应用</button>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="relative">
-            <button id="sort-btn" onclick="document.getElementById('sort-menu').classList.toggle('show'); document.getElementById('filter-menu').classList.remove('show'); event.stopPropagation();" class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
-              <i class="fas fa-sort mr-2"></i>
-              <span>排序</span>
-              <i class="fas fa-chevron-down ml-2 text-xs"></i>
-            </button>
-            <!-- 排序下拉菜单 -->
-            <div id="sort-menu" class="dropdown-menu">
-              <div class="py-1">
-                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" onclick="window.applySorting('date-desc'); event.preventDefault(); event.stopPropagation();" data-sort="date-desc">添加时间（最新）</a>
-                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" onclick="window.applySorting('date-asc'); event.preventDefault(); event.stopPropagation();" data-sort="date-asc">添加时间（最早）</a>
-                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" onclick="window.applySorting('title-asc'); event.preventDefault(); event.stopPropagation();" data-sort="title-asc">书名（A-Z）</a>
-                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" onclick="window.applySorting('title-desc'); event.preventDefault(); event.stopPropagation();" data-sort="title-desc">书名（Z-A）</a>
-                <a href="#" class="sort-option block px-4 py-2 hover:bg-gray-100" onclick="window.applySorting('progress'); event.preventDefault(); event.stopPropagation();" data-sort="progress">阅读进度</a>
-              </div>
-            </div>
-          </div>
-          
-          <button id="add-book-btn" onclick="window.showAddBookDialog(); event.stopPropagation();" class="bg-blue-500 text-white rounded-lg px-4 py-2 flex items-center">
-            <i class="fas fa-plus mr-2"></i>
-            <span>添加书籍</span>
-          </button>
-        </div>
-      </div>
-    </section>
-    
     <!-- 分类标签 -->
-    <section class="mb-6">
+    <section class="mb-8">
       <div class="border-b border-gray-200">
-        <ul id="category-tabs" class="flex flex-wrap -mb-px">
-          <li class="mr-2">
-            <a href="#" class="category-tab active inline-block py-2 px-4 border-b-2 border-blue-500 font-medium text-blue-500" data-category="all">全部书籍</a>
-          </li>
-          <li class="mr-2">
-            <a href="#" class="category-tab inline-block py-2 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" data-category="reading">阅读中</a>
-          </li>
-          <li class="mr-2">
-            <a href="#" class="category-tab inline-block py-2 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" data-category="finished">已读完</a>
-          </li>
-          <li class="mr-2">
-            <a href="#" class="category-tab inline-block py-2 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" data-category="wishlist">想读</a>
-          </li>
-          <li class="mr-2">
-            <a href="#" class="category-tab inline-block py-2 px-4 border-b-2 border-transparent font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" data-category="favorites">收藏夹</a>
-          </li>
-        </ul>
-      </div>
-    </section>
-    
-    <!-- 书籍内容 - 全部书籍 -->
-    <section class="category-content" data-category="all">
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <!-- 书籍1 - 阅读中 -->
-        <div class="book-card bg-white p-4 relative">
-          <div class="absolute top-4 right-4 flex space-x-2">
-            <button class="text-gray-400 hover:text-gray-600">
-              <i class="fas fa-ellipsis-h"></i>
-            </button>
-          </div>
-          
-          <div class="flex flex-col items-center mb-4">
-            <img src="https://via.placeholder.com/150x225/3b82f6/ffffff?text=深度学习" alt="深度学习" class="book-cover w-32 h-48 mb-3">
-            <div class="text-center">
-              <h3 class="font-bold">深度学习</h3>
-              <p class="text-gray-600 text-sm">伊恩·古德费洛</p>
-            </div>
-          </div>
-          
-          <div class="mt-2">
-            <div class="flex justify-between text-sm text-gray-500 mb-1">
-              <span>阅读进度</span>
-              <span>45%</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 45%"></div>
-            </div>
-          </div>
-          
-          <div class="mt-4 flex justify-between">
-            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">阅读中</span>
-            <button class="btn-primary text-sm py-1 px-3">继续阅读</button>
-          </div>
-        </div>
-        
-        <!-- 书籍2 - 已读完 -->
-        <div class="book-card bg-white p-4 relative">
-          <div class="absolute top-4 right-4 flex space-x-2">
-            <button class="text-gray-400 hover:text-gray-600">
-              <i class="fas fa-ellipsis-h"></i>
-            </button>
-          </div>
-          
-          <div class="flex flex-col items-center mb-4">
-            <img src="https://via.placeholder.com/150x225/10b981/ffffff?text=人类简史" alt="人类简史" class="book-cover w-32 h-48 mb-3">
-            <div class="text-center">
-              <h3 class="font-bold">人类简史</h3>
-              <p class="text-gray-600 text-sm">尤瓦尔·赫拉利</p>
-            </div>
-          </div>
-          
-          <div class="mt-2">
-            <div class="flex justify-between text-sm text-gray-500 mb-1">
-              <span>阅读进度</span>
-              <span>100%</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 100%"></div>
-            </div>
-          </div>
-          
-          <div class="mt-4 flex justify-between">
-            <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">已读完</span>
-            <button class="btn-primary text-sm py-1 px-3">重新阅读</button>
-          </div>
-        </div>
-        
-        <!-- 书籍3 - 想读 -->
-        <div class="book-card bg-white p-4 relative">
-          <div class="absolute top-4 right-4 flex space-x-2">
-            <button class="text-gray-400 hover:text-gray-600">
-              <i class="fas fa-ellipsis-h"></i>
-            </button>
-          </div>
-          
-          <div class="flex flex-col items-center mb-4">
-            <img src="https://via.placeholder.com/150x225/8b5cf6/ffffff?text=未来简史" alt="未来简史" class="book-cover w-32 h-48 mb-3">
-            <div class="text-center">
-              <h3 class="font-bold">未来简史</h3>
-              <p class="text-gray-600 text-sm">尤瓦尔·赫拉利</p>
-            </div>
-          </div>
-          
-          <div class="mt-2">
-            <div class="flex justify-between text-sm text-gray-500 mb-1">
-              <span>阅读进度</span>
-              <span>0%</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 0%"></div>
-            </div>
-          </div>
-          
-          <div class="mt-4 flex justify-between">
-            <span class="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">想读</span>
-            <button class="btn-primary text-sm py-1 px-3">开始阅读</button>
-          </div>
-        </div>
-        
-        <!-- 书籍4 - 阅读中 -->
-        <div class="book-card bg-white p-4 relative">
-          <div class="absolute top-4 right-4 flex space-x-2">
-            <button class="text-gray-400 hover:text-gray-600">
-              <i class="fas fa-ellipsis-h"></i>
-            </button>
-          </div>
-          
-          <div class="flex flex-col items-center mb-4">
-            <img src="https://via.placeholder.com/150x225/ef4444/ffffff?text=思考，快与慢" alt="思考，快与慢" class="book-cover w-32 h-48 mb-3">
-            <div class="text-center">
-              <h3 class="font-bold">思考，快与慢</h3>
-              <p class="text-gray-600 text-sm">丹尼尔·卡尼曼</p>
-            </div>
-          </div>
-          
-          <div class="mt-2">
-            <div class="flex justify-between text-sm text-gray-500 mb-1">
-              <span>阅读进度</span>
-              <span>75%</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 75%"></div>
-            </div>
-          </div>
-          
-          <div class="mt-4 flex justify-between">
-            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">阅读中</span>
-            <button class="btn-primary text-sm py-1 px-3">继续阅读</button>
-          </div>
-        </div>
-        
-        <!-- 书籍5 - 已读完 -->
-        <div class="book-card bg-white p-4 relative">
-          <div class="absolute top-4 right-4 flex space-x-2">
-            <button class="text-gray-400 hover:text-gray-600">
-              <i class="fas fa-ellipsis-h"></i>
-            </button>
-          </div>
-          
-          <div class="flex flex-col items-center mb-4">
-            <img src="https://via.placeholder.com/150x225/f59e0b/ffffff?text=原子习惯" alt="原子习惯" class="book-cover w-32 h-48 mb-3">
-            <div class="text-center">
-              <h3 class="font-bold">原子习惯</h3>
-              <p class="text-gray-600 text-sm">詹姆斯·克利尔</p>
-            </div>
-          </div>
-          
-          <div class="mt-2">
-            <div class="flex justify-between text-sm text-gray-500 mb-1">
-              <span>阅读进度</span>
-              <span>100%</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 100%"></div>
-            </div>
-          </div>
-          
-          <div class="mt-4 flex justify-between">
-            <span class="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">已读完</span>
-            <button class="btn-primary text-sm py-1 px-3">重新阅读</button>
-          </div>
-        </div>
-        
-        <!-- 书籍6 - 想读 -->
-        <div class="book-card bg-white p-4 relative">
-          <div class="absolute top-4 right-4 flex space-x-2">
-            <button class="text-gray-400 hover:text-gray-600">
-              <i class="fas fa-ellipsis-h"></i>
-            </button>
-          </div>
-          
-          <div class="flex flex-col items-center mb-4">
-            <img src="https://via.placeholder.com/150x225/3b82f6/ffffff?text=刻意练习" alt="刻意练习" class="book-cover w-32 h-48 mb-3">
-            <div class="text-center">
-              <h3 class="font-bold">刻意练习</h3>
-              <p class="text-gray-600 text-sm">安德斯·艾利克森</p>
-            </div>
-          </div>
-          
-          <div class="mt-2">
-            <div class="flex justify-between text-sm text-gray-500 mb-1">
-              <span>阅读进度</span>
-              <span>0%</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 0%"></div>
-            </div>
-          </div>
-          
-          <div class="mt-4 flex justify-between">
-            <span class="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">想读</span>
-            <button class="btn-primary text-sm py-1 px-3">开始阅读</button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 分页 -->
-      <div class="mt-8 flex justify-center">
-        <nav class="flex items-center">
-          <a href="#" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 mr-2">
-            <i class="fas fa-chevron-left"></i>
-          </a>
-          <a href="#" class="px-3 py-1 rounded-md border border-gray-300 bg-blue-500 text-white mr-2">1</a>
-          <a href="#" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 mr-2">2</a>
-          <a href="#" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 mr-2">3</a>
-          <span class="px-2 text-gray-500">...</span>
-          <a href="#" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 mr-2">8</a>
-          <a href="#" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-500 hover:bg-gray-50">
-            <i class="fas fa-chevron-right"></i>
-          </a>
+        <nav class="flex -mb-px">
+          <a href="#" class="category-tab active border-b-2 border-blue-500 text-blue-500 px-4 py-2 text-sm font-medium" data-category="all">全部</a>
+          <a href="#" class="category-tab border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 px-4 py-2 text-sm font-medium" data-category="reading">阅读中</a>
+          <a href="#" class="category-tab border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 px-4 py-2 text-sm font-medium" data-category="finished">已读完</a>
+          <a href="#" class="category-tab border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 px-4 py-2 text-sm font-medium" data-category="unread">未读</a>
         </nav>
       </div>
     </section>
     
-    <!-- 书籍内容 - 阅读中 -->
-    <section class="category-content hidden" data-category="reading">
-      <!-- 这里将显示阅读中的书籍，与全部书籍类似，但只显示阅读中状态的书籍 -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        <!-- 书籍1 - 阅读中 -->
-        <div class="book-card bg-white p-4 relative">
-          <div class="absolute top-4 right-4 flex space-x-2">
-            <button class="text-gray-400 hover:text-gray-600">
-              <i class="fas fa-ellipsis-h"></i>
-            </button>
-          </div>
-          
-          <div class="flex flex-col items-center mb-4">
-            <img src="https://via.placeholder.com/150x225/3b82f6/ffffff?text=深度学习" alt="深度学习" class="book-cover w-32 h-48 mb-3">
-            <div class="text-center">
-              <h3 class="font-bold">深度学习</h3>
-              <p class="text-gray-600 text-sm">伊恩·古德费洛</p>
-            </div>
-          </div>
-          
-          <div class="mt-2">
-            <div class="flex justify-between text-sm text-gray-500 mb-1">
-              <span>阅读进度</span>
-              <span>45%</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 45%"></div>
-            </div>
-          </div>
-          
-          <div class="mt-4 flex justify-between">
-            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">阅读中</span>
-            <button class="btn-primary text-sm py-1 px-3">继续阅读</button>
-          </div>
+    <!-- 书架内容 -->
+    <section class="mb-8">
+      <!-- 全部书籍 -->
+      <div class="category-content" data-category="all">
+        <div class="grid">
+          <!-- 书籍将通过JavaScript动态加载 -->
         </div>
-        
-        <!-- 书籍4 - 阅读中 -->
-        <div class="book-card bg-white p-4 relative">
-          <div class="absolute top-4 right-4 flex space-x-2">
-            <button class="text-gray-400 hover:text-gray-600">
-              <i class="fas fa-ellipsis-h"></i>
-            </button>
-          </div>
-          
-          <div class="flex flex-col items-center mb-4">
-            <img src="https://via.placeholder.com/150x225/ef4444/ffffff?text=思考，快与慢" alt="思考，快与慢" class="book-cover w-32 h-48 mb-3">
-            <div class="text-center">
-              <h3 class="font-bold">思考，快与慢</h3>
-              <p class="text-gray-600 text-sm">丹尼尔·卡尼曼</p>
-            </div>
-          </div>
-          
-          <div class="mt-2">
-            <div class="flex justify-between text-sm text-gray-500 mb-1">
-              <span>阅读进度</span>
-              <span>75%</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 75%"></div>
-            </div>
-          </div>
-          
-          <div class="mt-4 flex justify-between">
-            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">阅读中</span>
-            <button class="btn-primary text-sm py-1 px-3">继续阅读</button>
-          </div>
+      </div>
+      
+      <!-- 阅读中 -->
+      <div class="category-content hidden" data-category="reading">
+        <div class="grid">
+          <!-- 书籍将通过JavaScript动态加载 -->
+        </div>
+      </div>
+      
+      <!-- 已读完 -->
+      <div class="category-content hidden" data-category="finished">
+        <div class="grid">
+          <!-- 书籍将通过JavaScript动态加载 -->
+        </div>
+      </div>
+      
+      <!-- 未读 -->
+      <div class="category-content hidden" data-category="unread">
+        <div class="grid">
+          <!-- 书籍将通过JavaScript动态加载 -->
         </div>
       </div>
     </section>
+    
+    <!-- 空状态 -->
+    <div id="empty-state" class="hidden text-center py-12">
+      <img src="../images/empty-bookshelf.svg" alt="空书架" class="mx-auto w-40 h-40 mb-4">
+      <h3 class="text-xl font-bold mb-2">您的书架还是空的</h3>
+      <p class="text-gray-600 mb-4">开始添加书籍到您的书架，追踪您的阅读进度。</p>
+      <button onclick="window.showAddBookDialog()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">
+        <i class="fas fa-plus mr-2"></i>添加第一本书
+      </button>
+    </div>
   </main>
   
   <!-- 页脚 -->

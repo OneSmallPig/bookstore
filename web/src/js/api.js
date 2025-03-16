@@ -6,6 +6,12 @@
 // API基础URL
 const API_BASE_URL = 'http://localhost:3001/api';
 
+// 获取认证令牌函数
+function getToken() {
+  return localStorage.getItem('bookstore_auth') ? 
+    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+}
+
 // 通用请求函数
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -18,8 +24,7 @@ async function request(endpoint, options = {}) {
   
   // 如果有token，添加到请求头
   // 使用auth.js中的getAuthToken函数获取认证令牌
-  const token = localStorage.getItem('bookstore_auth') ? 
-    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+  const token = getToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -52,12 +57,6 @@ async function request(endpoint, options = {}) {
     console.error('API请求错误:', error);
     throw error;
   }
-}
-
-// 获取认证令牌函数
-function getToken() {
-  return localStorage.getItem('bookstore_auth') ? 
-    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
 }
 
 // 用户相关API
@@ -167,14 +166,11 @@ const bookshelfApi = {
       
       console.log('获取书架API请求URL:', url);
       
-      // 获取认证令牌
-      const token = getToken();
-      
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          'Authorization': `Bearer ${getToken()}`
         }
       });
       
@@ -191,17 +187,90 @@ const bookshelfApi = {
     }
   },
   
+  // 获取书架书籍信息（新接口）
+  async getBookshelfBooks(params = {}) {
+    try {
+      console.log('调用getBookshelfBooks API，参数:', params);
+      
+      // 构建查询参数
+      const queryParams = new URLSearchParams();
+      
+      // 添加搜索参数
+      if (params.query) queryParams.append('query', params.query);
+      
+      // 添加阅读状态参数
+      if (params.status) queryParams.append('status', params.status);
+      
+      // 添加排序参数
+      if (params.sort) queryParams.append('sort', params.sort);
+      if (params.order) queryParams.append('order', params.order);
+      
+      // 添加用户ID参数（如果需要查看其他用户的书架）
+      if (params.userId) queryParams.append('userId', params.userId);
+      
+      // 添加分页参数
+      if (params.page) queryParams.append('page', params.page);
+      if (params.limit) queryParams.append('limit', params.limit);
+      
+      const queryString = queryParams.toString();
+      const url = `${API_BASE_URL}/bookshelf/books${queryString ? `?${queryString}` : ''}`;
+      
+      console.log('获取书架书籍API请求URL:', url);
+      
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getToken()}`
+          }
+        });
+        
+        if (!response.ok) {
+          console.log('API响应不成功，状态码:', response.status);
+          throw new Error(`获取书架书籍失败: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('获取书架书籍API响应:', data);
+        
+        // 如果服务器端API尚未实现，在客户端进行过滤
+        if ((!data.success || !data.data) && window.currentBookshelfData) {
+          console.log('服务器API未实现或返回数据格式不正确，使用客户端过滤');
+          return clientSideFilterBooks(window.currentBookshelfData, params);
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('API请求失败:', error);
+        // 如果API请求失败，尝试在客户端进行过滤
+        if (window.currentBookshelfData) {
+          console.log('API请求失败，使用客户端过滤');
+          return clientSideFilterBooks(window.currentBookshelfData, params);
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error('获取书架书籍错误:', error);
+      
+      // 如果API请求失败，尝试在客户端进行过滤
+      if (window.currentBookshelfData) {
+        console.log('API请求失败，使用客户端过滤');
+        return clientSideFilterBooks(window.currentBookshelfData, params);
+      }
+      
+      throw error;
+    }
+  },
+  
   // 添加书籍到书架
   async addToBookshelf(bookId, status = 'toRead') {
     try {
-      // 获取认证令牌
-      const token = getToken();
-      
       const response = await fetch(`${API_BASE_URL}/books/${bookId}/bookshelf`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          'Authorization': `Bearer ${getToken()}`
         },
         body: JSON.stringify({ status })
       });
@@ -220,14 +289,11 @@ const bookshelfApi = {
   // 从书架移除书籍
   async removeFromBookshelf(bookId) {
     try {
-      // 获取认证令牌
-      const token = getToken();
-      
       const response = await fetch(`${API_BASE_URL}/books/${bookId}/bookshelf`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          'Authorization': `Bearer ${getToken()}`
         }
       });
       
@@ -245,14 +311,11 @@ const bookshelfApi = {
   // 更新阅读进度
   async updateReadingProgress(bookId, progress) {
     try {
-      // 获取认证令牌
-      const token = getToken();
-      
       const response = await fetch(`${API_BASE_URL}/books/${bookId}/reading-progress`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          'Authorization': `Bearer ${getToken()}`
         },
         body: JSON.stringify({ progress })
       });
@@ -271,38 +334,130 @@ const bookshelfApi = {
   // 搜索书架
   async searchBookshelf(query) {
     try {
-      // 构建查询参数
-      const queryParams = new URLSearchParams();
-      queryParams.append('q', query);
-      
-      const url = `${API_BASE_URL}/users/bookshelf/search?${queryParams.toString()}`;
-      
-      console.log('搜索书架API请求URL:', url);
-      
-      // 获取认证令牌
-      const token = getToken();
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`搜索书架失败: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('搜索书架API响应:', data);
-      return data;
+      // 使用新的getBookshelfBooks接口
+      return await this.getBookshelfBooks({ query });
     } catch (error) {
       console.error('搜索书架错误:', error);
       throw error;
     }
   }
 };
+
+// 客户端过滤书籍函数（当API不可用时使用）
+function clientSideFilterBooks(books, params) {
+  console.log('执行客户端过滤，原始书籍数量:', books.length, '过滤参数:', params);
+  
+  if (!books || !Array.isArray(books)) {
+    console.error('无效的书籍数据:', books);
+    return {
+      success: true,
+      data: {
+        bookshelf: [],
+        total: 0,
+        page: params.page || 1,
+        limit: params.limit || 10
+      }
+    };
+  }
+  
+  let filteredBooks = [...books];
+  
+  // 按搜索词过滤
+  if (params.query) {
+    const query = params.query.toLowerCase();
+    console.log('按搜索词过滤:', query);
+    
+    filteredBooks = filteredBooks.filter(book => {
+      // 确保book对象存在
+      if (!book) return false;
+      
+      const bookInfo = book.Book || book;
+      
+      // 提取需要搜索的字段
+      const title = (bookInfo.title || '').toLowerCase();
+      const author = (bookInfo.author || '').toLowerCase();
+      const description = (bookInfo.description || '').toLowerCase();
+      
+      // 检查是否匹配
+      const matchTitle = title.includes(query);
+      const matchAuthor = author.includes(query);
+      const matchDescription = description.includes(query);
+      
+      return matchTitle || matchAuthor || matchDescription;
+    });
+    
+    console.log('搜索词过滤后的书籍数量:', filteredBooks.length);
+  }
+  
+  // 按阅读状态过滤
+  if (params.status) {
+    console.log('按阅读状态过滤:', params.status);
+    
+    filteredBooks = filteredBooks.filter(book => {
+      // 确保book对象存在
+      if (!book) return false;
+      
+      const bookInfo = book.Book || book;
+      const status = bookInfo.status || bookInfo.readingStatus || '';
+      const progress = bookInfo.readingProgress || bookInfo.progress || 0;
+      
+      if (params.status === 'reading') {
+        return status === 'reading' || (progress > 0 && progress < 100);
+      } else if (params.status === 'completed') {
+        return status === 'completed' || progress === 100;
+      } else if (params.status === 'toRead') {
+        return status === 'toRead' || progress === 0;
+      }
+      
+      return true;
+    });
+    
+    console.log('状态过滤后的书籍数量:', filteredBooks.length);
+  }
+  
+  // 排序
+  if (params.sort) {
+    console.log('按', params.sort, '排序，顺序:', params.order);
+    
+    filteredBooks.sort((a, b) => {
+      // 确保a和b对象存在
+      if (!a || !b) return 0;
+      
+      const bookInfoA = a.Book || a;
+      const bookInfoB = b.Book || b;
+      
+      if (params.sort === 'title') {
+        const result = (bookInfoA.title || '').localeCompare(bookInfoB.title || '');
+        return params.order === 'desc' ? -result : result;
+      } else if (params.sort === 'author') {
+        const result = (bookInfoA.author || '').localeCompare(bookInfoB.author || '');
+        return params.order === 'desc' ? -result : result;
+      } else if (params.sort === 'progress') {
+        const progressA = bookInfoA.readingProgress || bookInfoA.progress || 0;
+        const progressB = bookInfoB.readingProgress || bookInfoB.progress || 0;
+        return params.order === 'desc' ? progressB - progressA : progressA - progressB;
+      } else if (params.sort === 'addedAt') {
+        const dateA = new Date(a.addedAt || a.lastReadAt || 0);
+        const dateB = new Date(b.addedAt || b.lastReadAt || 0);
+        return params.order === 'desc' ? dateB - dateA : dateA - dateB;
+      }
+      
+      return 0;
+    });
+  }
+  
+  console.log('最终过滤和排序后的书籍数量:', filteredBooks.length);
+  
+  return {
+    success: true,
+    data: {
+      bookshelf: filteredBooks,
+      total: filteredBooks.length,
+      page: params.page || 1,
+      limit: params.limit || filteredBooks.length
+    }
+  };
+}
 
 // 社区相关API
 const communityApi = {
