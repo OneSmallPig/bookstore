@@ -343,9 +343,9 @@ const bookshelfApi = {
   }
 };
 
-// 客户端过滤书籍函数（当API不可用时使用）
-function clientSideFilterBooks(books, params) {
-  console.log('执行客户端过滤，原始书籍数量:', books.length, '过滤参数:', params);
+// 客户端过滤书籍
+function clientSideFilterBooks(books, params = {}) {
+  console.log('执行客户端过滤，原始书籍数量:', books ? books.length : 0, '过滤参数:', params);
   
   if (!books || !Array.isArray(books)) {
     console.error('无效的书籍数据:', books);

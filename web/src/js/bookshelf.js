@@ -473,15 +473,25 @@ function initCategoryTabs() {
 
 // 初始化搜索功能
 function initSearchFunction() {
+  console.log('开始初始化搜索功能');
+  
   const searchInput = document.getElementById('search-input');
   const searchButton = document.getElementById('search-button');
   
   if (!searchInput || !searchButton) {
-    console.error('搜索元素未找到:', { searchInput, searchButton });
+    console.error('搜索元素未找到:', { 
+      searchInputExists: !!searchInput, 
+      searchButtonExists: !!searchButton,
+      searchInputId: 'search-input',
+      searchButtonId: 'search-button'
+    });
     return;
   }
   
-  console.log('初始化搜索功能');
+  console.log('找到搜索元素:', { 
+    searchInput: searchInput.outerHTML, 
+    searchButton: searchButton.outerHTML 
+  });
   
   // 移除可能存在的旧事件监听器
   const newSearchButton = searchButton.cloneNode(true);
@@ -490,14 +500,18 @@ function initSearchFunction() {
   const newSearchInput = searchInput.cloneNode(true);
   searchInput.parentNode.replaceChild(newSearchInput, searchInput);
   
+  console.log('已替换搜索元素，添加新的事件监听器');
+  
   // 搜索函数
   function searchBooks() {
     const query = newSearchInput.value.trim();
     console.log('执行搜索，关键词:', query);
     
     if (query) {
+      console.log('调用performBookshelfSearch函数');
       performBookshelfSearch(query);
     } else {
+      console.log('搜索关键词为空，显示所有书籍');
       // 如果搜索框为空，显示所有书籍
       applyFiltersAndSort();
     }
@@ -505,13 +519,21 @@ function initSearchFunction() {
   
   // 搜索按钮点击事件
   newSearchButton.addEventListener('click', (e) => {
-    e.preventDefault();
     console.log('搜索按钮被点击');
+    e.preventDefault();
     searchBooks();
   });
   
+  // 直接在按钮上添加onclick事件作为备份
+  newSearchButton.onclick = function(e) {
+    console.log('搜索按钮onclick被触发');
+    e.preventDefault();
+    searchBooks();
+  };
+  
   // 输入框回车事件
   newSearchInput.addEventListener('keypress', (e) => {
+    console.log('键盘按键被按下:', e.key);
     if (e.key === 'Enter') {
       console.log('搜索框回车键被按下');
       e.preventDefault();
@@ -519,25 +541,20 @@ function initSearchFunction() {
     }
   });
   
-  // 添加输入框变化事件（用于实时搜索）
-  newSearchInput.addEventListener('input', () => {
-    // 使用防抖函数避免频繁搜索
-    clearTimeout(newSearchInput.debounceTimer);
-    if (newSearchInput.value.trim() === '') {
-      // 如果输入框为空，恢复显示所有书籍
-      applyFiltersAndSort();
-    } else {
-      // 延迟搜索，避免每次按键都触发
-      newSearchInput.debounceTimer = setTimeout(() => {
-        if (newSearchInput.value.trim().length >= 2) { // 至少输入2个字符才搜索
-          searchBooks();
-        }
-      }, 500);
+  // 直接在输入框上添加onkeypress事件作为备份
+  newSearchInput.onkeypress = function(e) {
+    console.log('输入框onkeypress被触发:', e.key);
+    if (e.key === 'Enter') {
+      console.log('搜索框onkeypress回车键被按下');
+      e.preventDefault();
+      searchBooks();
     }
-  });
+  };
   
   // 将搜索函数添加到window对象，以便可以从HTML中调用
   window.performSearch = searchBooks;
+  
+  console.log('搜索功能初始化完成');
 }
 
 // 应用筛选和排序
@@ -547,7 +564,9 @@ function applyFiltersAndSort() {
   console.log('当前排序方式:', currentSort);
   
   // 获取搜索框中的查询内容
-  const searchQuery = document.getElementById('search-input')?.value.trim() || '';
+  const searchInput = document.getElementById('search-input');
+  const searchQuery = searchInput ? searchInput.value.trim() : '';
+  console.log('搜索框内容:', searchQuery);
   
   // 构建API请求参数
   const params = {
@@ -573,27 +592,40 @@ function applyFiltersAndSort() {
     params.order = 'desc';
   }
   
+  console.log('API请求参数:', params);
+  
   // 显示加载状态
   const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
   if (bookshelfContent) {
+    console.log('显示加载状态');
     bookshelfContent.innerHTML = `
       <div class="text-center py-8">
         <i class="fas fa-spinner fa-spin mr-2"></i> 加载中...
       </div>
     `;
+  } else {
+    console.error('未找到书架内容容器 .category-content[data-category="all"]');
   }
   
   // 调用API获取书架书籍
+  console.log('调用bookshelfApi.getBookshelfBooks API');
   bookshelfApi.getBookshelfBooks(params)
     .then(response => {
+      console.log('API响应:', response);
+      
       // 处理API响应
       let books = [];
       if (response && response.data && response.data.bookshelf) {
         books = response.data.bookshelf;
+        console.log('从API响应中提取书籍数据(data.bookshelf):', books.length);
       } else if (response && response.bookshelf) {
         books = response.bookshelf;
+        console.log('从API响应中提取书籍数据(bookshelf):', books.length);
       } else if (Array.isArray(response)) {
         books = response;
+        console.log('API返回数组数据:', books.length);
+      } else {
+        console.warn('API返回的数据格式不符合预期:', response);
       }
       
       console.log('获取到的书籍数量:', books.length);
@@ -634,33 +666,76 @@ async function performBookshelfSearch(query) {
   // 显示加载状态
   const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
   if (bookshelfContent) {
+    console.log('显示搜索加载状态');
     bookshelfContent.innerHTML = `
       <div class="text-center py-8">
         <i class="fas fa-spinner fa-spin mr-2"></i> 搜索中...
       </div>
     `;
+  } else {
+    console.error('未找到书架内容容器 .category-content[data-category="all"]');
   }
   
   try {
     console.log('开始调用API搜索书架');
-    // 调用API搜索书架，使用新的接口
-    const searchResult = await bookshelfApi.getBookshelfBooks({ query });
-    console.log('搜索API返回结果:', searchResult);
     
-    // 处理搜索结果
-    let searchBooks = [];
-    if (searchResult && searchResult.data && searchResult.data.bookshelf) {
-      searchBooks = searchResult.data.bookshelf;
-    } else if (searchResult && searchResult.bookshelf) {
-      searchBooks = searchResult.bookshelf;
-    } else if (Array.isArray(searchResult)) {
-      searchBooks = searchResult;
+    // 获取当前书架数据
+    let books = [];
+    
+    // 尝试从API获取数据
+    try {
+      // 调用API搜索书架
+      console.log('调用bookshelfApi.getBookshelfBooks API，参数:', { query });
+      const searchResult = await bookshelfApi.getBookshelfBooks({ query });
+      console.log('搜索API返回结果:', searchResult);
+      
+      // 处理搜索结果
+      if (searchResult && searchResult.data && searchResult.data.bookshelf) {
+        books = searchResult.data.bookshelf;
+        console.log('从API响应中提取书籍数据(data.bookshelf):', books.length);
+      } else if (searchResult && searchResult.bookshelf) {
+        books = searchResult.bookshelf;
+        console.log('从API响应中提取书籍数据(bookshelf):', books.length);
+      } else if (Array.isArray(searchResult)) {
+        books = searchResult;
+        console.log('API返回数组数据:', books.length);
+      } else {
+        console.warn('API返回的数据格式不符合预期:', searchResult);
+      }
+    } catch (apiError) {
+      console.error('API搜索失败，尝试本地搜索:', apiError);
+      
+      // 如果API调用失败，尝试在本地进行搜索
+      if (window.currentBookshelfData && Array.isArray(window.currentBookshelfData)) {
+        console.log('使用本地数据进行搜索，本地数据条数:', window.currentBookshelfData.length);
+        books = window.currentBookshelfData.filter(book => {
+          const bookInfo = book.Book || book;
+          const title = (bookInfo.title || '').toLowerCase();
+          const author = (bookInfo.author || '').toLowerCase();
+          const description = (bookInfo.description || '').toLowerCase();
+          
+          const searchQuery = query.toLowerCase();
+          return title.includes(searchQuery) || 
+                 author.includes(searchQuery) || 
+                 description.includes(searchQuery);
+        });
+        console.log('本地搜索结果条数:', books.length);
+      } else {
+        console.error('本地数据不可用，无法进行本地搜索');
+      }
     }
     
-    console.log('处理后的搜索结果:', searchBooks);
+    console.log('处理后的搜索结果:', books);
+    
+    // 检查books是否为有效数组
+    if (!Array.isArray(books)) {
+      console.error('搜索结果不是有效数组:', books);
+      books = [];
+    }
     
     // 更新书架显示
-    updateBookshelfDisplay(searchBooks, query);
+    console.log('调用updateBookshelfDisplay更新显示，书籍数量:', books.length);
+    updateBookshelfDisplay(books, query);
   } catch (error) {
     console.error('搜索书架失败:', error);
     
@@ -751,14 +826,22 @@ async function loadUserBookshelf() {
 
 // 更新书架显示
 function updateBookshelfDisplay(books, searchQuery = '') {
-  console.log('更新书架显示，书籍数量:', books.length, '搜索关键词:', searchQuery);
+  console.log('更新书架显示，书籍数量:', books ? books.length : 0, '搜索关键词:', searchQuery);
+  
+  // 确保books是数组
+  if (!Array.isArray(books)) {
+    console.error('updateBookshelfDisplay: books不是数组', books);
+    books = [];
+  }
   
   // 获取书架内容容器
   const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
   if (!bookshelfContent) {
-    console.error('书架内容容器未找到');
+    console.error('书架内容容器未找到 (.category-content[data-category="all"])');
     return;
   }
+  
+  console.log('找到书架内容容器:', bookshelfContent.outerHTML.substring(0, 100) + '...');
   
   // 获取或创建书籍容器
   let booksContainer = bookshelfContent.querySelector('.grid');
@@ -767,10 +850,13 @@ function updateBookshelfDisplay(books, searchQuery = '') {
     booksContainer = document.createElement('div');
     booksContainer.className = 'grid';
     bookshelfContent.appendChild(booksContainer);
+  } else {
+    console.log('找到现有的书籍容器');
   }
   
   // 清空容器
   booksContainer.innerHTML = '';
+  console.log('已清空书籍容器');
   
   // 如果没有书籍，显示空状态
   if (!books || books.length === 0) {
@@ -778,6 +864,7 @@ function updateBookshelfDisplay(books, searchQuery = '') {
     
     if (searchQuery) {
       // 如果是搜索结果为空
+      console.log('搜索结果为空，显示无结果提示');
       booksContainer.innerHTML = `
         <div class="col-span-full text-center py-8">
           <div class="text-gray-500 mb-4">
@@ -794,6 +881,7 @@ function updateBookshelfDisplay(books, searchQuery = '') {
       const clearSearchBtn = booksContainer.querySelector('#clear-search-btn');
       if (clearSearchBtn) {
         clearSearchBtn.addEventListener('click', () => {
+          console.log('点击清除搜索按钮');
           const searchInput = document.getElementById('search-input');
           if (searchInput) {
             searchInput.value = '';
@@ -803,6 +891,7 @@ function updateBookshelfDisplay(books, searchQuery = '') {
       }
     } else {
       // 显示空书架状态
+      console.log('显示空书架状态');
       const emptyState = document.getElementById('empty-state');
       if (emptyState) {
         emptyState.classList.remove('hidden');
@@ -819,6 +908,7 @@ function updateBookshelfDisplay(books, searchQuery = '') {
   
   // 如果是搜索结果，显示搜索结果提示
   if (searchQuery) {
+    console.log('显示搜索结果提示');
     const searchResultHeader = document.createElement('div');
     searchResultHeader.className = 'col-span-full mb-4 flex justify-between items-center';
     searchResultHeader.innerHTML = `
@@ -835,6 +925,7 @@ function updateBookshelfDisplay(books, searchQuery = '') {
     const clearSearchBtn = searchResultHeader.querySelector('#clear-search-btn');
     if (clearSearchBtn) {
       clearSearchBtn.addEventListener('click', () => {
+        console.log('点击清除搜索按钮');
         const searchInput = document.getElementById('search-input');
         if (searchInput) {
           searchInput.value = '';
@@ -845,17 +936,22 @@ function updateBookshelfDisplay(books, searchQuery = '') {
   }
   
   // 添加书籍卡片
-  books.forEach(book => {
+  console.log('开始添加书籍卡片，数量:', books.length);
+  books.forEach((book, index) => {
     try {
+      console.log(`生成第${index+1}个书籍卡片:`, book.title || (book.Book ? book.Book.title : '未知标题'));
       const bookCard = generateBookshelfCard(book);
       booksContainer.appendChild(bookCard);
     } catch (error) {
-      console.error('生成书籍卡片失败:', error, book);
+      console.error(`生成第${index+1}个书籍卡片失败:`, error, book);
     }
   });
   
   // 添加书籍卡片事件监听器
+  console.log('添加书籍卡片事件监听器');
   attachBookCardEventListeners();
+  
+  console.log('书架显示更新完成');
 }
 
 // 生成书架卡片
@@ -930,49 +1026,74 @@ function generateBookshelfCard(bookData) {
 
 // 添加书架卡片事件监听器
 function attachBookCardEventListeners() {
+  console.log('开始添加书架卡片事件监听器');
+  
   // 继续阅读按钮
   const readingButtons = document.querySelectorAll('.continue-reading-btn');
-  readingButtons.forEach(btn => {
+  console.log('找到继续阅读按钮数量:', readingButtons.length);
+  
+  readingButtons.forEach((btn, index) => {
     btn.addEventListener('click', (e) => {
+      console.log(`第${index+1}个继续阅读按钮被点击`);
       const bookCard = btn.closest('.book-card');
       const bookId = bookCard ? bookCard.dataset.bookId : null;
       
       if (bookId) {
+        console.log('跳转到阅读页面，书籍ID:', bookId);
         // 跳转到阅读页面
         window.location.href = `reader.html?id=${bookId}`;
+      } else {
+        console.error('未找到书籍ID');
       }
     });
   });
   
   // 书籍选项按钮
   const optionsButtons = document.querySelectorAll('.book-options-btn');
-  optionsButtons.forEach(btn => {
+  console.log('找到书籍选项按钮数量:', optionsButtons.length);
+  
+  optionsButtons.forEach((btn, index) => {
     btn.addEventListener('click', (e) => {
+      console.log(`第${index+1}个书籍选项按钮被点击`);
       e.stopPropagation();
       const bookCard = btn.closest('.book-card');
       const bookId = bookCard ? bookCard.dataset.bookId : null;
       
       if (bookId) {
+        console.log('显示书籍选项菜单，书籍ID:', bookId);
         // 显示选项菜单
         showBookOptionsMenu(btn, bookId);
+      } else {
+        console.error('未找到书籍ID');
       }
     });
   });
   
   // 书籍卡片点击
   const bookCards = document.querySelectorAll('.book-card');
-  bookCards.forEach(card => {
+  console.log('找到书籍卡片数量:', bookCards.length);
+  
+  bookCards.forEach((card, index) => {
     card.addEventListener('click', (e) => {
+      console.log(`第${index+1}个书籍卡片被点击`);
       // 如果点击的是按钮，不处理
-      if (e.target.closest('button')) return;
+      if (e.target.closest('button')) {
+        console.log('点击的是按钮，不处理');
+        return;
+      }
       
       const bookId = card.dataset.bookId;
       if (bookId) {
+        console.log('跳转到书籍详情页，书籍ID:', bookId);
         // 跳转到书籍详情页
         window.location.href = `book-detail.html?id=${bookId}`;
+      } else {
+        console.error('未找到书籍ID');
       }
     });
   });
+  
+  console.log('书架卡片事件监听器添加完成');
 }
 
 // 显示书籍选项菜单
