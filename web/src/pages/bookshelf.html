@@ -64,6 +64,7 @@
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       z-index: 9999;
       border: 1px solid #e5e7eb;
+      padding: 0.5rem 0;
     }
     
     .dropdown-menu.show {
@@ -122,11 +123,13 @@
     
     /* 三点菜单样式 */
     .dropdown-container {
-      position: relative;
+      position: relative !important;
       z-index: 20;
     }
     
     .card-menu-btn {
+      cursor: pointer;
+      z-index: 30;
       width: 28px;
       height: 28px;
       display: flex;
@@ -141,6 +144,7 @@
       border-radius: 0.5rem;
       overflow: hidden;
       min-width: 150px;
+      padding: 0.5rem 0;
     }
     
     .dropdown-menu a, 
@@ -176,6 +180,31 @@
     /* 确保下拉菜单在显示时位于顶层 */
     .dropdown-menu:not(.hidden) {
       z-index: 50;
+      display: block !important;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      background-color: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      min-width: 150px;
+      padding: 0.5rem 0;
+    }
+    
+    /* 修复搜索结果中的菜单显示问题 */
+    .book-card .dropdown-container {
+      position: relative !important;
+    }
+    
+    .book-card .dropdown-menu {
+      position: absolute !important;
+      right: 0 !important;
+      top: 100% !important;
+      z-index: 100 !important;
+    }
+    
+    .book-card .dropdown-menu:not(.hidden) {
+      display: block !important;
     }
   </style>
 </head>
@@ -610,11 +639,11 @@
                       bookCard.className = 'book-card bg-white p-4 relative rounded-lg';
                       bookCard.dataset.bookId = bookId;
                       bookCard.innerHTML = `
-                        <div class="absolute top-2 right-2 dropdown-container">
+                        <div class="absolute top-2 right-2 dropdown-container" style="position: relative;">
                           <button class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 card-menu-btn">
                             <i class="fas fa-ellipsis-v"></i>
                           </button>
-                          <div class="dropdown-menu hidden absolute right-0 mt-1 bg-white shadow-lg rounded-lg py-1 z-10 w-40">
+                          <div class="dropdown-menu hidden" style="position: absolute; right: 0; top: 100%; z-index: 100; background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 150px;">
                             <a href="book-detail.html?id=${bookId}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                               <i class="fas fa-info-circle mr-2"></i>查看详情
                             </a>
@@ -657,15 +686,38 @@
                       if (menuBtn && dropdownMenu) {
                         menuBtn.addEventListener('click', function(e) {
                           e.stopPropagation();
+                          e.preventDefault();
+                          
                           // 关闭所有其他打开的菜单
                           document.querySelectorAll('.dropdown-menu').forEach(menu => {
                             if (menu !== dropdownMenu) {
                               menu.classList.add('hidden');
                             }
                           });
+                          
                           // 切换当前菜单的显示状态
                           dropdownMenu.classList.toggle('hidden');
+                          
+                          // 确保菜单在正确的位置显示
+                          if (!dropdownMenu.classList.contains('hidden')) {
+                            // 强制设置菜单样式
+                            dropdownMenu.style.position = 'absolute';
+                            dropdownMenu.style.right = '0';
+                            dropdownMenu.style.top = '100%';
+                            dropdownMenu.style.zIndex = '100';
+                            dropdownMenu.style.backgroundColor = 'white';
+                            dropdownMenu.style.borderRadius = '0.5rem';
+                            dropdownMenu.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+                            dropdownMenu.style.minWidth = '150px';
+                            dropdownMenu.style.display = 'block';
+                          }
+                          
                           console.log('菜单点击事件触发', dropdownMenu.classList.contains('hidden') ? '菜单已隐藏' : '菜单已显示');
+                          console.log('菜单样式:', {
+                            position: dropdownMenu.style.position,
+                            display: dropdownMenu.style.display,
+                            zIndex: dropdownMenu.style.zIndex
+                          });
                         });
                       }
                       
@@ -682,15 +734,37 @@
                           newMenuBtn.addEventListener('click', function(e) {
                             e.stopPropagation();
                             e.preventDefault();
+                            
                             // 关闭所有其他打开的菜单
                             document.querySelectorAll('.dropdown-menu').forEach(menu => {
                               if (menu !== addedDropdownMenu) {
                                 menu.classList.add('hidden');
                               }
                             });
+                            
                             // 切换当前菜单的显示状态
                             addedDropdownMenu.classList.toggle('hidden');
+                            
+                            // 确保菜单在正确的位置显示
+                            if (!addedDropdownMenu.classList.contains('hidden')) {
+                              // 强制设置菜单样式
+                              addedDropdownMenu.style.position = 'absolute';
+                              addedDropdownMenu.style.right = '0';
+                              addedDropdownMenu.style.top = '100%';
+                              addedDropdownMenu.style.zIndex = '100';
+                              addedDropdownMenu.style.backgroundColor = 'white';
+                              addedDropdownMenu.style.borderRadius = '0.5rem';
+                              addedDropdownMenu.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+                              addedDropdownMenu.style.minWidth = '150px';
+                              addedDropdownMenu.style.display = 'block';
+                            }
+                            
                             console.log('重新绑定的菜单事件触发', addedDropdownMenu.classList.contains('hidden') ? '菜单已隐藏' : '菜单已显示');
+                            console.log('菜单样式:', {
+                              position: addedDropdownMenu.style.position,
+                              display: addedDropdownMenu.style.display,
+                              zIndex: addedDropdownMenu.style.zIndex
+                            });
                           });
                         }
                       }, 100);
