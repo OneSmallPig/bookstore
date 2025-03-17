@@ -14,6 +14,76 @@
       gap: 1rem;
     }
     
+    /* 导航栏样式 - 使用!important确保样式不被覆盖 */
+    header {
+      background-color: white !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+      z-index: 9999 !important;
+      width: 100% !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      height: auto !important;
+      overflow: visible !important;
+    }
+    
+    nav {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    
+    .nav-item {
+      color: #4b5563 !important;
+      transition: color 0.2s !important;
+      display: inline-block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    
+    .nav-item:hover {
+      color: #3b82f6 !important;
+    }
+    
+    .nav-item.active {
+      color: #3b82f6 !important;
+      font-weight: 600 !important;
+    }
+    
+    .nav-menu {
+      z-index: 9999 !important;
+    }
+    
+    /* 确保导航栏中的元素可见 */
+    header * {
+      visibility: visible !important;
+    }
+    
+    /* 确保导航栏中的flex元素正确显示 */
+    header .flex {
+      display: flex !important;
+    }
+    
+    /* 确保导航栏中的inline-block元素正确显示 */
+    header .nav-item,
+    header button,
+    header i {
+      display: inline-block !important;
+    }
+    
+    /* 确保导航栏中的图标正确显示 */
+    header i {
+      display: inline-block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    
     .book-card {
       width: 100%;
       margin-bottom: 1rem;
@@ -230,32 +300,32 @@
 </head>
 <body>
   <!-- 导航栏 -->
-  <nav class="navbar sticky top-0 z-10 px-4 py-3">
-    <div class="container mx-auto flex justify-between items-center">
-      <div class="flex items-center">
-        <img src="../images/logo.svg" alt="百变书屋" class="h-10">
-        <span class="ml-2 text-lg font-bold">百变书屋</span>
+  <header class="w-full bg-white shadow-md fixed top-0 left-0 right-0 z-50" style="display: block !important; visibility: visible !important; opacity: 1 !important; height: auto !important; overflow: visible !important;">
+    <nav class="container mx-auto px-4 py-3 flex justify-between items-center" style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
+      <div class="flex items-center" style="display: flex !important; visibility: visible !important;">
+        <img src="../images/logo.svg" alt="百变书屋" class="h-10" style="display: inline-block !important; visibility: visible !important;">
+        <span class="ml-2 text-lg font-bold" style="display: inline !important; visibility: visible !important;">百变书屋</span>
       </div>
       
-      <div class="hidden md:flex items-center space-x-6">
-        <a href="/" class="nav-item font-medium">首页</a>
-        <a href="search.html" class="nav-item font-medium">智能搜索</a>
-        <a href="bookshelf.html" class="nav-item active font-medium">我的书架</a>
-        <a href="community.html" class="nav-item font-medium">阅读社区</a>
+      <div class="hidden md:flex items-center space-x-6" style="display: flex !important; visibility: visible !important; opacity: 1 !important;">
+        <a href="/" class="nav-item font-medium" style="display: inline-block !important; visibility: visible !important;">首页</a>
+        <a href="search.html" class="nav-item font-medium" style="display: inline-block !important; visibility: visible !important;">智能搜索</a>
+        <a href="bookshelf.html" class="nav-item active font-medium" style="display: inline-block !important; visibility: visible !important;">我的书架</a>
+        <a href="community.html" class="nav-item font-medium" style="display: inline-block !important; visibility: visible !important;">阅读社区</a>
       </div>
       
-      <div class="flex items-center space-x-4">
-        <a href="#" class="profile-button w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
-          <i class="fas fa-user"></i>
+      <div class="flex items-center space-x-4" style="display: flex !important; visibility: visible !important;">
+        <a href="#" class="profile-button w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white" style="display: flex !important; visibility: visible !important;">
+          <i class="fas fa-user" style="display: inline-block !important; visibility: visible !important;"></i>
         </a>
-        <button class="menu-button md:hidden text-gray-600">
-          <i class="fas fa-bars text-xl"></i>
+        <button class="menu-button md:hidden text-gray-600" style="display: inline-block !important; visibility: visible !important;">
+          <i class="fas fa-bars text-xl" style="display: inline-block !important; visibility: visible !important;"></i>
         </button>
       </div>
-    </div>
+    </nav>
     
     <!-- 移动端菜单 -->
-    <div class="nav-menu hidden md:hidden mt-2 bg-white shadow-lg rounded-lg absolute right-4 left-4 p-4">
+    <div class="nav-menu hidden md:hidden mt-2 bg-white shadow-lg rounded-lg absolute right-4 left-4 p-4 z-50">
       <div class="flex flex-col space-y-3">
         <a href="home.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">首页</a>
         <a href="search.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">智能搜索</a>
@@ -263,7 +333,10 @@
         <a href="community.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">社区</a>
       </div>
     </div>
-  </nav>
+  </header>
+  
+  <!-- 添加一个占位符，确保内容不被固定导航栏遮挡 -->
+  <div class="h-16"></div>
   
   <!-- 主要内容 -->
   <main class="page-container py-6 bookshelf-container">
@@ -306,48 +379,13 @@
       <!-- 筛选和排序按钮 -->
       <div class="flex space-x-2 flex-shrink-0">
         <div class="relative">
-          <button id="filter-btn" class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
-            <i class="fas fa-filter mr-2"></i>
-            <span>筛选</span>
-            <i class="fas fa-chevron-down ml-2 text-xs"></i>
-          </button>
-          <!-- 筛选下拉菜单 -->
-          <div id="filter-menu" class="dropdown-menu" style="display: none;">
-            <div class="p-3">
-              <div class="font-medium mb-2">阅读状态</div>
-              <div class="space-y-2">
-                <label class="flex items-center">
-                  <input type="radio" name="filter-status" value="all" checked class="mr-2">
-                  <span>全部</span>
-                </label>
-                <label class="flex items-center">
-                  <input type="radio" name="filter-status" value="toRead" class="mr-2">
-                  <span>未读</span>
-                </label>
-                <label class="flex items-center">
-                  <input type="radio" name="filter-status" value="reading" class="mr-2">
-                  <span>阅读中</span>
-                </label>
-                <label class="flex items-center">
-                  <input type="radio" name="filter-status" value="completed" class="mr-2">
-                  <span>已读完</span>
-                </label>
-              </div>
-              <div class="mt-3 flex justify-end">
-                <button id="apply-filter" class="bg-blue-500 text-white px-3 py-1 rounded text-sm">应用</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="relative">
           <button id="sort-btn" class="bg-white border border-gray-300 rounded-lg px-4 py-2 flex items-center text-gray-700">
             <i class="fas fa-sort mr-2"></i>
             <span>排序</span>
             <i class="fas fa-chevron-down ml-2 text-xs"></i>
           </button>
           <!-- 排序下拉菜单 -->
-          <div id="sort-menu" class="dropdown-menu" style="display: none;">
+          <div id="sort-menu" class="dropdown-menu hidden" style="display: none;">
             <div class="p-3">
               <div class="font-medium mb-2">排序方式</div>
               <div class="space-y-2">
@@ -501,6 +539,74 @@
         menu.classList.add('hidden');
         menu.style.display = 'none';
       });
+      
+      // 初始化排序按钮点击事件
+      const sortBtn = document.getElementById('sort-btn');
+      const sortMenu = document.getElementById('sort-menu');
+      
+      if (sortBtn && sortMenu) {
+        console.log('找到排序按钮和菜单，添加点击事件');
+        
+        sortBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          console.log('排序按钮被点击');
+          
+          // 获取当前菜单的显示状态
+          const isHidden = sortMenu.classList.contains('hidden');
+          
+          // 先关闭所有菜单
+          document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.classList.add('hidden');
+            menu.style.display = 'none';
+          });
+          
+          // 如果当前菜单是隐藏的，则显示它
+          if (isHidden) {
+            sortMenu.classList.remove('hidden');
+            sortMenu.style.display = 'block';
+            sortMenu.style.opacity = '1';
+            sortMenu.style.visibility = 'visible';
+            
+            // 确保菜单在视口内
+            const rect = sortMenu.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+              sortMenu.style.right = '0';
+              sortMenu.style.left = 'auto';
+            }
+          }
+        });
+        
+        // 添加排序选项点击事件
+        const sortOptions = sortMenu.querySelectorAll('.sort-option');
+        sortOptions.forEach(option => {
+          option.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const sortBy = this.getAttribute('data-sort');
+            console.log('选择排序方式:', sortBy);
+            
+            // 更新选中状态
+            sortOptions.forEach(opt => {
+              opt.querySelector('i').classList.add('invisible');
+            });
+            this.querySelector('i').classList.remove('invisible');
+            
+            // 应用排序
+            if (window.applySorting) {
+              window.applySorting(sortBy);
+            } else if (typeof applySorting === 'function') {
+              applySorting(sortBy);
+            }
+            
+            // 隐藏菜单
+            sortMenu.classList.add('hidden');
+            sortMenu.style.display = 'none';
+          });
+        });
+      }
     });
   </script>
   
@@ -533,11 +639,36 @@
       
       // 添加全局点击事件，确保点击页面其他地方时关闭所有菜单
       document.addEventListener('click', function(e) {
-        if (!e.target.closest('.dropdown-container') && !e.target.closest('#filter-btn') && !e.target.closest('#sort-btn')) {
+        // 如果点击的不是排序按钮或其下拉菜单，也不是书籍卡片的下拉菜单容器，则关闭所有菜单
+        if (!e.target.closest('#sort-btn') && 
+            !e.target.closest('#sort-menu') && 
+            !e.target.closest('.dropdown-container') &&
+            !e.target.closest('header') && 
+            !e.target.closest('nav') && 
+            !e.target.closest('.nav-menu')) {
+          
+          // 关闭所有下拉菜单，但不影响导航栏
           document.querySelectorAll('.dropdown-menu').forEach(menu => {
-            menu.classList.remove('show');
             menu.classList.add('hidden');
+            menu.style.display = 'none';
           });
+        }
+        
+        // 如果点击的不是书籍卡片的下拉菜单容器，则关闭所有书籍卡片的下拉菜单
+        if (!e.target.closest('.dropdown-container')) {
+          document.querySelectorAll('.book-card .dropdown-menu').forEach(menu => {
+            menu.classList.add('hidden');
+            menu.style.display = 'none';
+          });
+        }
+        
+        // 如果点击的不是排序按钮或其下拉菜单，则关闭排序下拉菜单
+        if (!e.target.closest('#sort-btn') && !e.target.closest('#sort-menu')) {
+          const sortMenu = document.getElementById('sort-menu');
+          if (sortMenu) {
+            sortMenu.classList.add('hidden');
+            sortMenu.style.display = 'none';
+          }
         }
       });
     });
@@ -868,6 +999,105 @@
         }
       }, 500); // 等待500毫秒，确保模块脚本已加载
     });
+  </script>
+  
+  <!-- 添加一个新的内联脚本，确保移动端菜单按钮可以正常工作 -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // 移动端菜单切换
+      const menuButton = document.querySelector('.menu-button');
+      const navMenu = document.querySelector('.nav-menu');
+      
+      if (menuButton && navMenu) {
+        console.log('找到移动端菜单按钮和菜单');
+        
+        menuButton.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          console.log('移动端菜单按钮被点击');
+          
+          // 切换菜单显示状态
+          if (navMenu.classList.contains('hidden')) {
+            navMenu.classList.remove('hidden');
+            navMenu.style.display = 'block';
+            navMenu.style.position = 'absolute';
+            navMenu.style.top = '100%';
+            navMenu.style.left = '0';
+            navMenu.style.right = '0';
+            navMenu.style.zIndex = '1001';
+            navMenu.style.backgroundColor = 'white';
+            navMenu.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+            navMenu.style.borderRadius = '0.5rem';
+            navMenu.style.margin = '0.5rem';
+            navMenu.style.padding = '1rem';
+          } else {
+            navMenu.classList.add('hidden');
+            navMenu.style.display = 'none';
+          }
+        });
+      }
+    });
+  </script>
+  
+  <!-- 添加一个强制显示导航栏的JavaScript代码 -->
+  <script>
+    // 立即执行
+    (function() {
+      // 强制显示导航栏
+      function forceShowNavbar() {
+        console.log('强制显示导航栏');
+        
+        // 获取导航栏元素
+        const header = document.querySelector('header');
+        if (!header) {
+          console.error('未找到导航栏元素');
+          return;
+        }
+        
+        // 强制显示导航栏
+        header.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; height: auto !important; overflow: visible !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; z-index: 9999 !important; background-color: white !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;';
+        
+        // 强制显示导航栏内的元素
+        const nav = header.querySelector('nav');
+        if (nav) {
+          nav.style.cssText = 'display: flex !important; visibility: visible !important; opacity: 1 !important; justify-content: space-between !important; align-items: center !important;';
+        }
+        
+        // 强制显示导航栏内的链接
+        const navLinks = header.querySelectorAll('.nav-item');
+        navLinks.forEach(link => {
+          link.style.cssText = 'display: inline-block !important; visibility: visible !important; opacity: 1 !important;';
+        });
+        
+        // 强制显示导航栏内的图标
+        const icons = header.querySelectorAll('i');
+        icons.forEach(icon => {
+          icon.style.cssText = 'display: inline-block !important; visibility: visible !important; opacity: 1 !important;';
+        });
+      }
+      
+      // 立即执行
+      forceShowNavbar();
+      
+      // 在DOMContentLoaded事件中再次执行
+      document.addEventListener('DOMContentLoaded', forceShowNavbar);
+      
+      // 在load事件中再次执行
+      window.addEventListener('load', forceShowNavbar);
+      
+      // 每隔100毫秒执行一次，确保导航栏始终可见
+      let attempts = 0;
+      const interval = setInterval(function() {
+        forceShowNavbar();
+        attempts++;
+        
+        // 最多尝试10次
+        if (attempts >= 10) {
+          clearInterval(interval);
+        }
+      }, 100);
+    })();
   </script>
 </body>
 </html> 
