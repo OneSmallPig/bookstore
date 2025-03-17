@@ -65,10 +65,15 @@
       z-index: 9999;
       border: 1px solid #e5e7eb;
       padding: 0.5rem 0;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
     }
     
     .dropdown-menu.show {
       display: block !important; /* 使用!important确保显示 */
+      opacity: 1;
+      visibility: visible;
     }
     
     /* 搜索框和按钮布局 */
@@ -145,6 +150,7 @@
       overflow: hidden;
       min-width: 150px;
       padding: 0.5rem 0;
+      display: none; /* 确保初始状态是隐藏的 */
     }
     
     .dropdown-menu a, 
@@ -183,29 +189,42 @@
       display: block !important;
       position: absolute;
       right: 0;
-      top: 100%;
+      top: 28px !important; /* 固定距离，与按钮靠在一起 */
       background-color: white;
       border-radius: 0.5rem;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       min-width: 150px;
       padding: 0.5rem 0;
+      opacity: 1;
+      visibility: visible;
     }
     
     /* 修复搜索结果中的菜单显示问题 */
     .book-card .dropdown-container {
       position: relative !important;
+      z-index: 20;
     }
     
     .book-card .dropdown-menu {
       position: absolute !important;
-      right: 0 !important;
-      left: auto !important;
-      top: 100% !important;
+      right: auto !important; /* 不要固定在右侧 */
+      left: 0 !important; /* 从左侧开始 */
+      top: 28px !important; /* 固定距离，与按钮靠在一起 */
       z-index: 100 !important;
+      display: none; /* 确保初始状态是隐藏的 */
     }
     
     .book-card .dropdown-menu:not(.hidden) {
       display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+    
+    /* 确保所有下拉菜单在页面加载时都是隐藏的 */
+    .hidden {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
     }
   </style>
 </head>
@@ -293,7 +312,7 @@
             <i class="fas fa-chevron-down ml-2 text-xs"></i>
           </button>
           <!-- 筛选下拉菜单 -->
-          <div id="filter-menu" class="dropdown-menu">
+          <div id="filter-menu" class="dropdown-menu" style="display: none;">
             <div class="p-3">
               <div class="font-medium mb-2">阅读状态</div>
               <div class="space-y-2">
@@ -328,7 +347,7 @@
             <i class="fas fa-chevron-down ml-2 text-xs"></i>
           </button>
           <!-- 排序下拉菜单 -->
-          <div id="sort-menu" class="dropdown-menu">
+          <div id="sort-menu" class="dropdown-menu" style="display: none;">
             <div class="p-3">
               <div class="font-medium mb-2">排序方式</div>
               <div class="space-y-2">
@@ -457,10 +476,33 @@
     </div>
   </footer>
   
-  <!-- 先加载bookshelf.js，再加载main.js，确保bookshelf.js中的函数不被覆盖 -->
-  <script type="module" src="../js/bookshelf.js"></script>
+  <!-- 先加载main.js，再加载bookshelf.js，确保bookshelf.js中的函数可以覆盖main.js中的函数 -->
   <script type="module" src="../js/main.js"></script>
+  <script type="module" src="../js/bookshelf.js"></script>
   <script type="module" src="../js/profile-button.js"></script>
+  
+  <!-- 添加一个立即执行的内联脚本，确保所有下拉菜单在页面加载时都是隐藏的 -->
+  <script>
+    // 页面加载时立即执行
+    (function() {
+      // 确保所有下拉菜单在页面加载时都是隐藏的
+      document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.classList.add('hidden');
+        menu.style.display = 'none';
+      });
+    })();
+    
+    // 页面完全加载后执行
+    window.addEventListener('DOMContentLoaded', function() {
+      console.log('DOMContentLoaded: 确保所有下拉菜单在页面加载时都是隐藏的');
+      
+      // 确保所有下拉菜单在页面加载时都是隐藏的
+      document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.classList.add('hidden');
+        menu.style.display = 'none';
+      });
+    });
+  </script>
   
   <!-- 添加一个立即执行的内联脚本，确保关键函数被正确导出 -->
   <script>
@@ -470,6 +512,7 @@
       console.log('- performBookshelfSearch:', typeof window.performBookshelfSearch === 'function');
       console.log('- updateBookshelfDisplay:', typeof window.updateBookshelfDisplay === 'function');
       console.log('- generateBookshelfCard:', typeof window.generateBookshelfCard === 'function');
+      console.log('- addBookshelfCardListeners:', typeof window.addBookshelfCardListeners === 'function');
       
       // 如果关键函数未导出，尝试手动导出
       if (typeof window.updateBookshelfDisplay !== 'function') {
@@ -482,10 +525,17 @@
       console.log('页面完全加载完成，检查函数导出状态');
       setTimeout(checkFunctionsExported, 100);
       
+      // 确保所有下拉菜单在页面加载时处于关闭状态
+      document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.classList.remove('show');
+        menu.style.display = 'none';
+      });
+      
       // 添加全局点击事件，确保点击页面其他地方时关闭所有菜单
       document.addEventListener('click', function(e) {
-        if (!e.target.closest('.dropdown-container')) {
+        if (!e.target.closest('.dropdown-container') && !e.target.closest('#filter-btn') && !e.target.closest('#sort-btn')) {
           document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.classList.remove('show');
             menu.classList.add('hidden');
           });
         }
@@ -493,9 +543,95 @@
     });
   </script>
   
+  <!-- 添加一个新的内联脚本，确保在页面加载完成后调用addBookshelfCardListeners函数 -->
+  <script>
+    window.addEventListener('load', function() {
+      // 确保在页面加载完成后调用addBookshelfCardListeners函数
+      setTimeout(function() {
+        console.log('尝试调用addBookshelfCardListeners函数');
+        // 检查函数是否存在，并且不是循环引用
+        if (typeof window.addBookshelfCardListeners === 'function') {
+          console.log('调用addBookshelfCardListeners函数');
+          try {
+            window.addBookshelfCardListeners();
+          } catch (error) {
+            console.error('调用addBookshelfCardListeners函数时出错:', error);
+          }
+        } else {
+          console.warn('addBookshelfCardListeners函数未找到');
+        }
+        
+        // 确保三点菜单按钮可点击
+        const menuButtons = document.querySelectorAll('.card-menu-btn');
+        console.log('找到', menuButtons.length, '个菜单按钮');
+        
+        menuButtons.forEach(btn => {
+          // 移除可能存在的旧事件监听器
+          const newBtn = btn.cloneNode(true);
+          if (btn.parentNode) {
+            btn.parentNode.replaceChild(newBtn, btn);
+          }
+          
+          const dropdownMenu = newBtn.nextElementSibling;
+          if (!dropdownMenu) {
+            console.error('未找到下拉菜单元素');
+            return;
+          }
+          
+          // 确保所有下拉菜单初始状态是隐藏的
+          dropdownMenu.classList.add('hidden');
+          dropdownMenu.style.display = 'none';
+          
+          newBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            console.log('菜单按钮被点击');
+            
+            // 获取当前菜单的显示状态
+            const isHidden = dropdownMenu.classList.contains('hidden');
+            
+            // 先关闭所有菜单
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+              menu.classList.add('hidden');
+              menu.style.display = 'none';
+            });
+            
+            // 如果当前菜单是隐藏的，则显示它
+            if (isHidden) {
+              dropdownMenu.classList.remove('hidden');
+              
+              // 强制设置菜单样式
+              dropdownMenu.style.position = 'absolute';
+              dropdownMenu.style.right = 'auto';
+              dropdownMenu.style.left = '0';
+              dropdownMenu.style.top = '28px'; // 直接设置固定距离，与按钮靠在一起
+              dropdownMenu.style.zIndex = '100';
+              dropdownMenu.style.backgroundColor = 'white';
+              dropdownMenu.style.borderRadius = '0.5rem';
+              dropdownMenu.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+              dropdownMenu.style.minWidth = '150px';
+              dropdownMenu.style.display = 'block';
+              dropdownMenu.style.opacity = '1';
+              dropdownMenu.style.visibility = 'visible';
+              
+              // 确保菜单在视口内
+              const rect = dropdownMenu.getBoundingClientRect();
+              if (rect.right > window.innerWidth) {
+                dropdownMenu.style.left = 'auto';
+                dropdownMenu.style.right = '0';
+              }
+            }
+            
+            console.log('菜单状态:', dropdownMenu.classList.contains('hidden') ? '隐藏' : '显示');
+          });
+        });
+      }, 500);
+    });
+  </script>
+  
   <!-- 添加内联脚本，确保搜索功能可以正常工作 -->
   <script>
-    // 页面加载完成后执行
     document.addEventListener('DOMContentLoaded', function() {
       console.log('内联脚本: DOMContentLoaded 事件触发');
       
@@ -589,27 +725,29 @@
                   // 创建书籍网格容器
                   const booksContainer = document.createElement('div');
                   booksContainer.className = 'grid';
-                  bookshelfContent.appendChild(booksContainer);
                   
-                  // 添加搜索结果标题
+                  // 添加搜索结果标题和清除搜索按钮
                   const searchResultHeader = document.createElement('div');
-                  searchResultHeader.className = 'col-span-full mb-4';
+                  searchResultHeader.className = 'mb-4 flex items-center justify-between';
                   searchResultHeader.innerHTML = `
-                    <div class="flex items-center justify-between">
-                      <div class="text-gray-700">
-                        找到 <span class="font-medium">${searchResults.length}</span> 本匹配 "${query}" 的书籍
-                      </div>
-                      <button class="text-blue-500 hover:text-blue-700 flex items-center" onclick="window.location.reload()">
-                        <i class="fas fa-times mr-1"></i>清除搜索
-                      </button>
+                    <div class="text-gray-700">
+                      找到 <span class="font-medium">${searchResults.length}</span> 本匹配 "${query}" 的书籍
                     </div>
+                    <button class="text-blue-500 hover:text-blue-700 flex items-center" onclick="window.location.reload()">
+                      <i class="fas fa-times mr-1"></i>清除搜索
+                    </button>
                   `;
-                  booksContainer.appendChild(searchResultHeader);
+                  
+                  bookshelfContent.appendChild(searchResultHeader);
+                  bookshelfContent.appendChild(booksContainer);
                   
                   // 添加书籍卡片
                   searchResults.forEach(book => {
                     if (window.generateBookshelfCard) {
-                      const bookCard = window.generateBookshelfCard(book);
+                      const bookCardHtml = window.generateBookshelfCard(book);
+                      const tempDiv = document.createElement('div');
+                      tempDiv.innerHTML = bookCardHtml;
+                      const bookCard = tempDiv.firstElementChild;
                       booksContainer.appendChild(bookCard);
                     } else {
                       // 如果generateBookshelfCard函数未找到，使用简单的卡片
@@ -640,15 +778,15 @@
                       bookCard.className = 'book-card bg-white p-4 relative rounded-lg';
                       bookCard.dataset.bookId = bookId;
                       bookCard.innerHTML = `
-                        <div class="absolute top-2 right-2 dropdown-container" style="position: relative;">
+                        <div class="absolute top-2 left-2 dropdown-container">
                           <button class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 card-menu-btn">
                             <i class="fas fa-ellipsis-v"></i>
                           </button>
-                          <div class="dropdown-menu hidden" style="position: absolute; right: 0; left: auto; top: 100%; z-index: 100; background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 150px;">
+                          <div class="dropdown-menu hidden" style="position: absolute; left: 0; top: 28px; z-index: 100; background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 150px; padding: 0.5rem 0; display: none;">
                             <a href="book-detail.html?id=${bookId}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                               <i class="fas fa-info-circle mr-2"></i>查看详情
                             </a>
-                            <button class="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100" onclick="if(confirm('确定要从书架中移除这本书吗？')) window.location.reload()">
+                            <button class="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 remove-from-shelf-btn">
                               <i class="fas fa-times mr-2"></i>移出书架
                             </button>
                           </div>
@@ -673,103 +811,60 @@
                           
                           <div class="flex justify-between items-center mt-3">
                             <span class="inline-block ${statusClass} text-xs px-2 py-1 rounded-full">${statusLabel}</span>
-                            <button class="bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded" onclick="window.location.href='reader.html?id=${bookId}'">
+                            <button class="bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded continue-reading-btn">
                               ${status === 'reading' ? '继续阅读' : status === 'completed' ? '重新阅读' : '开始阅读'}
                             </button>
                           </div>
                         </div>
                       `;
                       booksContainer.appendChild(bookCard);
-                      
-                      // 为三点菜单添加点击事件
-                      const menuBtn = bookCard.querySelector('.card-menu-btn');
-                      const dropdownMenu = bookCard.querySelector('.dropdown-menu');
-                      if (menuBtn && dropdownMenu) {
-                        menuBtn.addEventListener('click', function(e) {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          
-                          // 切换当前菜单的显示状态
-                          dropdownMenu.classList.toggle('hidden');
-                          
-                          // 关闭所有其他打开的菜单
-                          document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                            if (menu !== dropdownMenu) {
-                              menu.classList.add('hidden');
-                            }
-                          });
-                          
-                          // 如果菜单现在是显示状态，确保样式正确
-                          if (!dropdownMenu.classList.contains('hidden')) {
-                            // 确保菜单在正确的位置显示
-                            dropdownMenu.style.position = 'absolute';
-                            dropdownMenu.style.right = '0';
-                            dropdownMenu.style.left = 'auto';
-                            dropdownMenu.style.top = '100%';
-                            dropdownMenu.style.zIndex = '100';
-                            dropdownMenu.style.backgroundColor = 'white';
-                            dropdownMenu.style.borderRadius = '0.5rem';
-                            dropdownMenu.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-                            dropdownMenu.style.minWidth = '150px';
-                            dropdownMenu.style.display = 'block';
-                          }
-                        });
-                      }
-                      
-                      // 将卡片添加到DOM后再次确认事件绑定
-                      setTimeout(() => {
-                        const addedMenuBtn = bookCard.querySelector('.card-menu-btn');
-                        if (addedMenuBtn) {
-                          console.log('确认菜单按钮已添加到DOM');
-                          // 移除旧事件，重新绑定
-                          const newMenuBtn = addedMenuBtn.cloneNode(true);
-                          addedMenuBtn.parentNode.replaceChild(newMenuBtn, addedMenuBtn);
-                          
-                          const addedDropdownMenu = bookCard.querySelector('.dropdown-menu');
-                          newMenuBtn.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            
-                            // 切换当前菜单的显示状态
-                            addedDropdownMenu.classList.toggle('hidden');
-                            
-                            // 关闭所有其他打开的菜单
-                            document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                              if (menu !== addedDropdownMenu) {
-                                menu.classList.add('hidden');
-                              }
-                            });
-                            
-                            // 如果菜单现在是显示状态，确保样式正确
-                            if (!addedDropdownMenu.classList.contains('hidden')) {
-                              // 确保菜单在正确的位置显示
-                              addedDropdownMenu.style.position = 'absolute';
-                              addedDropdownMenu.style.right = '0';
-                              addedDropdownMenu.style.left = 'auto';
-                              addedDropdownMenu.style.top = '100%';
-                              addedDropdownMenu.style.zIndex = '100';
-                              addedDropdownMenu.style.backgroundColor = 'white';
-                              addedDropdownMenu.style.borderRadius = '0.5rem';
-                              addedDropdownMenu.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-                              addedDropdownMenu.style.minWidth = '150px';
-                              addedDropdownMenu.style.display = 'block';
-                            }
-                          });
-                        }
-                      }, 100);
                     }
                   });
                   
                   // 添加事件监听器
-                  if (window.attachBookCardEventListeners) {
-                    window.attachBookCardEventListeners();
+                  if (window.addBookshelfCardListeners) {
+                    window.addBookshelfCardListeners();
                   }
                 }
               }
             };
+            
+            // 添加搜索按钮点击事件
+            searchButton.addEventListener('click', function() {
+              const query = searchInput.value.trim();
+              window.performBookshelfSearch(query);
+            });
+            
+            // 添加输入框回车事件
+            searchInput.addEventListener('keypress', function(e) {
+              if (e.key === 'Enter') {
+                const query = searchInput.value.trim();
+                window.performBookshelfSearch(query);
+              }
+            });
           }
         } else {
           console.log('performBookshelfSearch 函数已加载');
+          
+          // 确保搜索按钮和输入框有事件监听器
+          const searchInput = document.getElementById('search-input');
+          const searchButton = document.getElementById('search-button');
+          
+          if (searchInput && searchButton) {
+            // 添加搜索按钮点击事件
+            searchButton.addEventListener('click', function() {
+              const query = searchInput.value.trim();
+              window.performBookshelfSearch(query);
+            });
+            
+            // 添加输入框回车事件
+            searchInput.addEventListener('keypress', function(e) {
+              if (e.key === 'Enter') {
+                const query = searchInput.value.trim();
+                window.performBookshelfSearch(query);
+              }
+            });
+          }
         }
       }, 500); // 等待500毫秒，确保模块脚本已加载
     });

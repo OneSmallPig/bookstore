@@ -101,6 +101,16 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // 初始化社区页面
   initCommunityPage();
+  
+  // 添加全局点击事件，确保点击页面其他地方时关闭所有菜单
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.dropdown-container') && !e.target.closest('.card-menu-btn')) {
+      document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.classList.add('hidden');
+        menu.style.display = 'none';
+      });
+    }
+  });
 });
 
 // 智能搜索功能
@@ -369,13 +379,38 @@ function generateBookCard(book, isInBookshelf = false) {
 // 初始化书架页面
 function initBookshelfPage() {
   const bookshelfContainer = document.querySelector('.bookshelf-container');
-  if (!bookshelfContainer) return;
+  if (!bookshelfContainer) {
+    console.log('未找到书架容器，跳过书架页面初始化');
+    return;
+  }
+  
+  console.log('初始化书架页面');
+  
+  // 检查是否有bookshelf.js中的函数
+  if (window.updateBookshelfDisplay) {
+    console.log('使用bookshelf.js中的函数');
+    // 如果bookshelf.js已加载，使用其函数
+    window.updateBookshelfDisplay();
+    return;
+  }
   
   // 加载用户书架
-  loadUserBookshelf();
+  loadUserBookshelf().then(books => {
+    if (books && books.length > 0) {
+      console.log('书架加载成功，添加事件监听器');
+      // 确保添加事件监听器
+      setTimeout(() => {
+        addBookshelfCardListeners();
+        console.log('书架卡片事件监听器已添加');
+      }, 100);
+    }
+  });
   
   // 初始化书架搜索功能
   initBookshelfSearch();
+  
+  // 初始化筛选和排序功能
+  initFilterAndSort();
 }
 
 // 初始化书架搜索功能
@@ -453,18 +488,44 @@ function updateBookshelfDisplay(books, searchQuery = '') {
   if (books.length === 0) {
     bookshelfContent.innerHTML = `
       <div class="text-center py-8">
-        ${searchQuery ? `没有找到匹配 "${searchQuery}" 的书籍` : '您的书架还没有书籍'}
+        ${searchQuery ? `
+          <div class="text-gray-500 mb-4">
+            <i class="fas fa-search fa-3x mb-3"></i>
+            <p class="text-xl font-medium">没有找到匹配 "${searchQuery}" 的书籍</p>
+          </div>
+          <button class="bg-blue-500 text-white px-4 py-2 rounded-lg" onclick="window.location.reload()">
+            <i class="fas fa-times mr-2"></i>清除搜索
+          </button>
+        ` : '您的书架还没有书籍'}
       </div>
     `;
     return;
   }
   
   // 更新书架内容
-  bookshelfContent.innerHTML = `
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      ${books.map(book => generateBookshelfCard(book)).join('')}
-    </div>
-  `;
+  if (searchQuery) {
+    // 如果是搜索结果，添加搜索结果标题和清除搜索按钮
+    bookshelfContent.innerHTML = `
+      <div class="mb-4 flex items-center justify-between">
+        <div class="text-gray-700">
+          找到 <span class="font-medium">${books.length}</span> 本匹配 "${searchQuery}" 的书籍
+        </div>
+        <button class="text-blue-500 hover:text-blue-700 flex items-center" onclick="window.location.reload()">
+          <i class="fas fa-times mr-1"></i>清除搜索
+        </button>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        ${books.map(book => generateBookshelfCard(book)).join('')}
+      </div>
+    `;
+  } else {
+    // 如果不是搜索结果，只显示书籍
+    bookshelfContent.innerHTML = `
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        ${books.map(book => generateBookshelfCard(book)).join('')}
+      </div>
+    `;
+  }
   
   // 添加事件监听器
   addBookshelfCardListeners();
@@ -473,64 +534,77 @@ function updateBookshelfDisplay(books, searchQuery = '') {
 // 生成书架卡片HTML
 function generateBookshelfCard(book) {
   // 如果bookshelf.js中已经定义了这个函数，则使用那个版本
-  if (window.generateBookshelfCard) {
+  // 但要避免递归调用自己
+  if (window.generateBookshelfCard && window.generateBookshelfCard !== generateBookshelfCard) {
     return window.generateBookshelfCard(book);
   }
   
   console.log('生成书架卡片:', book);
   
-  // 确保我们有正确的书籍ID
-  const bookId = book.id || book.bookId || book.book_id || '';
+  // 确保我们有正确的书籍数据结构
+  const bookInfo = book.Book || book;
+  const progress = book.progress || 0;
+  const status = book.status || 'toRead';
   
-  // 处理阅读进度
-  const progress = book.readingProgress || 0;
-  const statusClass = progress === 100 ? 'bg-green-100 text-green-800' : 
-                      progress > 0 ? 'bg-blue-100 text-blue-800' : 
-                      'bg-gray-100 text-gray-800';
-  const statusText = progress === 100 ? '已读完' : 
-                     progress > 0 ? '阅读中' : 
-                     '未读';
-  const actionText = progress === 100 ? '重新阅读' : 
-                     progress > 0 ? '继续阅读' : 
-                     '开始阅读';
+  // 获取书籍信息
+  const bookId = bookInfo.id || book.bookId || '';
+  const title = bookInfo.title || '未知标题';
+  const author = bookInfo.author || '未知作者';
+  const cover = bookInfo.coverUrl || bookInfo.cover || '../images/default-cover.jpg';
   
-  // 处理封面图片
-  const coverImage = book.coverImage || book.cover_image || '';
+  // 根据状态设置标签
+  let statusLabel = '';
+  let statusClass = '';
+  
+  if (status === 'reading') {
+    statusLabel = '阅读中';
+    statusClass = 'bg-blue-100 text-blue-800';
+  } else if (status === 'completed' || status === 'finished') {
+    statusLabel = '已完成';
+    statusClass = 'bg-green-100 text-green-800';
+  } else {
+    statusLabel = '未读';
+    statusClass = 'bg-yellow-100 text-yellow-800';
+  }
   
   return `
-    <div class="book-card bg-white p-4 relative" data-book-id="${bookId}">
-      <div class="flex flex-col items-center mb-4">
-        <img src="${coverImage || 'https://via.placeholder.com/150x225/3b82f6/ffffff?text=' + encodeURIComponent(book.title)}" 
-             alt="${book.title}" class="book-cover w-32 h-48 mb-3">
-        <div class="text-center">
-          <h3 class="font-bold">${book.title}</h3>
-          <p class="text-gray-600 text-sm">${book.author}</p>
+    <div class="book-card bg-white p-4 relative rounded-lg" data-book-id="${bookId}" data-status="${status}" data-progress="${progress}">
+      <div class="absolute top-2 left-2 dropdown-container">
+        <button class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 card-menu-btn">
+          <i class="fas fa-ellipsis-v"></i>
+        </button>
+        <div class="dropdown-menu hidden" style="position: absolute; left: 0; top: 28px; z-index: 100; background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 150px; padding: 0.5rem 0; display: none;">
+          <a href="book-detail.html?id=${bookId}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            <i class="fas fa-info-circle mr-2"></i>查看详情
+          </a>
+          <button class="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 remove-from-shelf-btn">
+            <i class="fas fa-times mr-2"></i>移出书架
+          </button>
         </div>
       </div>
       
-      <div class="mt-2">
+      <div class="flex flex-col items-center">
+        <img src="${cover}" alt="${title}" class="book-cover w-32 h-48 mb-3 object-cover rounded">
+        <div class="text-center mb-4">
+          <h3 class="font-bold">${title}</h3>
+          <p class="text-gray-600 text-sm">${author}</p>
+        </div>
+      </div>
+      
+      <div class="mt-auto pt-3 border-t border-gray-100">
         <div class="flex justify-between text-sm text-gray-500 mb-1">
           <span>阅读进度</span>
           <span>${progress}%</span>
         </div>
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: ${progress}%"></div>
+        <div class="bg-gray-200 rounded-full h-2 overflow-hidden mb-3">
+          <div class="bg-blue-500 h-full" style="width: ${progress}%"></div>
         </div>
-      </div>
-      
-      <div class="mt-4 flex justify-between">
-        <span class="inline-block ${statusClass} text-xs px-2 py-1 rounded-full">${statusText}</span>
-        <button class="btn-primary text-sm py-1 px-3 read-book-btn" data-book-id="${bookId}">${actionText}</button>
-      </div>
-      
-      <div class="mt-3 pt-2 border-t border-gray-100">
-        <div class="flex justify-between items-center">
-          <button class="text-red-500 hover:text-red-600 text-sm py-1 px-2 rounded flex items-center remove-from-shelf-btn">
-            <i class="fas fa-times mr-1"></i>移出书架
+        
+        <div class="flex justify-between items-center mt-3">
+          <span class="inline-block ${statusClass} text-xs px-2 py-1 rounded-full">${statusLabel}</span>
+          <button class="bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded continue-reading-btn">
+            ${status === 'reading' ? '继续阅读' : status === 'completed' ? '重新阅读' : '开始阅读'}
           </button>
-          <a href="book-detail.html?id=${bookId}" class="text-blue-500 hover:text-blue-600 text-sm py-1 px-2 rounded flex items-center">
-            <i class="fas fa-info-circle mr-1"></i>详情
-          </a>
         </div>
       </div>
     </div>
@@ -540,17 +614,20 @@ function generateBookshelfCard(book) {
 // 添加书架卡片事件监听器
 function addBookshelfCardListeners() {
   // 如果bookshelf.js中已经定义了这个函数，则使用那个版本
-  if (window.attachBookCardEventListeners) {
+  // 但要避免递归调用自己
+  if (window.attachBookCardEventListeners && window.attachBookCardEventListeners !== addBookshelfCardListeners) {
     window.attachBookCardEventListeners();
     return;
   }
   
   // 阅读按钮点击事件
-  const readButtons = document.querySelectorAll('.read-book-btn');
+  const readButtons = document.querySelectorAll('.continue-reading-btn');
   readButtons.forEach(button => {
     button.addEventListener('click', (e) => {
       e.preventDefault();
-      const bookId = button.getAttribute('data-book-id');
+      const bookCard = button.closest('.book-card');
+      const bookId = bookCard ? bookCard.dataset.bookId : null;
+      
       if (bookId) {
         window.location.href = `reader.html?id=${bookId}`;
       }
@@ -592,16 +669,92 @@ function addBookshelfCardListeners() {
     });
   });
   
+  // 三点菜单按钮点击事件
+  const menuButtons = document.querySelectorAll('.card-menu-btn');
+  console.log('找到', menuButtons.length, '个菜单按钮');
+  
+  menuButtons.forEach(btn => {
+    // 移除可能存在的旧事件监听器
+    const newBtn = btn.cloneNode(true);
+    if (btn.parentNode) {
+      btn.parentNode.replaceChild(newBtn, btn);
+    }
+    
+    const dropdownMenu = newBtn.nextElementSibling;
+    if (!dropdownMenu) {
+      console.error('未找到下拉菜单元素');
+      return;
+    }
+    
+    // 确保所有下拉菜单初始状态是隐藏的
+    dropdownMenu.classList.add('hidden');
+    dropdownMenu.style.display = 'none';
+    
+    newBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      
+      console.log('菜单按钮被点击');
+      
+      // 获取当前菜单的显示状态
+      const isHidden = dropdownMenu.classList.contains('hidden');
+      
+      // 先关闭所有菜单
+      document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.classList.add('hidden');
+        menu.style.display = 'none';
+      });
+      
+      // 如果当前菜单是隐藏的，则显示它
+      if (isHidden) {
+        dropdownMenu.classList.remove('hidden');
+        
+        // 强制设置菜单样式
+        dropdownMenu.style.position = 'absolute';
+        dropdownMenu.style.right = 'auto';
+        dropdownMenu.style.left = '0';
+        dropdownMenu.style.top = '28px'; // 直接设置固定距离，与按钮靠在一起
+        dropdownMenu.style.zIndex = '100';
+        dropdownMenu.style.backgroundColor = 'white';
+        dropdownMenu.style.borderRadius = '0.5rem';
+        dropdownMenu.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+        dropdownMenu.style.minWidth = '150px';
+        dropdownMenu.style.display = 'block';
+        dropdownMenu.style.padding = '0.5rem 0';
+        dropdownMenu.style.opacity = '1';
+        dropdownMenu.style.visibility = 'visible';
+        
+        // 确保菜单在视口内
+        const rect = dropdownMenu.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+          dropdownMenu.style.left = 'auto';
+          dropdownMenu.style.right = '0';
+        }
+      }
+      
+      console.log('菜单状态:', dropdownMenu.classList.contains('hidden') ? '隐藏' : '显示');
+    });
+  });
+  
+  // 点击页面其他地方关闭所有菜单
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.dropdown-container')) {
+      document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.classList.add('hidden');
+      });
+    }
+  });
+  
   // 书籍卡片点击事件（跳转到详情页）
   const bookCards = document.querySelectorAll('.book-card');
   bookCards.forEach(card => {
     card.addEventListener('click', (e) => {
       // 如果点击的是按钮或链接，不处理
-      if (e.target.closest('button') || e.target.closest('a')) {
+      if (e.target.closest('button') || e.target.closest('a') || e.target.closest('.dropdown-container')) {
         return;
       }
       
-      const bookId = card.getAttribute('data-book-id');
+      const bookId = card.dataset.bookId;
       if (bookId) {
         window.location.href = `book-detail.html?id=${bookId}`;
       }
@@ -1151,11 +1304,177 @@ function initProfileButton() {
   });
 }
 
-// 导出函数
-export {
-  loadUserBookshelf,
-  displayBookshelf,
-  generateBookshelfCard,
-  updateBookshelfStats,
-  addBookshelfCardListeners
-}; 
+// 初始化筛选和排序功能
+function initFilterAndSort() {
+  // 筛选按钮
+  const filterButtons = document.querySelectorAll('.filter-btn');
+  if (filterButtons.length > 0) {
+    filterButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const filter = button.getAttribute('data-filter');
+        
+        // 更新按钮状态
+        filterButtons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        
+        // 如果bookshelf.js中有applyFilter函数，则使用它
+        if (window.applyFilter) {
+          window.applyFilter(filter);
+          return;
+        }
+        
+        // 否则使用main.js中的实现
+        applyFilter(filter);
+      });
+    });
+  }
+  
+  // 排序下拉菜单
+  const sortSelect = document.querySelector('.sort-select');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', () => {
+      const sortBy = sortSelect.value;
+      
+      // 如果bookshelf.js中有applySorting函数，则使用它
+      if (window.applySorting) {
+        window.applySorting(sortBy);
+        return;
+      }
+      
+      // 否则使用main.js中的实现
+      applySorting(sortBy);
+    });
+  }
+}
+
+// 应用筛选
+function applyFilter(filter) {
+  console.log('应用筛选:', filter);
+  
+  // 获取所有书籍卡片
+  const bookCards = document.querySelectorAll('.book-card');
+  
+  // 如果没有书籍卡片，直接返回
+  if (!bookCards.length) return;
+  
+  // 遍历所有书籍卡片
+  bookCards.forEach(card => {
+    const status = card.getAttribute('data-status');
+    
+    if (filter === 'all') {
+      // 显示所有书籍
+      card.style.display = '';
+    } else if (filter === status) {
+      // 显示匹配筛选条件的书籍
+      card.style.display = '';
+    } else {
+      // 隐藏不匹配筛选条件的书籍
+      card.style.display = 'none';
+    }
+  });
+  
+  // 检查是否有显示的书籍
+  const visibleCards = document.querySelectorAll('.book-card[style="display: "]');
+  const emptyMessage = document.querySelector('.empty-message');
+  
+  if (visibleCards.length === 0) {
+    // 如果没有显示的书籍，显示空状态消息
+    if (!emptyMessage) {
+      const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
+      if (bookshelfContent) {
+        bookshelfContent.innerHTML += `
+          <div class="empty-message text-center py-8">
+            没有符合条件的书籍
+          </div>
+        `;
+      }
+    } else {
+      emptyMessage.style.display = '';
+    }
+  } else if (emptyMessage) {
+    // 如果有显示的书籍，隐藏空状态消息
+    emptyMessage.style.display = 'none';
+  }
+}
+
+// 应用排序
+function applySorting(sortBy) {
+  console.log('应用排序:', sortBy);
+  
+  // 获取书架内容容器
+  const bookshelfContent = document.querySelector('.category-content[data-category="all"] .grid');
+  if (!bookshelfContent) return;
+  
+  // 获取所有书籍卡片
+  const bookCards = Array.from(bookshelfContent.querySelectorAll('.book-card'));
+  
+  // 如果没有书籍卡片，直接返回
+  if (!bookCards.length) return;
+  
+  // 根据排序条件对书籍卡片进行排序
+  bookCards.sort((a, b) => {
+    const titleA = a.querySelector('h3').textContent.toLowerCase();
+    const titleB = b.querySelector('h3').textContent.toLowerCase();
+    const authorA = a.querySelector('p').textContent.toLowerCase();
+    const authorB = b.querySelector('p').textContent.toLowerCase();
+    const progressA = parseInt(a.getAttribute('data-progress') || '0');
+    const progressB = parseInt(b.getAttribute('data-progress') || '0');
+    const dateAddedA = new Date(a.getAttribute('data-added') || 0);
+    const dateAddedB = new Date(b.getAttribute('data-added') || 0);
+    
+    switch (sortBy) {
+      case 'title-asc':
+        return titleA.localeCompare(titleB);
+      case 'title-desc':
+        return titleB.localeCompare(titleA);
+      case 'author-asc':
+        return authorA.localeCompare(authorB);
+      case 'author-desc':
+        return authorB.localeCompare(authorA);
+      case 'progress-asc':
+        return progressA - progressB;
+      case 'progress-desc':
+        return progressB - progressA;
+      case 'date-added-asc':
+        return dateAddedA - dateAddedB;
+      case 'date-added-desc':
+        return dateAddedB - dateAddedA;
+      default:
+        return 0;
+    }
+  });
+  
+  // 重新排列书籍卡片
+  bookCards.forEach(card => {
+    bookshelfContent.appendChild(card);
+  });
+}
+
+// 导出函数到window对象
+// 保存原始函数的引用，避免循环引用
+const mainJsGenerateBookshelfCard = generateBookshelfCard;
+const mainJsAddBookshelfCardListeners = addBookshelfCardListeners;
+
+// 只有在window对象上没有这些函数时才导出
+if (!window.generateBookshelfCard) {
+  window.generateBookshelfCard = mainJsGenerateBookshelfCard;
+}
+if (!window.addBookshelfCardListeners) {
+  window.addBookshelfCardListeners = mainJsAddBookshelfCardListeners;
+}
+if (!window.attachBookCardEventListeners) {
+  window.attachBookCardEventListeners = mainJsAddBookshelfCardListeners;
+}
+
+// 其他函数可以直接导出，因为它们不会导致循环引用
+window.loadUserBookshelf = loadUserBookshelf;
+window.displayBookshelf = displayBookshelf;
+window.updateBookshelfStats = updateBookshelfStats;
+window.performBookshelfSearch = performBookshelfSearch;
+window.applyFilter = applyFilter;
+window.applySorting = applySorting;
+
+// 确保在页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('main.js DOMContentLoaded 事件触发');
+}); 

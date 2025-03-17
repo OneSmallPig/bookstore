@@ -159,6 +159,9 @@ function initFilterDropdown() {
     return;
   }
   
+  // 确保下拉菜单初始状态为关闭
+  filterMenu.classList.remove('show');
+  
   // 移除可能存在的旧事件监听器
   const newFilterBtn = filterBtn.cloneNode(true);
   filterBtn.parentNode.replaceChild(newFilterBtn, filterBtn);
@@ -167,6 +170,10 @@ function initFilterDropdown() {
   newFilterBtn.onclick = function(e) {
     e.stopPropagation(); // 阻止事件冒泡
     filterMenu.classList.toggle('show');
+    
+    // 关闭排序菜单
+    const sortMenu = document.getElementById('sort-menu');
+    if (sortMenu) sortMenu.classList.remove('show');
   };
   
   // 点击应用筛选按钮
@@ -208,6 +215,9 @@ function initSortDropdown() {
     return;
   }
   
+  // 确保下拉菜单初始状态为关闭
+  sortMenu.classList.remove('show');
+  
   // 移除可能存在的旧事件监听器
   const newSortBtn = sortBtn.cloneNode(true);
   sortBtn.parentNode.replaceChild(newSortBtn, sortBtn);
@@ -216,6 +226,10 @@ function initSortDropdown() {
   newSortBtn.onclick = function(e) {
     e.stopPropagation(); // 阻止事件冒泡
     sortMenu.classList.toggle('show');
+    
+    // 关闭筛选菜单
+    const filterMenu = document.getElementById('filter-menu');
+    if (filterMenu) filterMenu.classList.remove('show');
   };
   
   // 点击排序选项
