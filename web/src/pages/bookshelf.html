@@ -199,6 +199,7 @@
     .book-card .dropdown-menu {
       position: absolute !important;
       right: 0 !important;
+      left: auto !important;
       top: 100% !important;
       z-index: 100 !important;
     }
@@ -643,7 +644,7 @@
                           <button class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 card-menu-btn">
                             <i class="fas fa-ellipsis-v"></i>
                           </button>
-                          <div class="dropdown-menu hidden" style="position: absolute; right: 0; top: 100%; z-index: 100; background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 150px;">
+                          <div class="dropdown-menu hidden" style="position: absolute; right: 0; left: auto; top: 100%; z-index: 100; background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 150px;">
                             <a href="book-detail.html?id=${bookId}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                               <i class="fas fa-info-circle mr-2"></i>查看详情
                             </a>
@@ -688,6 +689,9 @@
                           e.stopPropagation();
                           e.preventDefault();
                           
+                          // 切换当前菜单的显示状态
+                          dropdownMenu.classList.toggle('hidden');
+                          
                           // 关闭所有其他打开的菜单
                           document.querySelectorAll('.dropdown-menu').forEach(menu => {
                             if (menu !== dropdownMenu) {
@@ -695,14 +699,12 @@
                             }
                           });
                           
-                          // 切换当前菜单的显示状态
-                          dropdownMenu.classList.toggle('hidden');
-                          
-                          // 确保菜单在正确的位置显示
+                          // 如果菜单现在是显示状态，确保样式正确
                           if (!dropdownMenu.classList.contains('hidden')) {
-                            // 强制设置菜单样式
+                            // 确保菜单在正确的位置显示
                             dropdownMenu.style.position = 'absolute';
                             dropdownMenu.style.right = '0';
+                            dropdownMenu.style.left = 'auto';
                             dropdownMenu.style.top = '100%';
                             dropdownMenu.style.zIndex = '100';
                             dropdownMenu.style.backgroundColor = 'white';
@@ -711,13 +713,6 @@
                             dropdownMenu.style.minWidth = '150px';
                             dropdownMenu.style.display = 'block';
                           }
-                          
-                          console.log('菜单点击事件触发', dropdownMenu.classList.contains('hidden') ? '菜单已隐藏' : '菜单已显示');
-                          console.log('菜单样式:', {
-                            position: dropdownMenu.style.position,
-                            display: dropdownMenu.style.display,
-                            zIndex: dropdownMenu.style.zIndex
-                          });
                         });
                       }
                       
@@ -735,6 +730,9 @@
                             e.stopPropagation();
                             e.preventDefault();
                             
+                            // 切换当前菜单的显示状态
+                            addedDropdownMenu.classList.toggle('hidden');
+                            
                             // 关闭所有其他打开的菜单
                             document.querySelectorAll('.dropdown-menu').forEach(menu => {
                               if (menu !== addedDropdownMenu) {
@@ -742,14 +740,12 @@
                               }
                             });
                             
-                            // 切换当前菜单的显示状态
-                            addedDropdownMenu.classList.toggle('hidden');
-                            
-                            // 确保菜单在正确的位置显示
+                            // 如果菜单现在是显示状态，确保样式正确
                             if (!addedDropdownMenu.classList.contains('hidden')) {
-                              // 强制设置菜单样式
+                              // 确保菜单在正确的位置显示
                               addedDropdownMenu.style.position = 'absolute';
                               addedDropdownMenu.style.right = '0';
+                              addedDropdownMenu.style.left = 'auto';
                               addedDropdownMenu.style.top = '100%';
                               addedDropdownMenu.style.zIndex = '100';
                               addedDropdownMenu.style.backgroundColor = 'white';
@@ -758,13 +754,6 @@
                               addedDropdownMenu.style.minWidth = '150px';
                               addedDropdownMenu.style.display = 'block';
                             }
-                            
-                            console.log('重新绑定的菜单事件触发', addedDropdownMenu.classList.contains('hidden') ? '菜单已隐藏' : '菜单已显示');
-                            console.log('菜单样式:', {
-                              position: addedDropdownMenu.style.position,
-                              display: addedDropdownMenu.style.display,
-                              zIndex: addedDropdownMenu.style.zIndex
-                            });
                           });
                         }
                       }, 100);

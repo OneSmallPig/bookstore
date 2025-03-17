@@ -969,7 +969,7 @@ function generateBookshelfCard(bookData) {
       <button class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 card-menu-btn">
         <i class="fas fa-ellipsis-v"></i>
       </button>
-      <div class="dropdown-menu hidden" style="position: absolute; right: 0; top: 100%; z-index: 100; background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 150px; padding: 0.5rem 0;">
+      <div class="dropdown-menu hidden" style="position: absolute; right: 0; left: auto; top: 100%; z-index: 100; background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 150px; padding: 0.5rem 0;">
         <a href="book-detail.html?id=${bookId}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
           <i class="fas fa-info-circle mr-2"></i>查看详情
         </a>
@@ -1086,6 +1086,9 @@ function attachBookCardEventListeners() {
       
       console.log('菜单按钮被点击');
       
+      // 切换当前菜单的显示状态
+      dropdownMenu.classList.toggle('hidden');
+      
       // 关闭所有其他打开的菜单
       document.querySelectorAll('.dropdown-menu').forEach(menu => {
         if (menu !== dropdownMenu) {
@@ -1093,14 +1096,12 @@ function attachBookCardEventListeners() {
         }
       });
       
-      // 切换当前菜单的显示状态
-      dropdownMenu.classList.toggle('hidden');
-      
-      // 确保菜单在正确的位置显示
+      // 如果菜单现在是显示状态，确保样式正确
       if (!dropdownMenu.classList.contains('hidden')) {
         // 强制设置菜单样式
         dropdownMenu.style.position = 'absolute';
         dropdownMenu.style.right = '0';
+        dropdownMenu.style.left = 'auto';
         dropdownMenu.style.top = '100%';
         dropdownMenu.style.zIndex = '100';
         dropdownMenu.style.backgroundColor = 'white';
