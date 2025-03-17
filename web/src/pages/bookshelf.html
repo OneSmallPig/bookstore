@@ -351,8 +351,6 @@
   
   <!-- 调试脚本 -->
   <script>
-    console.log('调试脚本已加载');
-    
     // 模拟数据，用于在API不可用时进行测试
     const mockBooks = [
       {
@@ -395,10 +393,7 @@
     
     // 定义一个内联的搜索函数作为备份
     window.inlinePerformSearch = function(query) {
-      console.log('内联搜索函数被调用，关键词:', query);
-      
       if (!query) {
-        console.log('搜索关键词为空，显示所有书籍');
         displayAllBooks();
         return;
       }
@@ -406,7 +401,6 @@
       // 显示加载状态
       const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
       if (bookshelfContent) {
-        console.log('显示搜索加载状态');
         bookshelfContent.innerHTML = `
           <div class="text-center py-8">
             <i class="fas fa-spinner fa-spin mr-2"></i> 搜索中...
@@ -415,33 +409,27 @@
         
         // 如果模块中的搜索函数可用，则使用它
         if (window.performBookshelfSearch) {
-          console.log('使用模块搜索函数');
           try {
             window.performBookshelfSearch(query);
           } catch (error) {
-            console.error('模块搜索函数执行失败:', error);
             // 使用本地搜索作为备份
             setTimeout(function() {
               performLocalSearch(query);
             }, 500);
           }
         } else {
-          console.log('模块搜索函数未定义，使用内联搜索');
           // 使用本地搜索
           setTimeout(function() {
             performLocalSearch(query);
           }, 500);
         }
       } else {
-        console.error('未找到书架内容容器');
         alert('未找到书架内容容器，请刷新页面重试');
       }
     };
     
     // 本地搜索函数
     function performLocalSearch(query) {
-      console.log('执行本地搜索，关键词:', query);
-      
       // 使用模拟数据或window.currentBookshelfData
       const booksToSearch = window.currentBookshelfData || mockBooks;
       
@@ -457,8 +445,6 @@
                author.includes(searchQuery) || 
                description.includes(searchQuery);
       });
-      
-      console.log('搜索结果:', searchResults);
       
       // 显示搜索结果
       displaySearchResults(searchResults, query);
@@ -652,29 +638,17 @@
     
     // 页面加载完成后执行
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('页面已完全加载');
-      
       // 检查搜索元素
       const searchInput = document.getElementById('search-input');
       const searchButton = document.getElementById('search-button');
       
-      console.log('搜索输入框:', searchInput);
-      console.log('搜索按钮:', searchButton);
-      
       // 等待一小段时间，确保模块脚本已加载完成
       setTimeout(function() {
-        console.log('检查全局函数是否可用:', {
-          performBookshelfSearch: typeof window.performBookshelfSearch === 'function'
-        });
-        
         // 直接添加事件监听器
         if (searchButton) {
-          console.log('为搜索按钮添加点击事件');
           searchButton.addEventListener('click', function(e) {
             e.preventDefault();
-            console.log('搜索按钮被点击（内联脚本）');
             const query = searchInput ? searchInput.value.trim() : '';
-            console.log('搜索关键词:', query);
             
             // 调用内联搜索函数
             window.inlinePerformSearch(query);
@@ -683,13 +657,10 @@
         
         // 为输入框添加回车事件
         if (searchInput) {
-          console.log('为搜索输入框添加回车事件');
           searchInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
               e.preventDefault();
-              console.log('搜索输入框回车键被按下（内联脚本）');
               const query = searchInput.value.trim();
-              console.log('搜索关键词:', query);
               
               // 调用内联搜索函数
               window.inlinePerformSearch(query);
@@ -700,21 +671,15 @@
         // 手动添加添加书籍按钮的事件监听器
         const addBookBtn = document.getElementById('add-book-btn');
         if (addBookBtn) {
-          console.log('为添加书籍按钮添加点击事件（内联脚本）');
           addBookBtn.addEventListener('click', function() {
-            console.log('添加书籍按钮被点击，准备跳转到智能搜索页面');
             window.location.href = '../pages/search.html';
           });
-        } else {
-          console.log('未找到添加书籍按钮');
         }
         
         // 同样修改空书架状态下的添加书籍按钮
         const emptyStateAddBtn = document.getElementById('add-book-btn-empty');
         if (emptyStateAddBtn) {
-          console.log('为空状态添加书籍按钮添加点击事件（内联脚本）');
           emptyStateAddBtn.addEventListener('click', function() {
-            console.log('空状态添加书籍按钮被点击，准备跳转到智能搜索页面');
             window.location.href = '../pages/search.html';
           });
         }
@@ -722,9 +687,7 @@
         // 修改空状态下的添加第一本书按钮
         const addFirstBookBtn = document.getElementById('add-first-book-btn');
         if (addFirstBookBtn) {
-          console.log('为添加第一本书按钮添加点击事件（内联脚本）');
           addFirstBookBtn.addEventListener('click', function() {
-            console.log('添加第一本书按钮被点击，准备跳转到智能搜索页面');
             window.location.href = '../pages/search.html';
           });
         }
