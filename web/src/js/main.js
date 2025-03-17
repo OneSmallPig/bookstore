@@ -472,6 +472,11 @@ function updateBookshelfDisplay(books, searchQuery = '') {
 
 // 生成书架卡片HTML
 function generateBookshelfCard(book) {
+  // 如果bookshelf.js中已经定义了这个函数，则使用那个版本
+  if (window.generateBookshelfCard) {
+    return window.generateBookshelfCard(book);
+  }
+  
   console.log('生成书架卡片:', book);
   
   // 确保我们有正确的书籍ID
@@ -494,12 +499,6 @@ function generateBookshelfCard(book) {
   
   return `
     <div class="book-card bg-white p-4 relative" data-book-id="${bookId}">
-      <div class="absolute top-4 right-4 flex space-x-2">
-        <button class="text-gray-400 hover:text-gray-600 book-options-btn">
-          <i class="fas fa-ellipsis-h"></i>
-        </button>
-      </div>
-      
       <div class="flex flex-col items-center mb-4">
         <img src="${coverImage || 'https://via.placeholder.com/150x225/3b82f6/ffffff?text=' + encodeURIComponent(book.title)}" 
              alt="${book.title}" class="book-cover w-32 h-48 mb-3">
@@ -523,26 +522,85 @@ function generateBookshelfCard(book) {
         <span class="inline-block ${statusClass} text-xs px-2 py-1 rounded-full">${statusText}</span>
         <button class="btn-primary text-sm py-1 px-3 read-book-btn" data-book-id="${bookId}">${actionText}</button>
       </div>
+      
+      <div class="mt-3 pt-2 border-t border-gray-100">
+        <div class="flex justify-between items-center">
+          <button class="text-red-500 hover:text-red-600 text-sm py-1 px-2 rounded flex items-center remove-from-shelf-btn">
+            <i class="fas fa-times mr-1"></i>移出书架
+          </button>
+          <a href="book-detail.html?id=${bookId}" class="text-blue-500 hover:text-blue-600 text-sm py-1 px-2 rounded flex items-center">
+            <i class="fas fa-info-circle mr-1"></i>详情
+          </a>
+        </div>
+      </div>
     </div>
   `;
 }
 
 // 添加书架卡片事件监听器
 function addBookshelfCardListeners() {
+  // 如果bookshelf.js中已经定义了这个函数，则使用那个版本
+  if (window.attachBookCardEventListeners) {
+    window.attachBookCardEventListeners();
+    return;
+  }
+  
   // 阅读按钮点击事件
-  document.querySelectorAll('.read-book-btn').forEach(button => {
+  const readButtons = document.querySelectorAll('.read-book-btn');
+  readButtons.forEach(button => {
     button.addEventListener('click', (e) => {
-      e.stopPropagation();
+      e.preventDefault();
       const bookId = button.getAttribute('data-book-id');
       if (bookId) {
-        window.location.href = `book-detail.html?id=${bookId}`;
+        window.location.href = `reader.html?id=${bookId}`;
       }
     });
   });
   
-  // 书籍卡片点击事件
-  document.querySelectorAll('.book-card').forEach(card => {
-    card.addEventListener('click', () => {
+  // 移出书架按钮点击事件
+  const removeButtons = document.querySelectorAll('.remove-from-shelf-btn');
+  removeButtons.forEach(button => {
+    button.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      
+      const bookCard = button.closest('.book-card');
+      const bookId = bookCard ? bookCard.dataset.bookId : null;
+      
+      if (bookId && confirm('确定要从书架中移除这本书吗？')) {
+        try {
+          await bookshelfApi.removeFromBookshelf(bookId);
+          showToast('书籍已从书架移除', 'success');
+          
+          // 添加移除动画
+          bookCard.style.transition = 'all 0.3s ease';
+          bookCard.style.opacity = '0';
+          bookCard.style.transform = 'scale(0.8)';
+          
+          // 等待动画完成后移除元素
+          setTimeout(() => {
+            bookCard.remove();
+            
+            // 更新统计数据
+            updateBookshelfStats();
+          }, 300);
+        } catch (error) {
+          console.error('移除书籍失败:', error);
+          showToast('移除失败，请稍后再试', 'error');
+        }
+      }
+    });
+  });
+  
+  // 书籍卡片点击事件（跳转到详情页）
+  const bookCards = document.querySelectorAll('.book-card');
+  bookCards.forEach(card => {
+    card.addEventListener('click', (e) => {
+      // 如果点击的是按钮或链接，不处理
+      if (e.target.closest('button') || e.target.closest('a')) {
+        return;
+      }
+      
       const bookId = card.getAttribute('data-book-id');
       if (bookId) {
         window.location.href = `book-detail.html?id=${bookId}`;
