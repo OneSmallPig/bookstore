@@ -305,9 +305,30 @@ function initAddBookButton() {
   if (!addBookBtn) return;
   
   addBookBtn.addEventListener('click', () => {
-    // 显示添加书籍对话框
-    showAddBookDialog();
+    // 跳转到智能搜索页面，使用相对路径
+    console.log('添加书籍按钮被点击，准备跳转到智能搜索页面');
+    window.location.href = '../pages/search.html';
   });
+  
+  // 同样修改空书架状态下的添加书籍按钮
+  const emptyStateAddBtn = document.getElementById('add-book-btn-empty');
+  if (emptyStateAddBtn) {
+    emptyStateAddBtn.addEventListener('click', () => {
+      // 跳转到智能搜索页面，使用相对路径
+      console.log('空状态添加书籍按钮被点击，准备跳转到智能搜索页面');
+      window.location.href = '../pages/search.html';
+    });
+  }
+  
+  // 修改空状态下的添加第一本书按钮
+  const addFirstBookBtn = document.getElementById('add-first-book-btn');
+  if (addFirstBookBtn) {
+    addFirstBookBtn.addEventListener('click', () => {
+      // 跳转到智能搜索页面，使用相对路径
+      console.log('添加第一本书按钮被点击，准备跳转到智能搜索页面');
+      window.location.href = '../pages/search.html';
+    });
+  }
 }
 
 // 显示添加书籍对话框
