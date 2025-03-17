@@ -696,6 +696,38 @@
             }
           });
         }
+        
+        // 手动添加添加书籍按钮的事件监听器
+        const addBookBtn = document.getElementById('add-book-btn');
+        if (addBookBtn) {
+          console.log('为添加书籍按钮添加点击事件（内联脚本）');
+          addBookBtn.addEventListener('click', function() {
+            console.log('添加书籍按钮被点击，准备跳转到智能搜索页面');
+            window.location.href = '../pages/search.html';
+          });
+        } else {
+          console.log('未找到添加书籍按钮');
+        }
+        
+        // 同样修改空书架状态下的添加书籍按钮
+        const emptyStateAddBtn = document.getElementById('add-book-btn-empty');
+        if (emptyStateAddBtn) {
+          console.log('为空状态添加书籍按钮添加点击事件（内联脚本）');
+          emptyStateAddBtn.addEventListener('click', function() {
+            console.log('空状态添加书籍按钮被点击，准备跳转到智能搜索页面');
+            window.location.href = '../pages/search.html';
+          });
+        }
+        
+        // 修改空状态下的添加第一本书按钮
+        const addFirstBookBtn = document.getElementById('add-first-book-btn');
+        if (addFirstBookBtn) {
+          console.log('为添加第一本书按钮添加点击事件（内联脚本）');
+          addFirstBookBtn.addEventListener('click', function() {
+            console.log('添加第一本书按钮被点击，准备跳转到智能搜索页面');
+            window.location.href = '../pages/search.html';
+          });
+        }
       }, 500); // 等待500毫秒，确保模块脚本已加载
     });
   </script>
