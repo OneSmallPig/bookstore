@@ -24,6 +24,12 @@ const CACHE_DURATION = 60 * 60 * 1000;
 window.onload = function () {
   console.log('页面已完全加载，执行初始化...');
   initHomePage();
+  
+  // 检查是否需要预先加载图片代理服务
+  loadImageProxyIfNeeded();
+  
+  // 延迟一点时间后检查和修复图片加载问题
+  setTimeout(checkAndFixCoverImages, 1000);
 };
 
 // 接收HTML解析事件，在页面结构可用但资源可能尚未加载完成时执行
@@ -284,24 +290,54 @@ async function loadRecommendedBooks() {
     }
 
     // 标准化处理每本书的数据格式
-    const standardizedBooks = books.map((book) => {
+    const standardizedBooks = books.map(book => {
+      // 处理封面URL
+      let coverUrl = '';
+      if (book.coverUrl) {
+        coverUrl = book.coverUrl;
+      } else if (book.cover) {
+        coverUrl = book.cover;
+      } else if (book.image) {
+        coverUrl = book.image;
+      } else if (book.imageUrl) {
+        coverUrl = book.imageUrl;
+      }
+      
+      // 处理封面URL中的特殊情况
+      if (coverUrl) {
+        // 记录原始封面URL，便于调试
+        console.log('原始封面URL:', coverUrl);
+        
+        // 处理相对路径
+        if (coverUrl.startsWith('/') && !coverUrl.startsWith('//')) {
+          coverUrl = coverUrl; // 保持相对路径不变
+        }
+        
+        // 处理不完整的URL（如//example.com/image.jpg）
+        if (coverUrl.startsWith('//')) {
+          coverUrl = 'https:' + coverUrl;
+        }
+        
+        // 处理没有协议的URL（如www.example.com/image.jpg）
+        if (!coverUrl.startsWith('http') && !coverUrl.startsWith('/') && coverUrl.includes('.')) {
+          coverUrl = 'https://' + coverUrl;
+        }
+        
+        console.log('处理后的封面URL:', coverUrl);
+      }
+      
       return {
         id: book.id || book._id || book.title || '',
         title: book.title || book.name || '未知书名',
         author: book.author || '未知作者',
-        tags: Array.isArray(book.tags)
-          ? book.tags
-          : Array.isArray(book.categories)
-            ? book.categories
-            : typeof book.tags === 'string'
-              ? book.tags.split(',').map((tag) => tag.trim())
-              : typeof book.categories === 'string'
-                ? book.categories.split(',').map((tag) => tag.trim())
-                : [],
-        coverUrl: book.coverUrl || book.cover || '',
-        introduction: book.introduction || book.description || '',
+        tags: Array.isArray(book.tags) ? book.tags : 
+              Array.isArray(book.categories) ? book.categories : 
+              typeof book.tags === 'string' ? book.tags.split(',').map(tag => tag.trim()) :
+              typeof book.categories === 'string' ? book.categories.split(',').map(tag => tag.trim()) : [],
+        coverUrl: coverUrl,
+        introduction: book.introduction || book.description || '暂无简介',
         popularity: book.popularity || book.heat || 0,
-        rating: book.rating || (Math.floor(Math.random() * 10) + 38) / 10,
+        rating: book.rating || (Math.floor(Math.random() * 10) + 38) / 10
       };
     });
 
@@ -417,24 +453,54 @@ async function loadPopularBooks() {
     }
 
     // 标准化处理每本书的数据格式
-    const standardizedBooks = books.map((book) => {
+    const standardizedBooks = books.map(book => {
+      // 处理封面URL
+      let coverUrl = '';
+      if (book.coverUrl) {
+        coverUrl = book.coverUrl;
+      } else if (book.cover) {
+        coverUrl = book.cover;
+      } else if (book.image) {
+        coverUrl = book.image;
+      } else if (book.imageUrl) {
+        coverUrl = book.imageUrl;
+      }
+      
+      // 处理封面URL中的特殊情况
+      if (coverUrl) {
+        // 记录原始封面URL，便于调试
+        console.log('原始封面URL:', coverUrl);
+        
+        // 处理相对路径
+        if (coverUrl.startsWith('/') && !coverUrl.startsWith('//')) {
+          coverUrl = coverUrl; // 保持相对路径不变
+        }
+        
+        // 处理不完整的URL（如//example.com/image.jpg）
+        if (coverUrl.startsWith('//')) {
+          coverUrl = 'https:' + coverUrl;
+        }
+        
+        // 处理没有协议的URL（如www.example.com/image.jpg）
+        if (!coverUrl.startsWith('http') && !coverUrl.startsWith('/') && coverUrl.includes('.')) {
+          coverUrl = 'https://' + coverUrl;
+        }
+        
+        console.log('处理后的封面URL:', coverUrl);
+      }
+      
       return {
         id: book.id || book._id || book.title || '',
         title: book.title || book.name || '未知书名',
         author: book.author || '未知作者',
-        tags: Array.isArray(book.tags)
-          ? book.tags
-          : Array.isArray(book.categories)
-            ? book.categories
-            : typeof book.tags === 'string'
-              ? book.tags.split(',').map((tag) => tag.trim())
-              : typeof book.categories === 'string'
-                ? book.categories.split(',').map((tag) => tag.trim())
-                : [],
-        coverUrl: book.coverUrl || book.cover || '',
-        introduction: book.introduction || book.description || '',
+        tags: Array.isArray(book.tags) ? book.tags : 
+              Array.isArray(book.categories) ? book.categories : 
+              typeof book.tags === 'string' ? book.tags.split(',').map(tag => tag.trim()) :
+              typeof book.categories === 'string' ? book.categories.split(',').map(tag => tag.trim()) : [],
+        coverUrl: coverUrl,
+        introduction: book.introduction || book.description || '暂无简介',
         popularity: book.popularity || book.heat || 0,
-        rating: book.rating || (Math.floor(Math.random() * 10) + 38) / 10,
+        rating: book.rating || (Math.floor(Math.random() * 10) + 38) / 10
       };
     });
 
@@ -565,14 +631,66 @@ function createBookCard(book, isAiRecommended = false) {
  * @returns {string} - 书籍封面HTML
  */
 function createBookCoverElement(bookData) {
-  // 如果有封面URL，显示封面图片
-  if (bookData.coverUrl && bookData.coverUrl.trim() !== '') {
-    return `<img src="${bookData.coverUrl}" alt="${bookData.title}" class="book-cover-image">`;
+  // 增强日志，便于调试封面问题
+  console.log('处理书籍封面:', bookData.title, '封面URL:', bookData.coverUrl);
+  
+  // 检查封面URL是否有效，处理更多可能的格式
+  if (bookData.coverUrl && typeof bookData.coverUrl === 'string' && bookData.coverUrl.trim() !== '') {
+    let coverUrl = bookData.coverUrl.trim();
+    
+    // 处理相对路径
+    if (coverUrl.startsWith('/') && !coverUrl.startsWith('//')) {
+      coverUrl = coverUrl; // 保持相对路径不变
+    }
+    
+    // 如果是不完整的URL（如//example.com/image.jpg），添加https:
+    if (coverUrl.startsWith('//')) {
+      coverUrl = 'https:' + coverUrl;
+    }
+    
+    // 检测是否为豆瓣或其他可能有防盗链的图片
+    const isDoubanImage = coverUrl.includes('douban') || coverUrl.includes('doubanio');
+    
+    // 确保URL是安全的
+    try {
+      new URL(coverUrl); // 尝试创建URL对象，如果无效会抛出错误
+      console.log('有效的封面URL:', coverUrl);
+      
+      // 根据是否为豆瓣图片选择不同的处理方式
+      if (isDoubanImage) {
+        console.log('检测到豆瓣图片，添加代理处理标记');
+        
+        // 直接返回图片元素，但添加data-use-proxy属性
+        return `<img src="${coverUrl}" alt="${bookData.title}" class="book-cover-image" 
+                data-original-src="${coverUrl}" 
+                data-use-proxy="true"
+                onerror="this.onerror=null; handleImageError(this);">`;
+      } else {
+        // 非豆瓣图片，正常加载
+        return `<img src="${coverUrl}" alt="${bookData.title}" class="book-cover-image" 
+                onerror="this.onerror=null; handleImageError(this);">`;
+      }
+    } catch (e) {
+      console.warn('无效的封面URL:', coverUrl, e);
+      // 如果URL无效，使用占位符
+      return createCoverPlaceholder(bookData);
+    }
   }
   
+  // 使用封面占位符
+  return createCoverPlaceholder(bookData);
+}
+
+/**
+ * 创建封面占位符
+ * @param {Object} bookData - 书籍数据
+ * @returns {string} - 占位符HTML
+ */
+function createCoverPlaceholder(bookData) {
   // 获取书籍分类，用于确定图标类型
   const categories = bookData.tags || [];
   const mainCategory = getMainCategory(categories);
+  console.log('使用占位图标，分类:', mainCategory);
   
   // 返回与分类相关的图标
   return `
@@ -732,3 +850,120 @@ function showError(container, message) {
     </div>
   `;
 }
+
+/**
+ * 检查并修复书籍封面图片加载问题
+ */
+function checkAndFixCoverImages() {
+  console.log('检查所有书籍封面图片...');
+  const coverImages = document.querySelectorAll('.book-cover-image');
+  
+  coverImages.forEach((img, index) => {
+    // 检查图片是否已经加载或加载失败
+    if (img.complete) {
+      if (img.naturalHeight === 0) {
+        console.warn(`封面图片 #${index} 加载失败:`, img.src);
+        handleImageError(img);
+      } else {
+        console.log(`封面图片 #${index} 加载成功:`, img.src);
+      }
+    } else {
+      // 图片尚未加载完毕，添加事件监听器
+      img.addEventListener('load', () => {
+        console.log(`封面图片 #${index} 延迟加载成功:`, img.src);
+      });
+      
+      img.addEventListener('error', () => {
+        console.warn(`封面图片 #${index} 加载失败:`, img.src);
+        handleImageError(img);
+      });
+    }
+  });
+}
+
+/**
+ * 处理图片加载错误
+ * @param {HTMLImageElement} img - 图片元素
+ */
+function handleImageError(img) {
+  console.warn('图片加载失败，尝试使用备用方法:', img.src);
+  
+  // 获取原始URL
+  const originalUrl = img.dataset.originalSrc || img.src;
+  
+  // 检查是否为豆瓣图片
+  const isDoubanImage = originalUrl.includes('douban') || originalUrl.includes('doubanio');
+  
+  // 检查ImageProxy模块是否可用
+  if (window.ImageProxy && (isDoubanImage || img.dataset.useProxy === 'true')) {
+    // 如果是豆瓣图片且未尝试过代理，使用代理服务
+    if (!img.dataset.triedProxy || img.dataset.triedProxy !== 'all') {
+      console.log('尝试使用图片代理服务加载豆瓣图片');
+      // 标记已尝试过代理
+      img.dataset.triedProxy = 'all';
+      img.dataset.useProxy = 'true';
+      // 使用图片代理服务
+      window.ImageProxy.handleImageWithProxy(img, originalUrl);
+      return; // 尝试使用代理加载，不立即显示占位符
+    }
+  }
+  
+  // 如果图片代理服务不可用或代理失败，使用默认占位符
+  const title = img.alt || '未知书名';
+  const placeholder = document.createElement('div');
+  placeholder.className = 'book-cover-placeholder';
+  placeholder.innerHTML = `
+    ${getIconByCategory('默认')}
+    <span class="book-placeholder-text">${title.substring(0, 2)}</span>
+  `;
+  
+  // 替换图片元素
+  if (img.parentNode) {
+    img.parentNode.replaceChild(placeholder, img);
+  }
+}
+
+/**
+ * 如果需要，加载图片代理服务模块
+ */
+function loadImageProxyIfNeeded() {
+  if (window.ImageProxy) {
+    console.log('图片代理服务模块已加载');
+    processDoubanImages();
+    return;
+  }
+
+  // 动态加载图片代理模块
+  const script = document.createElement('script');
+  script.src = '/src/js/imageProxy.js';
+  script.onload = function() {
+    console.log('图片代理服务模块加载成功');
+    // 处理豆瓣图片
+    processDoubanImages();
+  };
+  script.onerror = function() {
+    console.error('加载图片代理服务模块失败');
+  };
+  document.head.appendChild(script);
+}
+
+/**
+ * 处理页面中所有的豆瓣图片
+ */
+function processDoubanImages() {
+  if (!window.ImageProxy) return;
+  
+  // 查找所有标记为需要使用代理的图片
+  const proxyImages = document.querySelectorAll('img[data-use-proxy="true"]');
+  console.log(`找到${proxyImages.length}张需要代理处理的图片`);
+  
+  proxyImages.forEach(img => {
+    const originalUrl = img.dataset.originalSrc;
+    if (originalUrl) {
+      console.log('使用代理处理图片:', originalUrl);
+      // 使用第一个代理服务尝试加载
+      window.ImageProxy.handleImageWithProxy(img, originalUrl);
+    }
+  });
+}
+
