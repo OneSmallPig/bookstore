@@ -3,8 +3,8 @@
  * 负责加载AI推荐书籍和热门书籍
  */
 
-// API基础URL配置 - 使用相对路径，通过Vite代理访问后端
-const API_BASE_URL = '';
+// API基础URL配置 - 使用与api.js一致的配置
+const API_BASE_URL = 'http://localhost:3002';
 
 // 最长请求超时时间（毫秒）
 const REQUEST_TIMEOUT = 40000;
@@ -14,7 +14,7 @@ const CACHE_KEYS = {
   RECOMMENDED_BOOKS: 'bookstore_recommended_books',
   POPULAR_BOOKS: 'bookstore_popular_books',
   CACHE_TIMESTAMP: 'bookstore_cache_timestamp',
-  USER_TOKEN: 'token', // 用于判断用户登录状态
+  USER_TOKEN: 'bookstore_auth', // 与auth.js中的AUTH_KEY保持一致
 };
 
 // 缓存有效期（毫秒）- 设置为1小时
@@ -98,7 +98,7 @@ function initHomePage() {
   console.log('执行首页初始化...');
 
   // 显示当前缓存和登录状态（调试用）
-  const currentToken = localStorage.getItem(CACHE_KEYS.USER_TOKEN) || '';
+  const currentToken = getUserToken();
   const cachedToken = localStorage.getItem('cachedToken') || '';
   const recommendedCacheTime = JSON.parse(localStorage.getItem(CACHE_KEYS.CACHE_TIMESTAMP) || '{}')[
     CACHE_KEYS.RECOMMENDED_BOOKS
@@ -108,8 +108,8 @@ function initHomePage() {
   ];
 
   console.log('----缓存状态----');
-  console.log('当前用户Token:', currentToken ? '已登录' : '未登录');
-  console.log('缓存的Token:', cachedToken ? '已登录' : '未登录');
+  console.log('当前用户Token:', currentToken ? '已登录' : '未登录', currentToken ? `(${currentToken.substring(0, 10)}...)` : '');
+  console.log('缓存的Token:', cachedToken ? '已登录' : '未登录', cachedToken ? `(${cachedToken.substring(0, 10)}...)` : '');
   console.log(
     '推荐书籍缓存时间:',
     recommendedCacheTime ? new Date(recommendedCacheTime).toLocaleString() : '无缓存'
@@ -166,7 +166,7 @@ function getCachedData(key) {
     }
 
     // 获取当前用户的登录状态 - 用户token可能为null或空字符串（表示未登录）
-    const currentToken = localStorage.getItem(CACHE_KEYS.USER_TOKEN) || '';
+    const currentToken = getUserToken();
     // 获取缓存时的登录状态
     const cachedToken = localStorage.getItem('cachedToken') || '';
 
@@ -210,7 +210,7 @@ async function loadRecommendedBooks() {
     }
 
     // 检查是否有用户token
-    const token = localStorage.getItem(CACHE_KEYS.USER_TOKEN);
+    const token = getUserToken();
 
     // 尝试从缓存加载数据
     const cachedBooks = getCachedData(CACHE_KEYS.RECOMMENDED_BOOKS);
@@ -348,7 +348,7 @@ async function loadRecommendedBooks() {
       // 缓存获取到的书籍数据
       cacheData(CACHE_KEYS.RECOMMENDED_BOOKS, standardizedBooks);
       // 保存当前的用户登录状态
-      const currentToken = localStorage.getItem(CACHE_KEYS.USER_TOKEN) || '';
+      const currentToken = getUserToken();
       localStorage.setItem('cachedToken', currentToken);
 
       standardizedBooks.forEach((book) => {
@@ -511,7 +511,7 @@ async function loadPopularBooks() {
       // 缓存获取到的书籍数据
       cacheData(CACHE_KEYS.POPULAR_BOOKS, standardizedBooks);
       // 保存当前的用户登录状态
-      const currentToken = localStorage.getItem(CACHE_KEYS.USER_TOKEN) || '';
+      const currentToken = getUserToken();
       localStorage.setItem('cachedToken', currentToken);
 
       standardizedBooks.forEach((book) => {
@@ -965,5 +965,32 @@ function processDoubanImages() {
       window.ImageProxy.handleImageWithProxy(img, originalUrl);
     }
   });
+}
+
+/**
+ * 从localStorage中获取用户token
+ * @returns {string} 用户token或空字符串
+ */
+function getUserToken() {
+  const authData = localStorage.getItem(CACHE_KEYS.USER_TOKEN);
+  console.log('获取用户认证数据:', authData);
+  
+  if (!authData) {
+    console.log('未找到用户认证数据');
+    return '';
+  }
+  
+  try {
+    const authObj = JSON.parse(authData);
+    console.log('解析用户认证对象:', authObj);
+    
+    const token = authObj.token || '';
+    console.log('提取token:', token ? '已获取' : '未获取');
+    
+    return token;
+  } catch (error) {
+    console.error('解析用户认证数据失败:', error);
+    return '';
+  }
 }
 

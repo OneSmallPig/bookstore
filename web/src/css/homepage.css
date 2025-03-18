@@ -49,7 +49,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 15px 0 0 0; /* 顶部保留内边距，左右取消内边距 */
+  padding: 15px 0 0 0; /* 顶部保留内边距，左右和底部取消内边距 */
   position: relative;
 }
 
@@ -73,9 +73,14 @@
   width: 120px; /* 固定宽度 */
   object-fit: cover;
   border-radius: 4px;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); /* 增强阴影效果 */
   background-color: #f3f4f6; /* 添加背景色，在图片加载过程中显示 */
   display: block; /* 确保是块级元素 */
+  transition: transform 0.3s ease; /* 添加过渡效果 */
+}
+
+.book-card:hover .book-cover-image {
+  transform: scale(1.03); /* 悬停时略微放大封面 */
 }
 
 /* 图片加载错误时的样式 */
@@ -119,9 +124,9 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  margin-bottom: 10px;
   padding-left: 15px;
   padding-right: 15px;
+  flex: 1; /* 让信息容器占用可用空间 */
 }
 
 .book-title {
@@ -240,19 +245,21 @@
   display: flex;
   justify-content: space-between;
   width: 100%;
-  margin-top: auto;
-  padding: 0; /* 移除内边距，使按钮能接触到卡片边框 */
-  margin-top: 15px; /* 增加与上方内容的间距 */
+  margin: 0; /* 移除所有外边距 */
+  padding: 0; /* 移除内边距 */
+  margin-top: auto; /* 将按钮区域推到底部 */
+  border-top: 1px solid #eaeaea; /* 增加一个顶部边框分隔线 */
 }
 
 .btn {
-  padding: 10px 0;
-  height: 45px;
+  flex: 1; /* 让按钮平均分配宽度 */
+  padding: 12px 0; /* 增加按钮高度 */
+  height: 48px; /* 确保足够高度 */
   border-radius: 0; /* 移除圆角 */
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease; /* 平滑过渡效果 */
   border: none;
   text-decoration: none;
   white-space: nowrap;
@@ -270,7 +277,6 @@
   overflow: hidden;
   z-index: 1;
   border-bottom-left-radius: 8px; /* 左下角圆角与卡片一致 */
-  width: calc(50% - 5px); /* 设置宽度为一半减去间距的一半 */
 }
 
 .btn-read::before {
@@ -280,14 +286,14 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
   transition: 0.5s;
   z-index: -1;
 }
 
 .btn-read:hover {
-  background-color: #1e40af;
-  transform: translateY(-2px);
+  background-color: #1d4ed8; /* 稍微暗一点的蓝色 */
+  transform: translateY(-1px); /* 减少上移量 */
   box-shadow: 0 4px 6px rgba(37, 99, 235, 0.25);
   color: #ffffff;
   font-weight: 600;
@@ -307,16 +313,16 @@
 .btn-add-shelf {
   background-color: #f3f4f6;
   color: #4b5563;
-  border-top: 1px solid #e5e7eb;
-  transition: all 0.2s;
+  border-left: 1px solid #eaeaea; /* 添加左侧分隔线 */
+  transition: all 0.3s ease;
   border-bottom-right-radius: 8px; /* 右下角圆角与卡片一致 */
-  width: calc(50% - 5px); /* 设置宽度为一半减去间距的一半 */
-  margin-left: 10px; /* 使用margin来创建间距 */
 }
 
 .btn-add-shelf:hover {
   background-color: #e5e7eb;
   color: #1f2937;
+  transform: translateY(-1px); /* 悬停时轻微上移 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* 添加轻微阴影 */
 }
 
 /* 加载状态提示文本 */

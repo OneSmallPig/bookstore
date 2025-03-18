@@ -58,6 +58,25 @@ export function getAuthToken() {
 }
 
 /**
+ * 检查当前用户是否为管理员
+ * @returns {boolean} 是否为管理员
+ */
+export function isAdmin() {
+  try {
+    const user = getCurrentUser();
+    if (!user) return false;
+    
+    // 检查用户角色是否包含admin
+    return user.role === 'admin' || 
+           (user.roles && user.roles.includes('admin')) || 
+           user.isAdmin === true;
+  } catch (error) {
+    console.error('检查管理员权限失败:', error);
+    return false;
+  }
+}
+
+/**
  * 检查用户是否已登录
  * @returns {boolean} 是否已登录
  */
@@ -255,6 +274,10 @@ export function updateAuthUI() {
   try {
     const user = getCurrentUser();
     const isLoggedIn = !!user;
+    const userIsAdmin = isAdmin(); // 检查用户是否为管理员
+    
+    console.log('当前用户:', user ? user.username : '未登录');
+    console.log('是否为管理员:', userIsAdmin);
     
     // 更新个人信息按钮
     const profileButtons = document.querySelectorAll('.profile-button');
@@ -286,6 +309,12 @@ export function updateAuthUI() {
           button.setAttribute('href', '/src/pages/login.html');
         }
       }
+    });
+    
+    // 更新管理员专属链接的显示状态
+    const adminLinks = document.querySelectorAll('.admin-only-link');
+    adminLinks.forEach(link => {
+      link.style.display = userIsAdmin ? 'flex' : 'none';
     });
     
     // 更新登录/登出按钮

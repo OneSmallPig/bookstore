@@ -6,6 +6,8 @@
   <title>个人资料 - 百变书屋</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="../css/output.css">
+  <!-- 添加通用脚本 -->
+  <script src="/src/js/common.js"></script>
 </head>
 <body>
   <!-- 导航栏 -->
@@ -20,7 +22,11 @@
         <a href="index.html" class="nav-item font-medium">首页</a>
         <a href="search.html" class="nav-item font-medium">智能搜索</a>
         <a href="bookshelf.html" class="nav-item font-medium">我的书架</a>
-        <a href="community.html" class="nav-item font-medium">社区</a>
+        <a href="community.html" class="nav-item font-medium">阅读社区</a>
+        <a href="book-source-management.html" class="nav-item font-medium admin-only-link" style="display: none;">
+          书源管理
+          <span class="admin-badge">管理员</span>
+        </a>
       </div>
       
       <div class="flex items-center space-x-4">
@@ -39,7 +45,11 @@
         <a href="index.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">首页</a>
         <a href="search.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">智能搜索</a>
         <a href="bookshelf.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">我的书架</a>
-        <a href="community.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">社区</a>
+        <a href="community.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100">阅读社区</a>
+        <a href="book-source-management.html" class="nav-item py-2 px-4 rounded hover:bg-gray-100 admin-only-link" style="display: none;">
+          书源管理
+          <span class="admin-badge">管理员</span>
+        </a>
       </div>
     </div>
   </nav>
@@ -399,7 +409,7 @@
             <li><a href="index.html" class="hover:text-white">首页</a></li>
             <li><a href="search.html" class="hover:text-white">智能搜索</a></li>
             <li><a href="bookshelf.html" class="hover:text-white">我的书架</a></li>
-            <li><a href="community.html" class="hover:text-white">社区</a></li>
+            <li><a href="community.html" class="hover:text-white">阅读社区</a></li>
           </ul>
         </div>
         

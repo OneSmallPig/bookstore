@@ -4,7 +4,7 @@
  */
 
 // API基础URL
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = 'http://localhost:3002/api';
 
 // 获取认证令牌函数
 function getToken() {
