@@ -7,10 +7,25 @@
   /* 导航样式 */
   .nav-item {
     @apply px-4 py-2 text-gray-700 hover:text-blue-600 transition-colors;
+    position: relative;
+    padding-bottom: 0.25rem;
+    transition: all 0.2s;
   }
   
   .nav-item.active {
     @apply text-blue-600 font-medium;
+    color: #3b82f6;
+    font-weight: 500;
+  }
+  
+  .nav-item.active:after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #3b82f6;
   }
   
   /* 按钮样式 */
@@ -124,6 +139,14 @@
     
     .category-icon {
       @apply text-xl;
+    }
+    
+    .nav-item.active:after {
+      display: none;
+    }
+    
+    .nav-item.active {
+      background-color: #f3f4f6;
     }
   }
 }
@@ -743,4 +766,16 @@ a {
   .community-section .grid {
     gap: 1rem; /* 在移动设备上保持较小的间距 */
   }
+}
+
+/* 添加管理员徽章样式 */
+.admin-badge {
+  display: inline-block;
+  background-color: #f97316;
+  color: white;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  margin-left: 0.5rem;
+  font-weight: 500;
 } 

@@ -2,6 +2,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const BookSource = require('../../models/bookSource/BookSource');
 const logger = require('../../utils/logger');
+const mongoose = require('mongoose');
 
 /**
  * 书源管理器
@@ -21,18 +22,56 @@ class BookSourceManager {
     if (this.initialized) return;
 
     try {
-      // 从数据库加载书源
-      await this._loadFromDatabase();
-      
-      // 如果数据库中没有书源，则从示例文件加载
-      if (this.sources.size === 0) {
-        await this._loadFromExampleFile();
+      // 设置超时，防止无限期挂起
+      const timeout = setTimeout(() => {
+        if (!this.initialized) {
+          logger.warn('书源管理器初始化超时，将使用默认书源');
+          this._loadFromExampleFile()
+            .then(() => {
+              this.initialized = true;
+              logger.info(`使用默认书源完成，已加载${this.sources.size}个书源`);
+            })
+            .catch(err => {
+              logger.error('加载默认书源失败', err);
+              // 即使加载默认书源失败，我们也标记为已初始化，避免卡住整个应用
+              this.initialized = true;
+            });
+        }
+      }, 15000); // 15秒超时
+
+      try {
+        // 从数据库加载书源
+        await this._loadFromDatabase();
+        
+        // 如果数据库中没有书源，则从示例文件加载
+        if (this.sources.size === 0) {
+          await this._loadFromExampleFile();
+        }
+        
+        clearTimeout(timeout); // 清除超时
+        
+        logger.info(`已成功加载${this.sources.size}个书源`);
+        this.initialized = true;
+      } catch (dbError) {
+        logger.error('从数据库加载书源失败', dbError);
+        
+        // 尝试从示例文件加载
+        try {
+          await this._loadFromExampleFile();
+          logger.info(`使用备用方案：已从示例文件加载${this.sources.size}个书源`);
+        } catch (fileError) {
+          logger.error('从示例文件加载书源失败', fileError);
+          // 创建一个基本的内存书源，至少让应用能继续运行
+          this._createBasicMemorySource();
+        }
+        
+        clearTimeout(timeout); // 清除超时
+        this.initialized = true;
       }
-      
-      logger.info(`已成功加载${this.sources.size}个书源`);
-      this.initialized = true;
     } catch (error) {
       logger.error('初始化书源管理器失败', error);
+      // 即使出错，我们也标记为已初始化，避免卡住整个应用
+      this.initialized = true;
       throw error;
     }
   }
@@ -42,7 +81,18 @@ class BookSourceManager {
    */
   async _loadFromDatabase() {
     try {
+      // 确保已经建立MongoDB连接
+      if (mongoose?.connection?.readyState !== 1) {
+        logger.warn('MongoDB未连接，无法从数据库加载书源');
+        return;
+      }
+      
       const sources = await BookSource.find({ enabled: true });
+      
+      if (!sources || sources.length === 0) {
+        logger.warn('数据库中没有启用的书源');
+        return;
+      }
       
       sources.forEach(source => {
         this.sources.set(source.name, source);
@@ -92,6 +142,36 @@ class BookSourceManager {
       }
       
       throw error;
+    }
+  }
+
+  /**
+   * 创建基本的内存书源（作为最后的回退选项）
+   * @private
+   */
+  _createBasicMemorySource() {
+    try {
+      // 内存中创建一个简单的书源，至少让系统能工作
+      const basicSource = {
+        name: '默认内存书源',
+        url: 'https://www.example.com',
+        version: 1,
+        enabled: true,
+        group: '默认',
+        searchUrl: 'https://www.example.com/search?q={keyword}',
+        searchList: '.book-list .book-item',
+        searchName: '.book-title',
+        searchDetail: '.book-link',
+        chapterList: '.chapter-list .chapter-item',
+        chapterName: '.chapter-title',
+        chapterLink: '.chapter-link',
+        contentRule: '.content-text'
+      };
+      
+      this.sources.set(basicSource.name, basicSource);
+      logger.info('创建了基本内存书源作为回退方案');
+    } catch (error) {
+      logger.error('创建基本内存书源失败', error);
     }
   }
 

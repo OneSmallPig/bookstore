@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bookSourceController = require('../controllers/bookSource/BookSourceController');
-const authMiddleware = require('../middlewares/auth');
+const { authenticate, isAdmin } = require('../middlewares/auth');
 
 // 公共API
 router.get('/search', bookSourceController.searchBooks);
@@ -10,7 +10,7 @@ router.get('/book/chapters', bookSourceController.getChapterList);
 router.get('/book/content', bookSourceController.getChapterContent);
 
 // 需要认证的API
-router.use(authMiddleware);
+router.use(authenticate);
 
 // 书源管理
 router.get('/sources', bookSourceController.getAllSources);

@@ -1,0 +1,255 @@
+/* 书籍卡片样式 */
+.book-card {
+  background: white;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.book-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.book-card-image-container {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+  background-color: #f5f7fa;
+}
+
+.book-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.book-card:hover .book-card-image {
+  transform: scale(1.05);
+}
+
+.book-info {
+  padding: 1rem;
+}
+
+.book-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1a202c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 0.25rem;
+}
+
+.book-author {
+  font-size: 0.875rem;
+  color: #718096;
+  margin-bottom: 0.5rem;
+}
+
+.book-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.book-tag {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  background-color: #ebf4ff;
+  color: #3182ce;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+}
+
+.popularity-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background-color: rgba(239, 68, 68, 0.9);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* AI推荐标签 */
+.ai-badge {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  background-color: rgba(49, 130, 206, 0.9);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  z-index: 10;
+}
+
+.ai-badge i {
+  margin-right: 0.25rem;
+  font-size: 0.625rem;
+}
+
+/* 加载状态提示文本 */
+.loading-message {
+  text-align: center;
+  margin-bottom: 2rem;
+  grid-column: 1 / -1;
+}
+
+.loading-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background-color: #ebf5ff;
+  color: #3182ce;
+  border-radius: 2rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.loading-indicator.ai {
+  background-color: #e9f5ff;
+  color: #2b6cb0;
+  border: 1px solid #90cdf4;
+}
+
+.loading-spinner {
+  animation: spin 1.5s linear infinite;
+  margin-right: 0.5rem;
+}
+
+.spinner-circle {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 20;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 骨架屏加载状态 */
+.book-card-skeleton {
+  background: white;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  height: 320px;
+}
+
+.skeleton-image {
+  height: 200px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-title {
+  height: 1.25rem;
+  margin: 1rem 1rem 0.5rem 1rem;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 0.25rem;
+}
+
+.skeleton-author {
+  height: 1rem;
+  margin: 0.5rem 1rem;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 0.25rem;
+  width: 60%;
+}
+
+.skeleton-tags {
+  display: flex;
+  margin: 0.5rem 1rem;
+  gap: 0.25rem;
+}
+
+.skeleton-tags::before,
+.skeleton-tags::after {
+  content: "";
+  height: 1rem;
+  border-radius: 1rem;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-tags::before {
+  width: 30%;
+}
+
+.skeleton-tags::after {
+  width: 40%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 错误状态 */
+.error-message {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 3rem 0;
+  color: #718096;
+}
+
+.error-message i {
+  font-size: 2rem;
+  color: #e53e3e;
+  margin-bottom: 0.5rem;
+}
+
+.error-message p {
+  font-size: 1rem;
+}
+
+/* 响应式调整 */
+@media (max-width: 640px) {
+  .book-card-image-container {
+    height: 160px;
+  }
+  
+  .book-card-skeleton {
+    height: 280px;
+  }
+  
+  .skeleton-image {
+    height: 160px;
+  }
+}
+
+/* 默认封面图标样式 */
+.book-card-image-container::before {
+  content: "\f02d";
+  font-family: "Font Awesome 5 Free";
+  font-weight: 900;
+  font-size: 3rem;
+  color: #a0aec0;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.2;
+} 

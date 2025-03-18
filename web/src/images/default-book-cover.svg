@@ -1,0 +1,31 @@
+<svg width="200" height="300" viewBox="0 0 200 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景渐变 -->
+  <rect width="200" height="300" rx="5" fill="url(#paint0_linear)" />
+  
+  <!-- 书籍图标 -->
+  <path d="M150 100C150 88.9543 141.046 80 130 80H70C58.9543 80 50 88.9543 50 100V200C50 211.046 58.9543 220 70 220H130C141.046 220 150 211.046 150 200V100Z" fill="white" fill-opacity="0.15"/>
+  <path d="M124 96H76C72.6863 96 70 98.6863 70 102V198C70 201.314 72.6863 204 76 204H124C127.314 204 130 201.314 130 198V102C130 98.6863 127.314 96 124 96Z" fill="white" fill-opacity="0.1"/>
+  <path d="M100 96V204" stroke="white" stroke-opacity="0.2" stroke-width="2"/>
+  
+  <!-- 花纹装饰 -->
+  <rect x="85" y="110" width="30" height="4" rx="2" fill="white" fill-opacity="0.3"/>
+  <rect x="85" y="120" width="30" height="4" rx="2" fill="white" fill-opacity="0.3"/>
+  <rect x="85" y="130" width="30" height="4" rx="2" fill="white" fill-opacity="0.3"/>
+  <rect x="85" y="140" width="30" height="4" rx="2" fill="white" fill-opacity="0.3"/>
+  <rect x="85" y="150" width="30" height="4" rx="2" fill="white" fill-opacity="0.3"/>
+  
+  <!-- 书脊 -->
+  <rect x="64" y="96" width="10" height="108" rx="2" fill="white" fill-opacity="0.2"/>
+  
+  <!-- 文字 -->
+  <text x="100" y="240" font-family="Arial" font-size="16" font-weight="bold" fill="white" text-anchor="middle">网络小说</text>
+  <text x="100" y="260" font-family="Arial" font-size="12" fill="white" fill-opacity="0.7" text-anchor="middle">百变书屋</text>
+  
+  <!-- 渐变定义 -->
+  <defs>
+    <linearGradient id="paint0_linear" x1="0" y1="0" x2="200" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+</svg> 
