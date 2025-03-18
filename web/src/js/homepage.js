@@ -9,6 +9,17 @@ const API_BASE_URL = '';
 // 最长请求超时时间（毫秒）
 const REQUEST_TIMEOUT = 40000;
 
+// 缓存配置
+const CACHE_KEYS = {
+  RECOMMENDED_BOOKS: 'bookstore_recommended_books',
+  POPULAR_BOOKS: 'bookstore_popular_books',
+  CACHE_TIMESTAMP: 'bookstore_cache_timestamp',
+  USER_TOKEN: 'token' // 用于判断用户登录状态
+};
+
+// 缓存有效期（毫秒）- 设置为1小时
+const CACHE_DURATION = 60 * 60 * 1000;
+
 // 在页面开始加载时就立即执行，确保最早显示加载动画
 window.onload = function() {
   console.log('页面已完全加载，执行初始化...');
@@ -19,6 +30,34 @@ window.onload = function() {
 document.addEventListener('DOMContentLoaded', function() {
   console.log('DOM已加载，立即显示加载动画...');
   showInitialLoadingState();
+  
+  // 在开发环境添加缓存重置按钮
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    const clearCacheBtn = document.createElement('button');
+    clearCacheBtn.textContent = '清除缓存数据';
+    clearCacheBtn.style.position = 'fixed';
+    clearCacheBtn.style.bottom = '10px';
+    clearCacheBtn.style.right = '10px';
+    clearCacheBtn.style.zIndex = '1000';
+    clearCacheBtn.style.padding = '5px 10px';
+    clearCacheBtn.style.backgroundColor = '#f44336';
+    clearCacheBtn.style.color = 'white';
+    clearCacheBtn.style.border = 'none';
+    clearCacheBtn.style.borderRadius = '4px';
+    clearCacheBtn.style.cursor = 'pointer';
+    clearCacheBtn.style.fontSize = '12px';
+    
+    clearCacheBtn.addEventListener('click', () => {
+      localStorage.removeItem(CACHE_KEYS.RECOMMENDED_BOOKS);
+      localStorage.removeItem(CACHE_KEYS.POPULAR_BOOKS);
+      localStorage.removeItem(CACHE_KEYS.CACHE_TIMESTAMP);
+      localStorage.removeItem('cachedToken');
+      alert('缓存已清除，页面将刷新');
+      window.location.reload();
+    });
+    
+    document.body.appendChild(clearCacheBtn);
+  }
 });
 
 // 显示初始加载状态
@@ -52,6 +91,19 @@ function showInitialLoadingState() {
 function initHomePage() {
   console.log('执行首页初始化...');
   
+  // 显示当前缓存和登录状态（调试用）
+  const currentToken = localStorage.getItem(CACHE_KEYS.USER_TOKEN) || '';
+  const cachedToken = localStorage.getItem('cachedToken') || '';
+  const recommendedCacheTime = JSON.parse(localStorage.getItem(CACHE_KEYS.CACHE_TIMESTAMP) || '{}')[CACHE_KEYS.RECOMMENDED_BOOKS];
+  const popularCacheTime = JSON.parse(localStorage.getItem(CACHE_KEYS.CACHE_TIMESTAMP) || '{}')[CACHE_KEYS.POPULAR_BOOKS];
+  
+  console.log('----缓存状态----');
+  console.log('当前用户Token:', currentToken ? '已登录' : '未登录');
+  console.log('缓存的Token:', cachedToken ? '已登录' : '未登录');
+  console.log('推荐书籍缓存时间:', recommendedCacheTime ? new Date(recommendedCacheTime).toLocaleString() : '无缓存');
+  console.log('热门书籍缓存时间:', popularCacheTime ? new Date(popularCacheTime).toLocaleString() : '无缓存');
+  console.log('----------------');
+  
   // 短暂延迟以确保DOM渲染完成
   setTimeout(() => {
     // 加载推荐书籍
@@ -60,6 +112,73 @@ function initHomePage() {
     // 加载热门书籍
     loadPopularBooks();
   }, 300);
+}
+
+/**
+ * 缓存数据到本地存储
+ * @param {string} key - 缓存键名
+ * @param {any} data - 要缓存的数据
+ */
+function cacheData(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    // 更新缓存时间戳
+    const timestamps = JSON.parse(localStorage.getItem(CACHE_KEYS.CACHE_TIMESTAMP) || '{}');
+    timestamps[key] = Date.now();
+    localStorage.setItem(CACHE_KEYS.CACHE_TIMESTAMP, JSON.stringify(timestamps));
+    console.log(`数据已缓存至: ${key}`);
+  } catch (error) {
+    console.error('缓存数据失败:', error);
+  }
+}
+
+/**
+ * 从本地存储获取缓存数据
+ * @param {string} key - 缓存键名
+ * @returns {any|null} - 缓存的数据，如果无缓存或已过期则返回null
+ */
+function getCachedData(key) {
+  try {
+    // 获取缓存时间戳
+    const timestamps = JSON.parse(localStorage.getItem(CACHE_KEYS.CACHE_TIMESTAMP) || '{}');
+    const timestamp = timestamps[key];
+    
+    // 验证缓存是否有效（时间戳检查）
+    if (!timestamp || Date.now() - timestamp > CACHE_DURATION) {
+      console.log(`缓存过期或不存在: ${key}`);
+      return null;
+    }
+    
+    // 获取当前用户的登录状态 - 用户token可能为null或空字符串（表示未登录）
+    const currentToken = localStorage.getItem(CACHE_KEYS.USER_TOKEN) || '';
+    // 获取缓存时的登录状态
+    const cachedToken = localStorage.getItem('cachedToken') || '';
+    
+    // 只有在登录状态发生实质变化时（从登录变为未登录，或从未登录变为登录，或切换了不同用户）才使缓存失效
+    // 这里通过比较"有无token"来判断登录状态变化，避免未登录状态下的不必要缓存失效
+    const wasLoggedIn = cachedToken !== '';
+    const isLoggedIn = currentToken !== '';
+    
+    if ((wasLoggedIn !== isLoggedIn) || (wasLoggedIn && isLoggedIn && cachedToken !== currentToken)) {
+      console.log('用户登录状态已变化，缓存无效');
+      // 更新保存的token状态
+      localStorage.setItem('cachedToken', currentToken);
+      return null;
+    }
+    
+    // 获取缓存数据
+    const cachedData = localStorage.getItem(key);
+    if (!cachedData) {
+      return null;
+    }
+    
+    const data = JSON.parse(cachedData);
+    console.log(`从缓存加载数据: ${key}`, data);
+    return data;
+  } catch (error) {
+    console.error('获取缓存数据失败:', error);
+    return null;
+  }
 }
 
 /**
@@ -74,14 +193,32 @@ async function loadRecommendedBooks() {
       return;
     }
     
+    // 检查是否有用户token
+    const token = localStorage.getItem(CACHE_KEYS.USER_TOKEN);
+    
+    // 尝试从缓存加载数据
+    const cachedBooks = getCachedData(CACHE_KEYS.RECOMMENDED_BOOKS);
+    if (cachedBooks && cachedBooks.length > 0) {
+      console.log('使用缓存的推荐书籍数据');
+      // 清空加载状态
+      recommendedContainer.innerHTML = '';
+      
+      // 渲染缓存的书籍
+      cachedBooks.forEach(book => {
+        recommendedContainer.appendChild(createBookCard(book, true));
+      });
+      return;
+    }
+    
+    // 如果没有缓存或缓存失效，从API获取
+    console.log('缓存无效，从API获取推荐书籍数据');
+    
     // 注意：不再在这里显示加载状态，因为已在初始化时显示
     
     // 设置请求超时
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
     
-    // 检查是否有用户token
-    const token = localStorage.getItem('token');
     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
     
     // 获取AI推荐书籍，如果用户已登录则获取个性化推荐
@@ -126,10 +263,27 @@ async function loadRecommendedBooks() {
     // 清空加载状态
     recommendedContainer.innerHTML = '';
     
-    // 渲染书籍
+    // 处理不同的API响应结构
+    let books = [];
     if (data.success && data.data && data.data.length > 0) {
-      console.log(`渲染${data.data.length}本推荐书籍`);
-      data.data.forEach(book => {
+      books = data.data;
+    } else if (data.books && data.books.length > 0) {
+      books = data.books;
+    } else if (Array.isArray(data) && data.length > 0) {
+      books = data;
+    }
+    
+    // 渲染书籍
+    if (books.length > 0) {
+      console.log(`渲染${books.length}本推荐书籍:`, books);
+      
+      // 缓存获取到的书籍数据
+      cacheData(CACHE_KEYS.RECOMMENDED_BOOKS, books);
+      // 保存当前的用户登录状态
+      const currentToken = localStorage.getItem(CACHE_KEYS.USER_TOKEN) || '';
+      localStorage.setItem('cachedToken', currentToken);
+      
+      books.forEach(book => {
         recommendedContainer.appendChild(createBookCard(book, true));
       });
     } else {
@@ -160,6 +314,23 @@ async function loadPopularBooks() {
       console.error('未找到热门书籍容器元素');
       return;
     }
+    
+    // 尝试从缓存加载数据
+    const cachedBooks = getCachedData(CACHE_KEYS.POPULAR_BOOKS);
+    if (cachedBooks && cachedBooks.length > 0) {
+      console.log('使用缓存的热门书籍数据');
+      // 清空加载状态
+      popularContainer.innerHTML = '';
+      
+      // 渲染缓存的书籍
+      cachedBooks.forEach(book => {
+        popularContainer.appendChild(createBookCard(book));
+      });
+      return;
+    }
+    
+    // 如果没有缓存或缓存失效，从API获取
+    console.log('缓存无效，从API获取热门书籍数据');
     
     // 注意：不再在这里显示加载状态，因为已在初始化时显示
     
@@ -207,10 +378,27 @@ async function loadPopularBooks() {
     // 清空加载状态
     popularContainer.innerHTML = '';
     
-    // 渲染书籍
+    // 处理不同的API响应结构
+    let books = [];
     if (data.success && data.data && data.data.length > 0) {
-      console.log(`渲染${data.data.length}本热门书籍`);
-      data.data.forEach(book => {
+      books = data.data;
+    } else if (data.books && data.books.length > 0) {
+      books = data.books;
+    } else if (Array.isArray(data) && data.length > 0) {
+      books = data;
+    }
+    
+    // 渲染书籍
+    if (books.length > 0) {
+      console.log(`渲染${books.length}本热门书籍:`, books);
+      
+      // 缓存获取到的书籍数据
+      cacheData(CACHE_KEYS.POPULAR_BOOKS, books);
+      // 保存当前的用户登录状态
+      const currentToken = localStorage.getItem(CACHE_KEYS.USER_TOKEN) || '';
+      localStorage.setItem('cachedToken', currentToken);
+      
+      books.forEach(book => {
         popularContainer.appendChild(createBookCard(book));
       });
     } else {
@@ -238,21 +426,33 @@ async function loadPopularBooks() {
  */
 function createBookCard(book, isAiRecommended = false) {
   console.log('创建书籍卡片:', book);
+  
+  // 数据兼容处理
+  const bookData = {
+    title: book.title || book.name || '未知书名',
+    author: book.author || '未知作者',
+    tags: book.tags || book.categories || [],
+    coverUrl: book.coverUrl || book.cover || '',
+    introduction: book.introduction || book.description || '',
+    popularity: book.popularity || book.heat || 0
+  };
+  
+  // 创建主卡片容器
   const card = document.createElement('div');
   card.className = 'book-card';
   
-  // 构建标签HTML
+  // 处理标签
   let tagsHtml = '';
-  if (book.tags && book.tags.length > 0) {
-    tagsHtml = book.tags.slice(0, 3).map(tag => 
+  if (bookData.tags && bookData.tags.length > 0) {
+    tagsHtml = bookData.tags.slice(0, 3).map(tag => 
       `<span class="book-tag">${tag}</span>`
     ).join('');
   }
   
-  // 构建热度标签（如果有）
+  // 热度标签
   let popularityBadge = '';
-  if (book.popularity && book.popularity > 80) {
-    popularityBadge = `<span class="popularity-badge">热度 ${book.popularity}</span>`;
+  if (bookData.popularity && bookData.popularity > 80) {
+    popularityBadge = `<span class="popularity-badge">热度 ${bookData.popularity}</span>`;
   }
   
   // AI推荐标签
@@ -261,46 +461,43 @@ function createBookCard(book, isAiRecommended = false) {
     aiBadge = `<span class="ai-badge"><i class="fas fa-robot"></i> AI推荐</span>`;
   }
   
-  // 设置默认封面图片
+  // 处理封面图片
   let coverUrl = '/src/images/default-book-cover.svg'; 
   
-  if (book.coverUrl && book.coverUrl.trim() !== '') {
+  if (bookData.coverUrl && bookData.coverUrl.trim() !== '') {
     // 检查是否是完整URL
-    if (book.coverUrl.startsWith('http://') || book.coverUrl.startsWith('https://')) {
-      coverUrl = book.coverUrl;
+    if (bookData.coverUrl.startsWith('http://') || bookData.coverUrl.startsWith('https://')) {
+      coverUrl = bookData.coverUrl;
     } else {
       // 相对路径补全
-      coverUrl = book.coverUrl.startsWith('/') ? book.coverUrl : `/${book.coverUrl}`;
+      coverUrl = bookData.coverUrl.startsWith('/') ? bookData.coverUrl : `/${bookData.coverUrl}`;
     }
   }
   
-  console.log(`书籍 ${book.title} 使用封面: ${coverUrl}`);
-  
-  // 构建卡片内容
+  // 填充卡片内容
   card.innerHTML = `
-    <a href="#" class="block book-card-link" data-book-title="${book.title}">
-      <div class="book-card-image-container">
-        <img src="${coverUrl}" alt="${book.title}" class="book-card-image" onerror="this.onerror=null; this.src='/src/images/default-book-cover.svg';">
-        ${popularityBadge}
-        ${aiBadge}
+    <div class="book-card-image-container">
+      <img src="${coverUrl}" alt="${bookData.title}" class="book-card-image" onerror="this.onerror=null; this.src='/src/images/default-book-cover.svg';">
+      ${popularityBadge}
+      ${aiBadge}
+    </div>
+    <div class="book-info">
+      <h3 class="book-title">${bookData.title}</h3>
+      <p class="book-author">${bookData.author}</p>
+      <div class="book-tags">
+        ${tagsHtml}
       </div>
-      <div class="book-info">
-        <h3 class="book-title">${book.title}</h3>
-        <p class="book-author">${book.author || '未知作者'}</p>
-        <div class="book-tags">
-          ${tagsHtml}
-        </div>
-      </div>
-    </a>
+    </div>
   `;
   
-  // 添加点击事件处理
-  const bookLink = card.querySelector('.book-card-link');
-  bookLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    // 跳转到书籍详情页或搜索结果页
-    window.location.href = `/src/pages/search.html?query=${encodeURIComponent(book.title)}`;
+  // 添加点击事件
+  card.addEventListener('click', (e) => {
+    // 跳转到书籍详情页
+    window.location.href = `/src/pages/search.html?query=${encodeURIComponent(bookData.title)}`;
   });
+  
+  // 添加鼠标悬停样式
+  card.style.cursor = 'pointer';
   
   return card;
 }
