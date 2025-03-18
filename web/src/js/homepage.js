@@ -9,15 +9,58 @@ const API_BASE_URL = '';
 // 最长请求超时时间（毫秒）
 const REQUEST_TIMEOUT = 40000;
 
+// 在页面开始加载时就立即执行，确保最早显示加载动画
+window.onload = function() {
+  console.log('页面已完全加载，执行初始化...');
+  initHomePage();
+};
+
+// 接收HTML解析事件，在页面结构可用但资源可能尚未加载完成时执行
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('初始化首页数据加载...');
-  
-  // 加载推荐书籍
-  loadRecommendedBooks();
-  
-  // 加载热门书籍
-  loadPopularBooks();
+  console.log('DOM已加载，立即显示加载动画...');
+  showInitialLoadingState();
 });
+
+// 显示初始加载状态
+function showInitialLoadingState() {
+  // 预先显示加载状态
+  const recommendedContainer = document.querySelector('#recommended-books');
+  const popularContainer = document.querySelector('#popular-books');
+  
+  if (recommendedContainer) {
+    if (recommendedContainer.children.length > 0) {
+      // 如果容器内已有内容，先清空
+      recommendedContainer.innerHTML = '';
+    }
+    showLoadingState(recommendedContainer, 'AI正在为您分析推荐书籍...');
+  } else {
+    console.error('未找到推荐书籍容器');
+  }
+  
+  if (popularContainer) {
+    if (popularContainer.children.length > 0) {
+      // 如果容器内已有内容，先清空
+      popularContainer.innerHTML = '';
+    }
+    showLoadingState(popularContainer, '正在获取热门书籍数据...');
+  } else {
+    console.error('未找到热门书籍容器');
+  }
+}
+
+// 初始化首页
+function initHomePage() {
+  console.log('执行首页初始化...');
+  
+  // 短暂延迟以确保DOM渲染完成
+  setTimeout(() => {
+    // 加载推荐书籍
+    loadRecommendedBooks();
+    
+    // 加载热门书籍
+    loadPopularBooks();
+  }, 300);
+}
 
 /**
  * 加载AI推荐的书籍
@@ -31,8 +74,7 @@ async function loadRecommendedBooks() {
       return;
     }
     
-    // 显示AI正在工作的加载状态
-    showLoadingState(recommendedContainer, '正在加载AI推荐书籍...');
+    // 注意：不再在这里显示加载状态，因为已在初始化时显示
     
     // 设置请求超时
     const controller = new AbortController();
@@ -119,8 +161,7 @@ async function loadPopularBooks() {
       return;
     }
     
-    // 显示AI正在工作的加载状态
-    showLoadingState(popularContainer, '正在获取热门书籍数据...');
+    // 注意：不再在这里显示加载状态，因为已在初始化时显示
     
     // 设置请求超时
     const controller = new AbortController();
@@ -286,17 +327,41 @@ function showLoadingState(container, message = '正在加载...') {
   container.appendChild(loadingMessage);
   
   // 添加骨架屏
+  const gridCols = window.innerWidth >= 1024 ? 4 : (window.innerWidth >= 640 ? 2 : 1);
+  
   for (let i = 0; i < 4; i++) {
     const skeleton = document.createElement('div');
     skeleton.className = 'book-card-skeleton';
+    
+    // 添加AI标签位置
+    const hasAiBadge = message.includes('AI') && i < 2;
+    const badgeHtml = hasAiBadge ? 
+      `<div style="position: absolute; top: 0.5rem; left: 0.5rem; background-color: rgba(49, 130, 206, 0.2); width: 70px; height: 26px; border-radius: 0.25rem;"></div>` : '';
+    
+    // 添加热度标签位置
+    const hasPopularBadge = !message.includes('AI') && i === 0;
+    const popularBadgeHtml = hasPopularBadge ? 
+      `<div style="position: absolute; top: 0.5rem; right: 0.5rem; background-color: rgba(239, 68, 68, 0.2); width: 60px; height: 26px; border-radius: 0.25rem;"></div>` : '';
+    
     skeleton.innerHTML = `
-      <div class="skeleton-image"></div>
+      <div class="skeleton-image">
+        ${badgeHtml}
+        ${popularBadgeHtml}
+      </div>
       <div class="skeleton-title"></div>
       <div class="skeleton-author"></div>
       <div class="skeleton-tags"></div>
     `;
     container.appendChild(skeleton);
   }
+  
+  // 添加一些随机性使骨架屏看起来更自然
+  const skeletons = container.querySelectorAll('.book-card-skeleton');
+  skeletons.forEach(skeleton => {
+    // 给每个骨架屏添加随机延迟动画
+    const randomDelay = Math.random() * 0.5;
+    skeleton.style.animationDelay = `${randomDelay}s`;
+  });
 }
 
 /**

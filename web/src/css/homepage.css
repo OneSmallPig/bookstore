@@ -103,6 +103,7 @@
   text-align: center;
   margin-bottom: 2rem;
   grid-column: 1 / -1;
+  width: 100%;
 }
 
 .loading-indicator {
@@ -115,6 +116,7 @@
   font-size: 0.875rem;
   font-weight: 500;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1rem;
 }
 
 .loading-indicator.ai {
@@ -146,6 +148,8 @@
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   height: 320px;
+  position: relative;
+  animation: pulse 1.5s infinite ease-in-out;
 }
 
 .skeleton-image {
@@ -207,6 +211,15 @@
   }
 }
 
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
 /* 错误状态 */
 .error-message {
   grid-column: 1 / -1;
@@ -252,4 +265,45 @@
   left: 50%;
   transform: translate(-50%, -50%);
   opacity: 0.2;
+}
+
+/* 书籍卡片容器样式 */
+#recommended-books, #popular-books {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1rem;
+  min-height: 350px; /* 确保即使没有内容也有足够的高度显示加载动画 */
+}
+
+@media (min-width: 640px) {
+  #recommended-books, #popular-books {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  #recommended-books, #popular-books {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 骨架屏容器样式 - 确保它们是块级元素并与网格项对齐 */
+.book-card-skeleton {
+  display: block;
+  width: 100%;
+  position: relative;
+  background: white;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  height: 320px;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* 加载信息横跨整个网格 */
+.loading-message {
+  grid-column: 1 / -1;
+  text-align: center;
+  margin-bottom: 1rem;
+  width: 100%;
 } 

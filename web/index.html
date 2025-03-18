@@ -11,7 +11,63 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- 立即执行脚本，确保最早显示加载状态 -->
+  <script>
+    // 在DOM开始解析时就立即插入加载动画
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM已加载，立即显示加载动画...');
+      const recommendedContainer = document.getElementById('recommended-books');
+      const popularContainer = document.getElementById('popular-books');
+      
+      if (recommendedContainer) {
+        recommendedContainer.innerHTML = createLoadingHTML('AI正在为您分析推荐书籍...');
+      }
+      
+      if (popularContainer) {
+        popularContainer.innerHTML = createLoadingHTML('正在获取热门书籍数据...');
+      }
+      
+      // 创建加载HTML
+      function createLoadingHTML(message) {
+        return `
+          <div class="loading-message">
+            <div class="loading-indicator${message.includes('AI') ? ' ai' : ''}">
+              <svg class="loading-spinner" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                <circle class="spinner-circle" cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3"></circle>
+              </svg>
+              <span>${message}</span>
+            </div>
+          </div>
+          <div class="book-card-skeleton">
+            <div class="skeleton-image"></div>
+            <div class="skeleton-title"></div>
+            <div class="skeleton-author"></div>
+            <div class="skeleton-tags"></div>
+          </div>
+          <div class="book-card-skeleton">
+            <div class="skeleton-image"></div>
+            <div class="skeleton-title"></div>
+            <div class="skeleton-author"></div>
+            <div class="skeleton-tags"></div>
+          </div>
+          <div class="book-card-skeleton">
+            <div class="skeleton-image"></div>
+            <div class="skeleton-title"></div>
+            <div class="skeleton-author"></div>
+            <div class="skeleton-tags"></div>
+          </div>
+          <div class="book-card-skeleton">
+            <div class="skeleton-image"></div>
+            <div class="skeleton-title"></div>
+            <div class="skeleton-author"></div>
+            <div class="skeleton-tags"></div>
+          </div>
+        `;
+      }
+    });
+  </script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+  <script src="src/js/homepage.js"></script>
 </head>
 <body>
   <!-- 导航栏 -->
@@ -308,8 +364,6 @@
 
   <script type="module" src="src/js/main.js"></script>
   <script type="module" src="src/js/profile-button.js"></script>
-  <script type="module" src="src/js/homepage.js"></script>
-  <script src="src/js/auth.js"></script>
   <script>
     // 初始化导航菜单
     document.addEventListener('DOMContentLoaded', function() {
@@ -362,5 +416,6 @@
       }
     }
   </script>
+  <script src="src/js/auth.js"></script>
 </body>
 </html> 

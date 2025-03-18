@@ -158,12 +158,15 @@ function initHomePage() {
     });
   }
   
-  // 加载推荐书籍
-  loadRecommendedBooks();
+  // 不再主动加载推荐书籍，由专门的homepage.js处理
+  console.log('首页数据将由homepage.js加载...');
 }
 
 // 加载推荐书籍
 async function loadRecommendedBooks() {
+  console.log('main.js中的loadRecommendedBooks被跳过，数据由homepage.js加载');
+  return; // 直接返回，不执行任何加载
+
   try {
     console.log('开始加载推荐书籍');
     
