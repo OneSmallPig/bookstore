@@ -14,6 +14,7 @@ const logger = require('./config/logger');
 const authRoutes = require('./routes/auth.routes');
 const userRoutes = require('./routes/user.routes');
 const bookRoutes = require('./routes/book.routes');
+const bookSourceRoutes = require('./routes/bookSource');
 
 // 创建Express应用
 const app = express();
@@ -49,6 +50,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/books', bookRoutes);
+app.use('/api/booksource', bookSourceRoutes);
 
 // 404处理
 app.use((req, res) => {
@@ -62,6 +64,12 @@ app.use((err, req, res, next) => {
     message: err.message || '服务器内部错误',
     stack: process.env.NODE_ENV === 'development' ? err.stack : {}
   });
+});
+
+// 初始化书源管理器
+const bookSourceManager = require('./services/bookSource/BookSourceManager');
+bookSourceManager.initialize().catch(err => {
+  logger.error('初始化书源管理器失败', err);
 });
 
 // 启动服务器
