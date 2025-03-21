@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bookController = require('../controllers/book.controller');
 const { authenticate } = require('../middlewares/auth.middleware');
+const models = require('../models/ModelConnector');
 
 // 获取所有书籍（公开）
 router.get('/', bookController.getAllBooks);

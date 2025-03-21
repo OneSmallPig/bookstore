@@ -5,6 +5,11 @@ const Book = require('../models/book.model');
 const Bookshelf = require('../models/bookshelf.model');
 const bcrypt = require('bcryptjs');
 const sampleData = require('../config/sample-data');
+const fs = require('fs').promises;
+const path = require('path');
+const BookSourceMySQL = require('../models/bookSource/BookSourceMySQL');
+const bookSourceManager = require('../services/bookSource/BookSourceManager');
+const logger = require('../utils/logger');
 
 async function importSampleData() {
   try {
@@ -82,13 +87,57 @@ async function importSampleData() {
   }
 }
 
-// 执行函数
-importSampleData()
-  .then(() => {
-    console.log('示例数据导入完成');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('示例数据导入失败:', error);
-    process.exit(1);
-  }); 
+/**
+ * 导入样例书源数据
+ */
+async function importSampleBookSources() {
+  try {
+    logger.info('开始导入样例书源数据...');
+    
+    // 读取样例书源文件
+    const sampleDataPath = path.join(__dirname, '../../测试模板书源文件.json');
+    const fileExists = await fs.access(sampleDataPath).then(() => true).catch(() => false);
+    
+    if (!fileExists) {
+      logger.warn(`样例数据文件不存在: ${sampleDataPath}`);
+      return;
+    }
+    
+    // 读取文件内容
+    const data = await fs.readFile(sampleDataPath, 'utf8');
+    
+    // 解析JSON
+    let sources;
+    try {
+      sources = JSON.parse(data);
+      logger.info(`已读取 ${sources.length} 条书源记录`);
+    } catch (parseError) {
+      logger.error('解析JSON失败:', parseError);
+      return;
+    }
+    
+    // 如果是数组，使用书源管理器导入
+    if (Array.isArray(sources)) {
+      const result = await bookSourceManager.importSources(sources);
+      logger.info(`成功导入 ${result} 条书源记录`);
+    } else {
+      logger.warn('书源数据不是数组格式');
+    }
+    
+  } catch (error) {
+    logger.error('导入样例数据失败:', error);
+  }
+}
+
+// 如果直接运行此脚本，则执行导入
+if (require.main === module) {
+  importSampleData().then(() => {
+    importSampleBookSources().then(() => {
+      logger.info('样例数据导入脚本执行完成');
+      process.exit(0);
+    });
+  });
+} else {
+  // 作为模块导出
+  module.exports = { importSampleData, importSampleBookSources };
+} 

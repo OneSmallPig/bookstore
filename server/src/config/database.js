@@ -1,80 +1,77 @@
 const { Sequelize } = require('sequelize');
-require('dotenv').config();
-
-// 从环境变量中获取数据库配置
-const dbName = process.env.DB_NAME;
-const dbUser = process.env.DB_USER;
-const dbPassword = process.env.DB_PASSWORD;
-const dbHost = process.env.DB_HOST;
-const dbPort = process.env.DB_PORT;
+// 注释掉mongoose，暂时不使用MongoDB
+// const mongoose = require('mongoose');
+const logger = require('../utils/logger');
+const config = require('./config');
 
 // 创建Sequelize实例
-const sequelize = new Sequelize(dbName, dbUser, dbPassword, {
-  host: dbHost,
-  port: dbPort,
-  dialect: 'mysql',
-  logging: process.env.NODE_ENV === 'development' ? console.log : false,
-  pool: {
-    max: 5,
-    min: 0,
-    acquire: 30000,
-    idle: 10000
-  },
-  define: {
-    timestamps: true, // 默认为模型添加createdAt和updatedAt字段
-    underscored: true, // 使用下划线命名法
+const sequelize = new Sequelize(
+  config.database.name,
+  config.database.user,
+  config.database.password,
+  {
+    host: config.database.host,
+    port: config.database.port,
+    dialect: 'mysql',
+    logging: config.database.logging ? console.log : false,
+    pool: {
+      max: 10,
+      min: 0,
+      acquire: 30000,
+      idle: 10000
+    },
+    define: {
+      charset: 'utf8mb4',
+      collate: 'utf8mb4_unicode_ci',
+      timestamps: true
+    }
   }
-});
+);
 
 // 测试数据库连接
 const testConnection = async () => {
   try {
     await sequelize.authenticate();
-    console.log('数据库连接成功');
+    logger.info('MySQL数据库连接成功');
   } catch (error) {
-    console.error('数据库连接失败:', error);
+    logger.error('MySQL数据库连接失败:', error);
   }
 };
 
-// MongoDB连接
-const mongoose = require('mongoose');
-const logger = require('../utils/logger');
-
-// 设置MongoDB连接选项
-const mongooseOptions = {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000, // 增加服务器选择超时
-  socketTimeoutMS: 45000, // 增加套接字超时
-  connectTimeoutMS: 30000, // 增加连接超时
-  heartbeatFrequencyMS: 10000, // 增加心跳频率
-  retryWrites: true,
-  // 如果使用副本集或分片集群，可以启用这个选项
-  // autoReconnect: true,
-};
-
-// 连接到MongoDB
+// 连接到MongoDB (暂时禁用)
 const connectMongoDB = async () => {
+  // 暂时禁用MongoDB连接，所有数据存储到MySQL
+  logger.info('MongoDB连接已禁用，所有数据将存储在MySQL中');
+  return true;
+  
+  /*
   try {
-    if (!process.env.MONGODB_URI) {
+    if (!config.mongodb.uri) {
       logger.warn('未找到MongoDB连接URI，跳过MongoDB连接');
       return;
     }
     
-    await mongoose.connect(process.env.MONGODB_URI, mongooseOptions);
+    await mongoose.connect(config.mongodb.uri, config.mongodb.options);
     logger.info('MongoDB连接成功');
   } catch (error) {
     logger.error('MongoDB连接失败', error);
-    // 不要因为MongoDB连接失败而中断服务
-    // 在生产环境中可能需要重试连接或发送警报
+    
+    // 如果允许MongoDB连接失败，继续运行
+    if (config.mongodb.allowFailover) {
+      logger.warn('MongoDB连接失败，但允许应用继续运行');
+    } else {
+      throw error; // 如果不允许失败，则抛出错误中断应用启动
+    }
   }
+  */
 };
 
-// 在应用启动时连接MongoDB
-connectMongoDB();
+// 在应用启动时连接MongoDB (已禁用)
+// connectMongoDB();
 
-// 导出连接测试函数
+// 导出
 module.exports = {
   sequelize,
-  testConnection
+  testConnection,
+  connectMongoDB
 }; 

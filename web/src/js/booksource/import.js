@@ -165,13 +165,13 @@ async function importBookSources() {
     importStatus.innerHTML = `
       <div class="mb-3">
         <div class="text-blue-500 mb-2">
-          <i class="fas fa-spinner fa-spin mr-2"></i>正在导入 ${normalizedSources.length} 个书源...
+          <i class="fas fa-spinner fa-spin mr-2"></i>正在提交导入请求...
         </div>
         <div class="w-full bg-gray-200 rounded-full h-2.5">
           <div id="importProgressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
         </div>
         <div class="text-sm text-gray-600 mt-1">
-          <span id="importProgressText">0/${normalizedSources.length}</span>
+          <span id="importProgressText">准备中...</span>
           <span class="float-right" id="importProgressPercent">0%</span>
         </div>
       </div>
@@ -189,16 +189,24 @@ async function importBookSources() {
       throw new Error('未找到认证令牌');
     }
     
-    // 更新进度条到50%，表示正在发送请求
-    const updateProgress = (percent) => {
+    // 更新进度的函数
+    const updateProgress = (percent, text = null) => {
       progressBar.style.width = `${percent}%`;
-      progressText.textContent = `处理中...`;
       progressPercent.textContent = `${percent}%`;
+      if (text) {
+        progressText.textContent = text;
+      }
     };
-    updateProgress(50);
+
+    // 添加详情的函数
+    const addDetail = (detail, isSuccess = true) => {
+      const statusClass = isSuccess ? 'text-green-500' : 'text-red-500';
+      importDetails.innerHTML = `<div class="${statusClass} my-1">${detail}</div>` + importDetails.innerHTML;
+    };
     
     // 向后端发送批量导入请求
     importDetails.innerHTML = `<div class="text-blue-500 my-1">正在向服务器提交 ${normalizedSources.length} 个书源...</div>`;
+    updateProgress(10, `正在提交请求...`);
     
     try {
       // 创建批量导入请求对象
@@ -221,9 +229,6 @@ async function importBookSources() {
         body: JSON.stringify(batchImportRequest)
       });
       
-      // 更新进度条到75%，表示正在处理响应
-      updateProgress(75);
-      
       if (!response.ok) {
         let errorMessage = `状态码: ${response.status}`;
         
@@ -242,44 +247,18 @@ async function importBookSources() {
       
       // 处理响应
       const result = await response.json();
+      const taskId = result.data.taskId;
       
-      // 更新进度条到100%
-      updateProgress(100);
-      
-      // 显示批量导入结果
-      const successCount = result.success || 0;
-      const failCount = result.failed || 0;
-      
-      // 更新导入详情
-      if (result.details && Array.isArray(result.details)) {
-        result.details.forEach(detail => {
-          let statusClass = detail.status === 'success' ? 'text-green-500' : 'text-red-500';
-          importDetails.innerHTML = `<div class="${statusClass} my-1">- ${detail.message || detail.name}</div>` + importDetails.innerHTML;
-        });
+      if (!taskId) {
+        throw new Error('服务器未返回有效的任务ID');
       }
       
-      // 更新最终状态
-      const statusColor = failCount > 0 ? "text-yellow-500" : "text-green-500";
-      const statusIcon = failCount > 0 ? "fa-exclamation-triangle" : "fa-check-circle";
+      // 更新进度状态
+      updateProgress(20, `导入任务已创建，正在处理...`);
+      addDetail(`导入任务已创建: 正在处理 ${normalizedSources.length} 个书源`);
       
-      importStatus.innerHTML = `
-        <div class="${statusColor} mb-3">
-          <i class="fas ${statusIcon} mr-2"></i>导入完成: 
-          <span class="text-green-500">成功 ${successCount} 个</span>
-          ${failCount > 0 ? `<span class="text-red-500">，失败 ${failCount} 个</span>` : ''}
-          ${skippedSources.length > 0 ? `<span class="text-gray-500">，跳过 ${skippedSources.length} 个无效源</span>` : ''}
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2.5">
-          <div class="bg-blue-600 h-2.5 rounded-full" style="width: 100%"></div>
-        </div>
-        <div class="text-sm text-gray-600 mt-1">
-          <span>${normalizedSources.length}/${normalizedSources.length}</span>
-          <span class="float-right">100%</span>
-        </div>
-        <div class="text-sm mt-4 max-h-40 overflow-y-auto">
-          ${importDetails.innerHTML}
-        </div>
-      `;
+      // 定期查询进度
+      await pollImportProgress(taskId, updateProgress, addDetail, skippedSources.length);
       
     } catch (error) {
       console.error('批量导入书源失败:', error);
@@ -303,9 +282,6 @@ async function importBookSources() {
       `;
     }
     
-    // 刷新书源列表
-    loadBookSources();
-    
     // 清除文件和文本输入
     if (isFileImport) {
       document.getElementById('fileInput').value = '';
@@ -322,5 +298,131 @@ async function importBookSources() {
         <i class="fas fa-exclamation-circle mr-2"></i>导入失败: ${error.message}
       </div>
     `;
+  }
+}
+
+/**
+ * 轮询导入进度
+ * @param {String} taskId 任务ID
+ * @param {Function} updateProgress 更新进度的函数 
+ * @param {Function} addDetail 添加详情的函数
+ * @param {Number} skippedCount 跳过的源数量
+ */
+async function pollImportProgress(taskId, updateProgress, addDetail, skippedCount) {
+  const token = getAuthToken();
+  const importStatus = document.getElementById('importStatus');
+  const importDetails = document.getElementById('importDetails');
+  const maxRetries = 60; // 最多轮询60次，约10分钟
+  let retries = 0;
+  
+  // 已处理的详情，用于避免重复显示
+  const processedDetails = new Set();
+  
+  // 定义轮询函数
+  const poll = async () => {
+    try {
+      const response = await fetch(`/api/booksource/sources/import-tasks/${taskId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`获取进度失败: ${response.status}`);
+      }
+      
+      const progressData = await response.json();
+      const task = progressData.data;
+      
+      // 更新进度条
+      const progressPercent = task.progress || 0;
+      updateProgress(20 + Math.min(progressPercent * 0.8, 80), // 进度范围从20%到100%
+                    `处理中: ${task.processed}/${task.total}`);
+      
+      // 更新详情
+      if (task.details && Array.isArray(task.details)) {
+        task.details.forEach(detail => {
+          // 创建唯一标识符
+          const detailId = `${detail.name}-${detail.status}-${detail.message}`;
+          
+          // 如果这个详情还没处理过，则添加到UI
+          if (!processedDetails.has(detailId)) {
+            processedDetails.add(detailId);
+            const isSuccess = detail.status === 'success';
+            
+            // 显示书源信息以及处理结果 - 消息中已包含书源名称
+            const groupInfo = detail.group ? ` [${detail.group}]` : '';
+            addDetail(`- ${detail.message}${groupInfo}`, isSuccess);
+          }
+        });
+      }
+      
+      // 检查任务状态
+      if (task.status === 'completed') {
+        // 任务完成，更新最终状态
+        updateProgress(100, `完成: ${task.processed}/${task.total}`);
+        
+        // 刷新书源列表
+        loadBookSources();
+        
+        // 更新最终状态
+        const statusColor = task.failed > 0 ? "text-yellow-500" : "text-green-500";
+        const statusIcon = task.failed > 0 ? "fa-exclamation-triangle" : "fa-check-circle";
+        
+        importStatus.innerHTML = `
+          <div class="${statusColor} mb-3">
+            <i class="fas ${statusIcon} mr-2"></i>导入完成: 
+            <span class="text-green-500">成功 ${task.success} 个</span>
+            ${task.failed > 0 ? `<span class="text-red-500">，失败 ${task.failed} 个</span>` : ''}
+            ${skippedCount > 0 ? `<span class="text-gray-500">，跳过 ${skippedCount} 个无效源</span>` : ''}
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2.5">
+            <div class="bg-blue-600 h-2.5 rounded-full" style="width: 100%"></div>
+          </div>
+          <div class="text-sm text-gray-600 mt-1">
+            <span>${task.processed}/${task.total}</span>
+            <span class="float-right">100%</span>
+          </div>
+          <div class="text-sm mt-4 max-h-40 overflow-y-auto">
+            ${importDetails.innerHTML}
+          </div>
+        `;
+        
+        return true; // 结束轮询
+      } else if (task.status === 'failed') {
+        // 任务失败
+        throw new Error(task.error || '导入失败');
+      }
+      
+      // 任务仍在进行中，继续轮询
+      return false;
+      
+    } catch (error) {
+      console.error('获取导入进度失败:', error);
+      throw error;
+    }
+  };
+  
+  // 开始轮询
+  while (retries < maxRetries) {
+    try {
+      const isDone = await poll();
+      if (isDone) break;
+      
+      // 延迟一定时间再次轮询
+      // 刚开始快速轮询，然后逐渐放慢
+      const delay = Math.min(1000 + (retries * 100), 5000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      retries++;
+    } catch (error) {
+      // 如果轮询出错，抛出异常终止
+      throw error;
+    }
+  }
+  
+  // 达到最大重试次数仍未完成
+  if (retries >= maxRetries) {
+    throw new Error('导入超时，请稍后检查书源列表或刷新页面查看结果');
   }
 } 

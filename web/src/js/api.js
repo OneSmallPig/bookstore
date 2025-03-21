@@ -3,18 +3,18 @@
  * 用于与后端API进行交互
  */
 
-// API基础URL
-const API_BASE_URL = 'http://localhost:3000/api';
+// 导入统一配置
+import config from './config.js';
 
 // 获取认证令牌函数
 function getToken() {
-  return localStorage.getItem('bookstore_auth') ? 
-    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+  return localStorage.getItem(config.cache.keys.AUTH_TOKEN) ? 
+    JSON.parse(localStorage.getItem(config.cache.keys.AUTH_TOKEN)).token : null;
 }
 
 // 通用请求函数
 async function request(endpoint, options = {}) {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const url = `${config.api.baseUrl}${endpoint}`;
   
   // 默认请求头
   const headers = {
@@ -23,7 +23,6 @@ async function request(endpoint, options = {}) {
   };
   
   // 如果有token，添加到请求头
-  // 使用auth.js中的getAuthToken函数获取认证令牌
   const token = getToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -39,7 +38,7 @@ async function request(endpoint, options = {}) {
     if (!response.ok) {
       // 如果是401错误，可能是token过期
       if (response.status === 401) {
-        localStorage.removeItem('token');
+        localStorage.removeItem(config.cache.keys.AUTH_TOKEN);
         // 可以在这里添加重定向到登录页面的逻辑
       }
       
@@ -162,7 +161,7 @@ const bookshelfApi = {
       if (order) queryParams.append('order', order);
       
       const queryString = queryParams.toString();
-      const url = `${API_BASE_URL}/users/bookshelf${queryString ? `?${queryString}` : ''}`;
+      const url = `${config.api.baseUrl}/users/bookshelf${queryString ? `?${queryString}` : ''}`;
       
       console.log('获取书架API请求URL:', url);
       
@@ -213,7 +212,7 @@ const bookshelfApi = {
       if (params.limit) queryParams.append('limit', params.limit);
       
       const queryString = queryParams.toString();
-      const url = `${API_BASE_URL}/bookshelf/books${queryString ? `?${queryString}` : ''}`;
+      const url = `${config.api.baseUrl}/bookshelf/books${queryString ? `?${queryString}` : ''}`;
       
       console.log('获取书架书籍API请求URL:', url);
       
@@ -266,7 +265,7 @@ const bookshelfApi = {
   // 添加书籍到书架
   async addToBookshelf(bookId, status = 'toRead') {
     try {
-      const response = await fetch(`${API_BASE_URL}/books/${bookId}/bookshelf`, {
+      const response = await fetch(`${config.api.baseUrl}/books/${bookId}/bookshelf`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -289,7 +288,7 @@ const bookshelfApi = {
   // 从书架移除书籍
   async removeFromBookshelf(bookId) {
     try {
-      const response = await fetch(`${API_BASE_URL}/books/${bookId}/bookshelf`, {
+      const response = await fetch(`${config.api.baseUrl}/books/${bookId}/bookshelf`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -311,7 +310,7 @@ const bookshelfApi = {
   // 更新阅读进度
   async updateReadingProgress(bookId, progress) {
     try {
-      const response = await fetch(`${API_BASE_URL}/books/${bookId}/reading-progress`, {
+      const response = await fetch(`${config.api.baseUrl}/books/${bookId}/reading-progress`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

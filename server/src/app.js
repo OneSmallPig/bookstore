@@ -73,16 +73,23 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 初始化书源管理器
-const bookSourceManager = require('./services/bookSource/BookSourceManager');
-bookSourceManager.initialize().catch(err => {
-  logger.error('初始化书源管理器失败', err);
-  // 即使书源管理器初始化失败，应用也会继续运行
-  if (process.env.ALLOW_MONGODB_FAILOVER !== 'true') {
-    // 如果没有配置允许MongoDB故障转移，则输出更详细的错误日志
-    logger.error(`如果这是MongoDB连接问题，您可以在.env文件中设置ALLOW_MONGODB_FAILOVER=true以允许应用在MongoDB不可用时仍能运行`);
+// 同步数据库并初始化书源管理器
+const syncDatabase = require('./scripts/sync-database');
+(async () => {
+  try {
+    await syncDatabase();
+    logger.info('数据库表结构同步成功');
+    
+    // 初始化书源管理器
+    const bookSourceManager = require('./services/bookSource/BookSourceManager');
+    bookSourceManager.initialize().catch(err => {
+      logger.error('初始化书源管理器失败', err);
+      logger.error('书源管理器初始化失败，请检查MySQL数据库连接和配置');
+    });
+  } catch (error) {
+    logger.error('数据库表结构同步失败:', error);
   }
-});
+})();
 
 // 捕获未处理的异常，避免应用崩溃
 process.on('uncaughtException', (error) => {

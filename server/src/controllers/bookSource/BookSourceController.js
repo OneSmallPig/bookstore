@@ -1,5 +1,6 @@
 const bookSourceManager = require('../../services/bookSource/BookSourceManager');
 const bookSearchService = require('../../services/bookSource/BookSearchService');
+const importTaskManager = require('../../services/bookSource/ImportTaskManager');
 const logger = require('../../utils/logger');
 
 /**
@@ -310,16 +311,45 @@ class BookSourceController {
         await bookSourceManager.initialize();
       }
       
+      // 创建导入任务
+      const taskId = importTaskManager.createTask(sources, options);
+      
+      // 启动异步处理 - 将函数和所有参数传递给独立的处理函数
+      setImmediate(() => processBatchImportStatic(taskId, sources, options, importTaskManager, bookSourceManager));
+      
+      // 立即返回任务ID
+      res.json({
+        success: true,
+        message: `已创建批量导入任务，共 ${sources.length} 个书源`,
+        data: {
+          taskId,
+          total: sources.length
+        }
+      });
+    } catch (error) {
+      logger.error('创建批量导入任务失败', error);
+      res.status(500).json({
+        success: false,
+        message: '创建批量导入任务失败',
+        error: error.message
+      });
+    }
+  }
+  
+  /**
+   * 异步处理批量导入
+   * @param {String} taskId 任务ID
+   * @param {Array} sources 书源数组
+   * @param {Object} options 导入选项
+   */
+  async processBatchImport(taskId, sources, options) {
+    try {
+      // 标记任务为处理中
+      importTaskManager.startProcessing(taskId);
+      
       // 提取选项
       const overwriteExisting = options?.overwriteExisting || false;
       const enableAfterImport = options?.enableAfterImport || true;
-      
-      // 处理结果
-      const results = {
-        success: 0,
-        failed: 0,
-        details: []
-      };
       
       // 批量处理书源
       for (const source of sources) {
@@ -329,12 +359,12 @@ class BookSourceController {
           
           // 如果书源存在且不允许覆盖，则跳过
           if (existingSource && !overwriteExisting) {
-            results.details.push({
-              name: source.name,
-              status: 'skipped',
-              message: `跳过已存在的书源: ${source.name}`
-            });
-            results.failed++;
+            importTaskManager.addSourceResult(
+              taskId, 
+              source, 
+              false, 
+              `跳过已存在的书源: ${source.name}`
+            );
             continue;
           }
           
@@ -346,36 +376,78 @@ class BookSourceController {
           // 添加或更新书源
           await bookSourceManager.addOrUpdateSource(source);
           
-          results.details.push({
-            name: source.name,
-            status: 'success',
-            message: `成功导入书源: ${source.name}`
-          });
-          results.success++;
+          importTaskManager.addSourceResult(
+            taskId, 
+            source, 
+            true, 
+            `成功导入书源: ${source.name}`
+          );
         } catch (error) {
           logger.error(`导入书源 ${source.name || '未知'} 失败`, error);
           
-          results.details.push({
-            name: source.name || '未知',
-            status: 'failed',
-            message: `导入失败: ${error.message}`
-          });
-          results.failed++;
+          importTaskManager.addSourceResult(
+            taskId, 
+            source, 
+            false, 
+            `导入失败: ${error.message}`
+          );
         }
       }
       
-      logger.info(`批量导入书源完成: 成功 ${results.success}，失败 ${results.failed}`);
+      // 标记任务为已完成
+      importTaskManager.completeTask(taskId);
+      logger.info(`批量导入任务 ${taskId} 完成`);
+      
+    } catch (error) {
+      logger.error(`批量导入任务 ${taskId} 失败`, error);
+      importTaskManager.failTask(taskId, error);
+    }
+  }
+
+  /**
+   * 获取批量导入任务进度
+   * @param {Object} req 请求对象
+   * @param {Object} res 响应对象
+   */
+  async getImportTaskProgress(req, res) {
+    try {
+      const { taskId } = req.params;
+      
+      if (!taskId) {
+        return res.status(400).json({
+          success: false,
+          message: '必须提供任务ID'
+        });
+      }
+      
+      const task = importTaskManager.getTask(taskId);
+      
+      if (!task) {
+        return res.status(404).json({
+          success: false,
+          message: `未找到任务: ${taskId}`
+        });
+      }
       
       res.json({
         success: true,
-        message: `已成功导入 ${results.success} 个书源，失败 ${results.failed} 个`,
-        data: results
+        data: {
+          taskId: task.id,
+          status: task.status,
+          total: task.total,
+          processed: task.processed,
+          success: task.success,
+          failed: task.failed,
+          progress: task.progress || 0,
+          details: task.details.slice(-10), // 只返回最近的10条详情
+          error: task.error
+        }
       });
     } catch (error) {
-      logger.error('批量导入书源失败', error);
+      logger.error('获取导入任务进度失败', error);
       res.status(500).json({
         success: false,
-        message: '批量导入书源失败',
+        message: '获取导入任务进度失败',
         error: error.message
       });
     }
@@ -611,6 +683,69 @@ class BookSourceController {
         error: error.message
       });
     }
+  }
+}
+
+// 然后在类外部或类内部定义静态处理函数
+async function processBatchImportStatic(taskId, sources, options, taskManager, sourceManager) {
+  try {
+    // 标记任务为处理中
+    taskManager.startProcessing(taskId);
+    
+    // 提取选项
+    const overwriteExisting = options?.overwriteExisting || false;
+    const enableAfterImport = options?.enableAfterImport || true;
+    
+    // 批量处理书源
+    for (const source of sources) {
+      try {
+        // 检查书源是否存在
+        const existingSource = sourceManager.getSourceByName(source.name);
+        
+        // 如果书源存在且不允许覆盖，则跳过
+        if (existingSource && !overwriteExisting) {
+          taskManager.addSourceResult(
+            taskId, 
+            source, 
+            false, 
+            `跳过已存在的书源`
+          );
+          continue;
+        }
+        
+        // 确保启用状态
+        if (enableAfterImport !== undefined) {
+          source.enabled = enableAfterImport;
+        }
+        
+        // 添加或更新书源
+        await sourceManager.addOrUpdateSource(source);
+        
+        taskManager.addSourceResult(
+          taskId, 
+          source, 
+          true, 
+          `成功导入`
+        );
+      } catch (error) {
+        logger.error(`导入书源 ${source.name || '未知'} 失败`, error);
+        
+        taskManager.addSourceResult(
+          taskId, 
+          source, 
+          false, 
+          `导入失败: ${error.message}`
+        );
+      }
+    }
+    
+    // 标记任务为已完成
+    taskManager.completeTask(taskId);
+    logger.info(`批量导入任务 ${taskId} 完成`);
+    
+  } catch (error) {
+    logger.error(`批量导入任务 ${taskId} 失败`, error);
+    taskManager.failTask(taskId, error);
   }
 }
 
