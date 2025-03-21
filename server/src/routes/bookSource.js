@@ -21,6 +21,7 @@ router.post('/sources', bookSourceController.addOrUpdateSource);
 router.delete('/sources/:name', bookSourceController.deleteSource);
 router.put('/sources/:name/enabled', bookSourceController.setSourceEnabled);
 router.post('/sources/import', bookSourceController.importSources);
+router.post('/sources/batch-import', bookSourceController.batchImportSources);
 router.post('/sources/export', bookSourceController.exportSources);
 router.post('/sources/test', bookSourceController.testBookSource);
 

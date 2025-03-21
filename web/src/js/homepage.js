@@ -4,7 +4,7 @@
  */
 
 // API基础URL配置 - 使用与api.js一致的配置
-const API_BASE_URL = 'http://localhost:3002';
+const API_BASE_URL = 'http://localhost:3000';
 
 // 最长请求超时时间（毫秒）
 const REQUEST_TIMEOUT = 40000;

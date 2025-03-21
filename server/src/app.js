@@ -35,8 +35,8 @@ app.use(cors({
   credentials: true,
   optionsSuccessStatus: 200
 })); // 跨域资源共享
-app.use(express.json()); // 解析JSON请求体
-app.use(express.urlencoded({ extended: true })); // 解析URL编码的请求体
+app.use(express.json({ limit: '20mb' })); // 解析JSON请求体，限制大小为20MB
+app.use(express.urlencoded({ extended: true, limit: '20mb' })); // 解析URL编码的请求体，限制大小为20MB
 app.use(morgan('combined')); // HTTP请求日志
 
 // 速率限制

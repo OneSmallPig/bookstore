@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- 添加通用脚本 -->
   <script src="/src/js/common.js"></script>
+  <!-- 引入书源管理相关JS -->
+  <script src="../js/booksource/import.js"></script>
   <style>
     .admin-only {
       background-color: #f97316;
@@ -631,176 +633,75 @@
   </main>
 
   <!-- 基础脚本 -->
-  <script src="../js/auth.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // 移动端菜单切换
-      const menuButton = document.querySelector('.menu-button');
-      const navMenu = document.querySelector('.nav-menu');
-      
-      if (menuButton && navMenu) {
-        menuButton.addEventListener('click', function() {
-          navMenu.classList.toggle('hidden');
-        });
-      }
-      
-      // 选项卡切换
-      const tabs = document.querySelectorAll('[data-tab]');
-      tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-          // 移除所有选项卡的活动状态
-          tabs.forEach(t => t.classList.remove('tab-active'));
-          tabs.forEach(t => t.classList.add('text-gray-500'));
-          
-          // 添加当前选项卡的活动状态
-          this.classList.add('tab-active');
-          this.classList.remove('text-gray-500');
-          
-          // 隐藏所有面板
-          const panels = document.querySelectorAll('.card');
-          panels.forEach(panel => panel.style.display = 'none');
-          
-          // 显示当前面板
-          const panel = document.getElementById(this.dataset.tab);
-          if (panel) panel.style.display = 'block';
-        });
-      });
-      
-      // 表单提交处理
-      const sourceForm = document.getElementById('sourceForm');
-      sourceForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        try {
-          // 收集表单数据
-          const formData = new FormData(sourceForm);
-          const sourceData = {
-            name: formData.get('name'),
-            url: formData.get('url'),
-            group: formData.get('group'),
-            icon: formData.get('icon'),
-            enabled: formData.get('enabled') === 'on',
-            
-            searchUrl: formData.get('searchUrl'),
-            searchList: formData.get('searchList'),
-            searchName: formData.get('searchName'),
-            searchAuthor: formData.get('searchAuthor'),
-            searchDetail: formData.get('searchDetail'),
-            
-            detailName: formData.get('detailName'),
-            detailAuthor: formData.get('detailAuthor'),
-            detailCover: formData.get('detailCover'),
-            detailIntro: formData.get('detailIntro'),
-            detailChapterUrl: formData.get('detailChapterUrl'),
-            
-            chapterList: formData.get('chapterList'),
-            chapterName: formData.get('chapterName'),
-            chapterLink: formData.get('chapterLink'),
-            
-            contentRule: formData.get('contentRule'),
-          };
-          
-          // 处理内容过滤规则
-          const contentFilters = formData.get('contentFilters');
-          if (contentFilters) {
-            sourceData.contentFilter = contentFilters.split(',').map(f => f.trim()).filter(Boolean);
-          }
-          
-          // 保存书源
-          const token = localStorage.getItem('token');
-          const response = await fetch('/api/booksource/sources', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(sourceData)
-          });
-          
-          if (!response.ok) {
-            throw new Error('保存书源失败');
-          }
-          
-          const data = await response.json();
-          if (!data.success) {
-            throw new Error(data.message || '保存书源失败');
-          }
-          
-          // 提示成功
-          alert(data.message || '保存书源成功');
-          
-          // 重置表单
-          resetForm();
-          
-          // 切换到书源列表并刷新
-          document.getElementById('tabSources').click();
-          loadBookSources();
-          
-        } catch (error) {
-          console.error('保存书源失败:', error);
-          alert(`保存书源失败: ${error.message}`);
-        }
-      });
-      
-      // 重置按钮
-      document.getElementById('resetBtn').addEventListener('click', function() {
-        resetForm();
-      });
-      
-      // 验证管理员权限
-      checkAdminAccess();
-      
-      // 导出功能配置
-      setupExportFunctions();
-      
-      // 导入功能配置
-      setupImportFunctions();
-      
-      // 测试功能配置
-      setupTestFunctions();
-    });
+    // 注：不再导入auth.js，避免模块加载错误
+    // 而是使用页面内部的实现
     
-    // 重置表单
-    function resetForm() {
-      // 设置为添加模式
-      document.getElementById('editMode').value = 'add';
-      
-      // 清空表单
-      document.getElementById('sourceForm').reset();
-      
-      // 启用书源名称输入
-      document.getElementById('sourceName').readOnly = false;
+    // 获取认证令牌
+    function getAuthToken() {
+      try {
+        const authData = localStorage.getItem('bookstore_auth');
+        if (!authData) return null;
+        
+        const { token } = JSON.parse(authData);
+        return token;
+      } catch (error) {
+        console.error('获取认证令牌失败:', error);
+        return null;
+      }
+    }
+    
+    // 检查当前用户是否是管理员
+    function isAdmin() {
+      try {
+        const authData = localStorage.getItem('bookstore_auth');
+        if (!authData) return false;
+        
+        const { user } = JSON.parse(authData);
+        if (!user) return false;
+        
+        return user.role === 'admin' || 
+               (user.roles && user.roles.includes('admin')) || 
+               user.isAdmin === true;
+      } catch (error) {
+        console.error('检查管理员权限失败:', error);
+        return false;
+      }
     }
     
     // 验证管理员权限
     async function checkAdminAccess() {
       try {
-        // 获取当前登录的用户信息
-        const token = localStorage.getItem('token');
-        if (!token) {
+        // 获取用户信息
+        const authData = localStorage.getItem('bookstore_auth');
+        if (!authData) {
+          console.error('未找到用户认证数据');
           showAuthScreen();
           return;
         }
         
-        const response = await fetch('/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('验证失败');
-        }
-        
-        const data = await response.json();
-        if (!data.user || data.user.role !== 'admin') {
+        const { user } = JSON.parse(authData);
+        if (!user) {
+          console.error('未找到用户数据');
           showAuthScreen();
           return;
         }
+        
+        // 检查用户是否为管理员
+        if (!isAdmin()) {
+          console.error('用户不是管理员');
+          showAuthScreen();
+          return;
+        }
+        
+        console.log('已验证管理员权限:', user.username);
+        
+        // 隐藏认证屏幕（如果显示）
+        document.getElementById('authScreen').style.display = 'none';
         
         // 显示管理员信息
         document.getElementById('loadingStatus').innerHTML = 
-          `<i class="fas fa-check-circle text-green-500 mr-2"></i>管理员：${data.user.username}`;
+          `<i class="fas fa-check-circle text-green-500 mr-2"></i>管理员：${user.username}`;
           
         // 加载书源列表
         loadBookSources();
@@ -816,132 +717,684 @@
       document.getElementById('authScreen').style.display = 'flex';
     }
     
-    // 设置导出功能
-    function setupExportFunctions() {
-      const exportAllCheckbox = document.getElementById('exportAll');
-      const exportEnabledCheckbox = document.getElementById('exportEnabled');
-      const exportByGroupCheckbox = document.getElementById('exportByGroup');
-      const exportGroupSelect = document.getElementById('exportGroup');
-      const exportBtn = document.getElementById('exportBtn');
+    // 页面初始化
+    document.addEventListener('DOMContentLoaded', function() {
+      // 移动端菜单切换
+      const menuButton = document.querySelector('.menu-button');
+      const navMenu = document.querySelector('.nav-menu');
       
-      // 导出全部与仅导出启用的互斥
-      exportAllCheckbox.addEventListener('change', function() {
-        if (this.checked) {
-          exportEnabledCheckbox.checked = false;
-        }
+      if (menuButton && navMenu) {
+        menuButton.addEventListener('click', function() {
+          navMenu.classList.toggle('hidden');
+        });
+      }
+      
+      // 初始化权限验证
+      checkAdminAccess();
+      
+      // 选项卡切换
+      const tabs = document.querySelectorAll('[data-tab]');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+          // 重置所有选项卡
+          tabs.forEach(t => {
+            t.classList.remove('tab-active');
+            t.classList.add('text-gray-500');
+          });
+          
+          // 激活当前选项卡
+          this.classList.add('tab-active');
+          this.classList.remove('text-gray-500');
+          
+          // 显示对应面板
+          const panels = document.querySelectorAll('.card');
+          panels.forEach(panel => {
+            panel.style.display = 'none';
+          });
+          
+          const tabId = this.dataset.tab;
+          document.getElementById(tabId).style.display = 'block';
+        });
       });
       
-      exportEnabledCheckbox.addEventListener('change', function() {
-        if (this.checked) {
-          exportAllCheckbox.checked = false;
-        }
+      // 设置导入面板功能
+      setupImportFunctions();
+      
+      // 设置测试面板功能
+      setupTestFunctions();
+      
+      // 设置添加/编辑面板功能
+      setupEditFunctions();
+    });
+
+    // 设置导入面板功能
+    function setupImportFunctions() {
+      // 导入选项卡切换
+      const importTabs = document.querySelectorAll('[data-import-tab]');
+      importTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+          // 重置所有选项卡
+          importTabs.forEach(t => {
+            t.classList.remove('tab-active');
+            t.classList.add('text-gray-500');
+          });
+          
+          // 激活当前选项卡
+          this.classList.add('tab-active');
+          this.classList.remove('text-gray-500');
+          
+          // 显示对应面板
+          const tabId = this.dataset.importTab;
+          document.getElementById('fileImport').style.display = tabId === 'fileImport' ? 'block' : 'none';
+          document.getElementById('textImport').style.display = tabId === 'textImport' ? 'block' : 'none';
+        });
       });
       
-      // 按分组导出启用/禁用下拉框
-      exportByGroupCheckbox.addEventListener('change', function() {
-        exportGroupSelect.disabled = !this.checked;
-        if (this.checked) {
-          exportAllCheckbox.checked = false;
-          exportEnabledCheckbox.checked = false;
-        }
-      });
+      // 文件选择处理
+      const fileInput = document.getElementById('fileInput');
+      const fileInfo = document.getElementById('fileInfo');
+      const fileName = document.getElementById('fileName');
+      const fileSize = document.getElementById('fileSize');
+      const fileSelectBtn = document.getElementById('fileSelectBtn');
       
-      // 导出按钮点击事件
-      exportBtn.addEventListener('click', exportBookSources);
+      // 绑定文件选择按钮点击事件
+      if (fileSelectBtn && fileInput) {
+        fileSelectBtn.addEventListener('click', function() {
+          fileInput.click();
+        });
+      }
+      
+      if (fileInput) {
+        fileInput.addEventListener('change', function() {
+          if (this.files.length) {
+            const file = this.files[0];
+            fileInfo.classList.remove('hidden');
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+          } else {
+            fileInfo.classList.add('hidden');
+          }
+        });
+      }
+      
+      // 清除文件按钮
+      const fileClearBtn = document.getElementById('fileClearBtn');
+      if (fileClearBtn) {
+        fileClearBtn.addEventListener('click', function() {
+          fileInput.value = '';
+          fileInfo.classList.add('hidden');
+        });
+      }
+      
+      // 导入按钮点击事件
+      document.getElementById('importBtn').addEventListener('click', function() {
+        importBookSources();
+      });
     }
     
-    // 导出书源
-    async function exportBookSources() {
-      try {
-        // 获取选项
-        const exportAll = document.getElementById('exportAll').checked;
-        const exportEnabled = document.getElementById('exportEnabled').checked;
-        const exportByGroup = document.getElementById('exportByGroup').checked;
-        const exportGroup = document.getElementById('exportGroup').value;
-        
-        // 验证选项
-        if (!exportAll && !exportEnabled && !exportByGroup) {
-          alert('请选择导出方式');
-          return;
-        }
-        
-        if (exportByGroup && !exportGroup) {
-          alert('请选择要导出的分组');
-          return;
-        }
-        
-        // 获取所有书源
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/booksource/sources', {
-          headers: {
-            'Authorization': `Bearer ${token}`
+    // 设置测试面板功能
+    function setupTestFunctions() {
+      // 测试搜索按钮
+      const testSearchBtn = document.getElementById('testSearchBtn');
+      if (testSearchBtn) {
+        testSearchBtn.addEventListener('click', function() {
+          const sourceName = document.getElementById('testSourceName').value;
+          const keyword = document.getElementById('testKeyword').value;
+          
+          if (!sourceName) {
+            alert('请选择要测试的书源');
+            return;
           }
+          
+          if (!keyword) {
+            alert('请输入搜索关键词');
+            return;
+          }
+          
+          testSearch(sourceName, keyword);
+        });
+      }
+      
+      // 清除结果按钮
+      const testClearBtn = document.getElementById('testClearBtn');
+      if (testClearBtn) {
+        testClearBtn.addEventListener('click', function() {
+          document.getElementById('testResults').style.display = 'none';
+          document.getElementById('searchResultsContent').innerHTML = '<div class="loader"></div>';
+          document.getElementById('bookDetailSection').style.display = 'none';
+          document.getElementById('chapterListSection').style.display = 'none';
+          document.getElementById('chapterContentSection').style.display = 'none';
+        });
+      }
+    }
+    
+    // 测试搜索
+    async function testSearch(sourceName, keyword) {
+      try {
+        // 显示测试结果区域
+        document.getElementById('testResults').style.display = 'block';
+        document.getElementById('searchResultsContent').innerHTML = '<div class="loader"></div>';
+        
+        // 隐藏其他结果区域
+        document.getElementById('bookDetailSection').style.display = 'none';
+        document.getElementById('chapterListSection').style.display = 'none';
+        document.getElementById('chapterContentSection').style.display = 'none';
+        
+        // 获取认证令牌
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
+        // 发起测试搜索请求
+        const response = await fetch(`/api/booksource/test/search`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sourceName,
+            keyword
+          })
         });
         
         if (!response.ok) {
-          throw new Error('获取书源失败');
+          throw new Error('测试搜索请求失败');
         }
         
         const data = await response.json();
         if (!data.success) {
-          throw new Error(data.message || '获取书源失败');
+          throw new Error(data.message || '测试搜索失败');
         }
         
-        let sourcesToExport = data.data;
-        
-        // 根据选项筛选
-        if (exportEnabled) {
-          sourcesToExport = sourcesToExport.filter(source => source.enabled);
-        }
-        
-        if (exportByGroup) {
-          sourcesToExport = sourcesToExport.filter(source => source.group === exportGroup);
-        }
-        
-        if (sourcesToExport.length === 0) {
-          alert('没有符合条件的书源可导出');
-          return;
-        }
-        
-        // 创建并下载JSON文件
-        const fileName = exportByGroup ? 
-          `书源_${exportGroup}_${formatDate(new Date())}.json` : 
-          `书源备份_${formatDate(new Date())}.json`;
-        
-        const json = JSON.stringify(sourcesToExport, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        
-        // 清理
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 100);
+        // 显示搜索结果
+        renderSearchResults(data.data, sourceName);
         
       } catch (error) {
-        console.error('导出书源失败:', error);
-        alert(`导出书源失败: ${error.message}`);
+        console.error('测试搜索失败:', error);
+        document.getElementById('searchResultsContent').innerHTML = 
+          `<div class="text-red-500 py-2">
+            <i class="fas fa-exclamation-circle mr-2"></i>${error.message}
+          </div>`;
       }
     }
     
-    // 格式化日期为 YYYYMMDD 格式
-    function formatDate(date) {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}${month}${day}`;
+    // 渲染搜索结果
+    function renderSearchResults(books, sourceName) {
+      const container = document.getElementById('searchResultsContent');
+      
+      if (!books || books.length === 0) {
+        container.innerHTML = 
+          `<div class="text-gray-500 py-2">
+            <i class="fas fa-info-circle mr-2"></i>没有找到相关书籍
+          </div>`;
+        return;
+      }
+      
+      let html = `
+        <div class="space-y-3">
+          <p class="text-sm text-gray-500">找到 ${books.length} 个结果</p>
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">书名</th>
+                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">作者</th>
+                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+      `;
+      
+      books.forEach((book, index) => {
+        html += `
+          <tr>
+            <td class="px-3 py-2 whitespace-nowrap">
+              <div class="font-medium text-gray-900">${book.name || '未知'}</div>
+            </td>
+            <td class="px-3 py-2 whitespace-nowrap">
+              <span class="text-sm text-gray-500">${book.author || '未知'}</span>
+            </td>
+            <td class="px-3 py-2 whitespace-nowrap">
+              <button class="px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+                onclick="testBookDetail('${sourceName}', '${encodeURIComponent(book.url)}')">
+                查看详情
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+      
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+    }
+    
+    // 测试书籍详情
+    async function testBookDetail(sourceName, bookUrl) {
+      try {
+        // 显示书籍详情区域
+        document.getElementById('bookDetailSection').style.display = 'block';
+        document.getElementById('bookDetailContent').innerHTML = '<div class="loader"></div>';
+        
+        // 隐藏章节列表和内容区域
+        document.getElementById('chapterListSection').style.display = 'none';
+        document.getElementById('chapterContentSection').style.display = 'none';
+        
+        // 滚动到详情区域
+        document.getElementById('bookDetailSection').scrollIntoView({ behavior: 'smooth' });
+        
+        // 获取认证令牌
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
+        // 发起测试书籍详情请求
+        const response = await fetch(`/api/booksource/test/detail`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sourceName,
+            bookUrl: decodeURIComponent(bookUrl)
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('获取书籍详情失败');
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || '获取书籍详情失败');
+        }
+        
+        // 显示书籍详情
+        renderBookDetail(data.data, sourceName);
+        
+      } catch (error) {
+        console.error('测试书籍详情失败:', error);
+        document.getElementById('bookDetailContent').innerHTML = 
+          `<div class="text-red-500 py-2">
+            <i class="fas fa-exclamation-circle mr-2"></i>${error.message}
+          </div>`;
+      }
+    }
+    
+    // 渲染书籍详情
+    function renderBookDetail(book, sourceName) {
+      const container = document.getElementById('bookDetailContent');
+      
+      if (!book) {
+        container.innerHTML = 
+          `<div class="text-gray-500 py-2">
+            <i class="fas fa-info-circle mr-2"></i>无法获取书籍详情
+          </div>`;
+        return;
+      }
+      
+      let html = `
+        <div class="flex flex-col md:flex-row">
+          <div class="md:w-1/4 mb-4 md:mb-0 md:mr-4">
+            ${book.cover ? 
+              `<img src="${book.cover}" alt="${book.name}" class="w-full rounded-md shadow">` : 
+              `<div class="w-full h-40 bg-gray-200 rounded-md flex items-center justify-center">
+                <i class="fas fa-book text-gray-400 text-4xl"></i>
+              </div>`
+            }
+          </div>
+          <div class="md:w-3/4">
+            <h3 class="text-xl font-bold mb-2">${book.name || '未知书名'}</h3>
+            <div class="space-y-2 mb-4">
+              <p><span class="text-gray-600">作者：</span>${book.author || '未知'}</p>
+              <p><span class="text-gray-600">更新时间：</span>${book.lastUpdate || '未知'}</p>
+              <p><span class="text-gray-600">最新章节：</span>${book.lastChapter || '未知'}</p>
+              <p><span class="text-gray-600">分类：</span>${book.category || '未知'}</p>
+              <p><span class="text-gray-600">字数：</span>${book.wordCount || '未知'}</p>
+            </div>
+            <div class="mb-4">
+              <h4 class="text-sm font-medium text-gray-700 mb-1">简介：</h4>
+              <div class="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                ${book.intro ? book.intro.replace(/\n/g, '<br>') : '暂无简介'}
+              </div>
+            </div>
+            <div>
+              <button class="px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+                onclick="testChapterList('${sourceName}', '${encodeURIComponent(book.chapterUrl || book.url)}')">
+                查看章节列表
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+    }
+    
+    // 测试章节列表
+    async function testChapterList(sourceName, chapterUrl) {
+      try {
+        // 显示章节列表区域
+        document.getElementById('chapterListSection').style.display = 'block';
+        document.getElementById('chapterListContent').innerHTML = '<div class="loader"></div>';
+        
+        // 隐藏章节内容区域
+        document.getElementById('chapterContentSection').style.display = 'none';
+        
+        // 滚动到章节列表区域
+        document.getElementById('chapterListSection').scrollIntoView({ behavior: 'smooth' });
+        
+        // 获取认证令牌
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
+        // 发起测试章节列表请求
+        const response = await fetch(`/api/booksource/test/chapters`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sourceName,
+            chapterUrl: decodeURIComponent(chapterUrl)
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('获取章节列表失败');
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || '获取章节列表失败');
+        }
+        
+        // 显示章节列表
+        renderChapterList(data.data, sourceName);
+        
+      } catch (error) {
+        console.error('测试章节列表失败:', error);
+        document.getElementById('chapterListContent').innerHTML = 
+          `<div class="text-red-500 py-2">
+            <i class="fas fa-exclamation-circle mr-2"></i>${error.message}
+          </div>`;
+      }
+    }
+    
+    // 渲染章节列表
+    function renderChapterList(chapters, sourceName) {
+      const container = document.getElementById('chapterListContent');
+      
+      if (!chapters || chapters.length === 0) {
+        container.innerHTML = 
+          `<div class="text-gray-500 py-2">
+            <i class="fas fa-info-circle mr-2"></i>没有找到章节
+          </div>`;
+        return;
+      }
+      
+      let html = `
+        <div class="space-y-3">
+          <p class="text-sm text-gray-500">共 ${chapters.length} 章</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+      `;
+      
+      chapters.forEach((chapter, index) => {
+        html += `
+          <div class="text-sm">
+            <button class="w-full text-left px-2 py-1 hover:bg-blue-50 rounded text-blue-600 overflow-hidden overflow-ellipsis whitespace-nowrap"
+              onclick="testChapterContent('${sourceName}', '${encodeURIComponent(chapter.url)}', '${encodeURIComponent(chapter.name)}')">
+              ${index + 1}. ${chapter.name}
+            </button>
+          </div>
+        `;
+      });
+      
+      html += `
+          </div>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+    }
+    
+    // 测试章节内容
+    async function testChapterContent(sourceName, chapterUrl, chapterName) {
+      try {
+        // 显示章节内容区域
+        document.getElementById('chapterContentSection').style.display = 'block';
+        document.getElementById('chapterContentDisplay').innerHTML = '<div class="loader"></div>';
+        document.getElementById('chapterContentInfo').textContent = `章节：${decodeURIComponent(chapterName)}`;
+        
+        // 滚动到章节内容区域
+        document.getElementById('chapterContentSection').scrollIntoView({ behavior: 'smooth' });
+        
+        // 获取认证令牌
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
+        // 发起测试章节内容请求
+        const response = await fetch(`/api/booksource/test/content`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sourceName,
+            chapterUrl: decodeURIComponent(chapterUrl)
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('获取章节内容失败');
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || '获取章节内容失败');
+        }
+        
+        // 显示章节内容
+        renderChapterContent(data.data);
+        
+      } catch (error) {
+        console.error('测试章节内容失败:', error);
+        document.getElementById('chapterContentDisplay').innerHTML = 
+          `<div class="text-red-500 py-2">
+            <i class="fas fa-exclamation-circle mr-2"></i>${error.message}
+          </div>`;
+      }
+    }
+    
+    // 渲染章节内容
+    function renderChapterContent(content) {
+      const container = document.getElementById('chapterContentDisplay');
+      
+      if (!content) {
+        container.innerHTML = 
+          `<div class="text-gray-500 py-2">
+            <i class="fas fa-info-circle mr-2"></i>无法获取章节内容
+          </div>`;
+        return;
+      }
+      
+      // 处理内容
+      const formattedContent = content
+        .replace(/\n+/g, '\n')  // 合并多个换行
+        .replace(/\n/g, '<br>') // 将换行转换为HTML换行
+        .replace(/\s\s+/g, ' '); // 合并多个空格
+      
+      container.innerHTML = `
+        <div class="text-gray-800 leading-relaxed">
+          ${formattedContent || '章节内容为空'}
+        </div>
+      `;
+    }
+    
+    // 设置添加/编辑面板功能
+    function setupEditFunctions() {
+      // 书源表单提交
+      const sourceForm = document.getElementById('sourceForm');
+      if (sourceForm) {
+        sourceForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          saveBookSource();
+        });
+      }
+      
+      // 重置按钮
+      const resetBtn = document.getElementById('resetBtn');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+          resetForm();
+        });
+      }
+    }
+    
+    // 保存书源
+    async function saveBookSource() {
+      try {
+        // 获取表单数据
+        const form = document.getElementById('sourceForm');
+        const formData = new FormData(form);
+        const isEdit = document.getElementById('editMode').value === 'edit';
+        
+        // 构造书源对象
+        const source = {
+          name: formData.get('name'),
+          url: formData.get('url'),
+          group: formData.get('group'),
+          icon: formData.get('icon'),
+          enabled: formData.get('enabled') === 'on',
+          
+          // 搜索规则
+          searchUrl: formData.get('searchUrl'),
+          searchList: formData.get('searchList'),
+          searchName: formData.get('searchName'),
+          searchAuthor: formData.get('searchAuthor'),
+          searchDetail: formData.get('searchDetail'),
+          
+          // 详情页规则
+          detailName: formData.get('detailName'),
+          detailAuthor: formData.get('detailAuthor'),
+          detailCover: formData.get('detailCover'),
+          detailIntro: formData.get('detailIntro'),
+          detailChapterUrl: formData.get('detailChapterUrl'),
+          
+          // 章节列表规则
+          chapterList: formData.get('chapterList'),
+          chapterName: formData.get('chapterName'),
+          chapterLink: formData.get('chapterLink'),
+          
+          // 内容规则
+          contentRule: formData.get('contentRule'),
+          contentFilter: formData.get('contentFilters') ? formData.get('contentFilters').split(',').map(f => f.trim()) : []
+        };
+        
+        // 验证必填字段
+        const requiredFields = [
+          { field: 'name', label: '书源名称' },
+          { field: 'url', label: '书源URL' },
+          { field: 'searchUrl', label: '搜索URL' },
+          { field: 'searchList', label: '搜索结果列表选择器' },
+          { field: 'searchName', label: '书名选择器' },
+          { field: 'searchDetail', label: '详情链接选择器' },
+          { field: 'detailChapterUrl', label: '章节列表URL选择器' },
+          { field: 'chapterList', label: '章节列表选择器' },
+          { field: 'chapterName', label: '章节名选择器' },
+          { field: 'chapterLink', label: '章节链接选择器' },
+          { field: 'contentRule', label: '内容选择器' }
+        ];
+        
+        for (const field of requiredFields) {
+          if (!source[field.field]) {
+            alert(`请填写${field.label}`);
+            return;
+          }
+        }
+        
+        // 获取认证令牌
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
+        // 构造请求
+        const method = isEdit ? 'PUT' : 'POST';
+        const url = isEdit ? `/api/booksource/sources/${source.name}` : '/api/booksource/sources';
+        
+        const response = await fetch(url, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(source)
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `${isEdit ? '更新' : '添加'}书源失败`);
+        }
+        
+        // 提示成功
+        alert(`书源${isEdit ? '更新' : '添加'}成功`);
+        
+        // 重置表单
+        resetForm();
+        
+        // 刷新书源列表并切换到列表面板
+        loadBookSources();
+        document.getElementById('tabSources').click();
+        
+      } catch (error) {
+        console.error('保存书源失败:', error);
+        alert(`保存书源失败: ${error.message}`);
+      }
+    }
+    
+    // 重置表单
+    function resetForm() {
+      const form = document.getElementById('sourceForm');
+      form.reset();
+      
+      // 恢复为添加模式
+      document.getElementById('editMode').value = 'add';
+      document.getElementById('sourceName').readOnly = false;
+    }
+    
+    // 辅助函数：格式化文件大小
+    function formatFileSize(bytes) {
+      if (bytes < 1024) {
+        return bytes + ' B';
+      } else if (bytes < 1024 * 1024) {
+        return (bytes / 1024).toFixed(2) + ' KB';
+      } else {
+        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+      }
     }
     
     // 加载书源列表
     async function loadBookSources() {
       try {
-        const token = localStorage.getItem('token');
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
         const response = await fetch('/api/booksource/sources', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -1010,47 +1463,35 @@
       sources.forEach(source => {
         html += `
           <tr class="source-item">
-            <td class="px-4 py-3 whitespace-nowrap">
-              <div class="flex items-center">
-                ${source.icon ? `<img src="${source.icon}" class="h-6 w-6 mr-2">` : 
-                  `<div class="h-6 w-6 mr-2 bg-gray-200 rounded-full flex items-center justify-center">
-                    <i class="fas fa-book text-xs text-gray-500"></i>
-                  </div>`}
-                <span class="font-medium">${source.name}</span>
-              </div>
+            <td class="px-4 py-4 whitespace-nowrap">
+              <div class="font-medium text-gray-900">${source.name}</div>
             </td>
-            <td class="px-4 py-3 whitespace-nowrap">
-              <span class="text-sm text-gray-500">${source.group || '未分组'}</span>
+            <td class="px-4 py-4 whitespace-nowrap">
+              <span class="text-sm text-gray-500">${source.group || '-'}</span>
             </td>
-            <td class="px-4 py-3 whitespace-nowrap">
-              <a href="${source.url}" target="_blank" class="text-sm text-blue-500 hover:underline truncate max-w-xs inline-block">
-                ${source.url}
-              </a>
+            <td class="px-4 py-4 whitespace-nowrap">
+              <span class="text-sm text-gray-500">${source.url || '-'}</span>
             </td>
-            <td class="px-4 py-3 whitespace-nowrap">
+            <td class="px-4 py-4 whitespace-nowrap">
               ${source.enabled ? 
-                `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  <i class="fas fa-check-circle mr-1"></i>启用
-                </span>` : 
-                `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                  <i class="fas fa-ban mr-1"></i>禁用
-                </span>`
+                '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">启用</span>' : 
+                '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">禁用</span>'
               }
             </td>
-            <td class="px-4 py-3 whitespace-nowrap text-sm">
+            <td class="px-4 py-4 whitespace-nowrap text-sm">
               <div class="flex space-x-2">
                 <button class="text-blue-500 hover:text-blue-700" onclick="editSource('${source.name}')">
                   <i class="fas fa-edit"></i>
                 </button>
-                <button class="text-green-500 hover:text-green-700" onclick="testSource('${source.name}')">
-                  <i class="fas fa-vial"></i>
+                <button class="text-${source.enabled ? 'yellow' : 'green'}-500 hover:text-${source.enabled ? 'yellow' : 'green'}-700" 
+                  onclick="toggleSource('${source.name}', ${!source.enabled})">
+                  <i class="fas fa-${source.enabled ? 'pause' : 'play'}"></i>
                 </button>
                 <button class="text-red-500 hover:text-red-700" onclick="deleteSource('${source.name}')">
                   <i class="fas fa-trash"></i>
                 </button>
-                <button class="${source.enabled ? 'text-orange-500 hover:text-orange-700' : 'text-gray-500 hover:text-gray-700'}" 
-                  onclick="toggleSource('${source.name}', ${!source.enabled})">
-                  <i class="fas ${source.enabled ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+                <button class="text-purple-500 hover:text-purple-700" onclick="testSource('${source.name}')">
+                  <i class="fas fa-vial"></i>
                 </button>
               </div>
             </td>
@@ -1069,841 +1510,176 @@
     
     // 加载书源分组
     function loadSourceGroups(sources) {
-      if (!sources || sources.length === 0) return;
+      const groups = new Set();
       
-      // 获取所有分组
-      const groups = [...new Set(sources.map(source => source.group).filter(Boolean))];
+      // 提取所有分组
+      sources.forEach(source => {
+        if (source.group) {
+          groups.add(source.group);
+        }
+      });
       
-      // 填充分组下拉框
-      const select = document.getElementById('sourceGroup');
+      // 更新分组筛选器
+      const groupSelect = document.getElementById('sourceGroup');
+      groupSelect.innerHTML = '<option value="">所有分组</option>';
+      
       groups.forEach(group => {
         const option = document.createElement('option');
         option.value = group;
         option.textContent = group;
-        select.appendChild(option);
+        groupSelect.appendChild(option);
       });
       
-      // 添加筛选功能
-      select.addEventListener('change', function() {
-        const group = this.value;
-        const filtered = group ? sources.filter(s => s.group === group) : sources;
-        renderBookSources(filtered);
-      });
-      
-      // 添加搜索功能
-      const searchInput = document.getElementById('sourceSearch');
-      searchInput.addEventListener('input', function() {
-        const keyword = this.value.toLowerCase();
-        const group = select.value;
-        
-        let filtered = sources;
-        
-        // 先按分组筛选
-        if (group) {
-          filtered = filtered.filter(s => s.group === group);
-        }
-        
-        // 再按关键字筛选
-        if (keyword) {
-          filtered = filtered.filter(s => 
-            s.name.toLowerCase().includes(keyword) || 
-            s.url.toLowerCase().includes(keyword)
-          );
-        }
-        
-        renderBookSources(filtered);
-      });
+      // 更新数据列表（用于添加/编辑页面）
+      const groupDatalist = document.getElementById('groupList');
+      if (groupDatalist) {
+        groupDatalist.innerHTML = '';
+        groups.forEach(group => {
+          const option = document.createElement('option');
+          option.value = group;
+          groupDatalist.appendChild(option);
+        });
+      }
     }
     
     // 更新导出分组下拉框
     function updateExportGroups(sources) {
-      if (!sources || sources.length === 0) return;
+      const groups = new Set();
       
-      // 获取所有分组
-      const groups = [...new Set(sources.map(source => source.group).filter(Boolean))];
+      sources.forEach(source => {
+        if (source.group) {
+          groups.add(source.group);
+        }
+      });
       
-      // 填充分组下拉框
-      const select = document.getElementById('exportGroup');
+      const exportGroup = document.getElementById('exportGroup');
+      exportGroup.innerHTML = '<option value="">选择分组...</option>';
       
-      // 清空旧选项（保留第一个）
-      while (select.options.length > 1) {
-        select.remove(1);
-      }
-      
-      // 添加新选项
       groups.forEach(group => {
         const option = document.createElement('option');
         option.value = group;
         option.textContent = group;
+        exportGroup.appendChild(option);
+      });
+      
+      // 设置导出分组选择框的启用/禁用状态
+      document.getElementById('exportByGroup').addEventListener('change', function() {
+        exportGroup.disabled = !this.checked;
+      });
+      
+      // 导出按钮事件
+      document.getElementById('exportBtn').addEventListener('click', exportBookSources);
+    }
+    
+    // 导出书源
+    async function exportBookSources() {
+      try {
+        // 获取选项
+        const exportEnabled = document.getElementById('exportEnabled').checked;
+        const exportByGroup = document.getElementById('exportByGroup').checked;
+        const exportGroup = exportByGroup ? document.getElementById('exportGroup').value : '';
+        
+        if (exportByGroup && !exportGroup) {
+          alert('请选择要导出的分组');
+          return;
+        }
+        
+        // 获取所有书源
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        const response = await fetch('/api/booksource/sources', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('获取书源失败');
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || '获取书源失败');
+        }
+        
+        let sourcesToExport = data.data;
+        
+        // 根据选项筛选
+        if (exportEnabled) {
+          sourcesToExport = sourcesToExport.filter(source => source.enabled);
+        }
+        
+        if (exportByGroup) {
+          sourcesToExport = sourcesToExport.filter(source => source.group === exportGroup);
+        }
+        
+        if (sourcesToExport.length === 0) {
+          alert('没有符合条件的书源可导出');
+          return;
+        }
+        
+        // 创建并下载JSON文件
+        const fileName = exportByGroup ? 
+          `书源_${exportGroup}_${formatDate(new Date())}.json` : 
+          `书源备份_${formatDate(new Date())}.json`;
+        
+        const json = JSON.stringify(sourcesToExport, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        
+        // 清理
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 100);
+        
+      } catch (error) {
+        console.error('导出书源失败:', error);
+        alert(`导出书源失败: ${error.message}`);
+      }
+    }
+    
+    // 格式化日期为 YYYYMMDD 格式
+    function formatDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}${month}${day}`;
+    }
+    
+    // 更新测试书源选择器
+    function loadTestSourceSelect(sources) {
+      const select = document.getElementById('testSourceName');
+      if (!select) return;
+      
+      select.innerHTML = '<option value="">选择书源...</option>';
+      
+      // 仅添加启用的书源
+      const enabledSources = sources.filter(source => source.enabled);
+      
+      enabledSources.forEach(source => {
+        const option = document.createElement('option');
+        option.value = source.name;
+        option.textContent = source.name;
         select.appendChild(option);
       });
     }
     
-    // 编辑书源
-    async function editSource(name) {
-      try {
-        // 切换到添加/编辑面板
-        document.getElementById('tabAdd').click();
-        
-        // 获取书源详情
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/booksource/sources/${name}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('获取书源详情失败');
-        }
-        
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || '获取书源详情失败');
-        }
-        
-        const source = data.data;
-        
-        // 设置编辑模式
-        document.getElementById('editMode').value = 'edit';
-        
-        // 填充表单
-        document.getElementById('sourceName').value = source.name;
-        document.getElementById('sourceName').readOnly = true; // 不允许修改书源名称
-        document.getElementById('sourceUrl').value = source.url || '';
-        document.getElementById('sourceGroup').value = source.group || '';
-        document.getElementById('sourceIcon').value = source.icon || '';
-        document.getElementById('sourceEnabled').checked = source.enabled !== false;
-        
-        // 搜索规则
-        document.getElementById('searchUrl').value = source.searchUrl || '';
-        document.getElementById('searchList').value = source.searchList || '';
-        document.getElementById('searchName').value = source.searchName || '';
-        document.getElementById('searchAuthor').value = source.searchAuthor || '';
-        document.getElementById('searchDetail').value = source.searchDetail || '';
-        
-        // 详情页规则
-        document.getElementById('detailName').value = source.detailName || '';
-        document.getElementById('detailAuthor').value = source.detailAuthor || '';
-        document.getElementById('detailCover').value = source.detailCover || '';
-        document.getElementById('detailIntro').value = source.detailIntro || '';
-        document.getElementById('detailChapterUrl').value = source.detailChapterUrl || '';
-        
-        // 章节列表规则
-        document.getElementById('chapterList').value = source.chapterList || '';
-        document.getElementById('chapterName').value = source.chapterName || '';
-        document.getElementById('chapterLink').value = source.chapterLink || '';
-        
-        // 内容规则
-        document.getElementById('contentRule').value = source.contentRule || '';
-        document.getElementById('contentFilters').value = 
-          Array.isArray(source.contentFilter) ? source.contentFilter.join(',') : source.contentFilter || '';
-        
-      } catch (error) {
-        console.error('编辑书源失败:', error);
-        alert(`编辑书源失败: ${error.message}`);
-      }
-    }
-    
-    // 测试书源
-    function testSource(name) {
-      // 切换到测试面板
-      document.getElementById('tabTest').click();
-      
-      // 选中书源
-      const select = document.getElementById('testSourceName');
-      for (let i = 0; i < select.options.length; i++) {
-        if (select.options[i].value === name) {
-          select.selectedIndex = i;
-          break;
-        }
-      }
-      
-      // 提示用户
-      alert('已切换到测试面板，请输入搜索关键词并点击"测试搜索"按钮进行测试。');
-    }
-    
-    // 删除书源
-    async function deleteSource(name) {
-      try {
-        // 确认删除
-        if (!confirm(`确定要删除书源"${name}"吗？`)) {
-          return;
-        }
-        
-        // 发送删除请求
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/booksource/sources/${name}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('删除书源失败');
-        }
-        
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || '删除书源失败');
-        }
-        
-        // 提示成功
-        alert(`书源"${name}"已成功删除`);
-        
-        // 刷新书源列表
-        loadBookSources();
-        
-      } catch (error) {
-        console.error('删除书源失败:', error);
-        alert(`删除书源失败: ${error.message}`);
-      }
-    }
-    
-    // 启用/禁用书源
-    async function toggleSource(name, enabled) {
-      try {
-        // 发送请求
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/booksource/sources/${name}/enabled`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ enabled })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`${enabled ? '启用' : '禁用'}书源失败`);
-        }
-        
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || `${enabled ? '启用' : '禁用'}书源失败`);
-        }
-        
-        // 提示成功
-        alert(`书源"${name}"已${enabled ? '启用' : '禁用'}`);
-        
-        // 刷新书源列表
-        loadBookSources();
-        
-      } catch (error) {
-        console.error(`${enabled ? '启用' : '禁用'}书源失败:`, error);
-        alert(`${enabled ? '启用' : '禁用'}书源失败: ${error.message}`);
-      }
-    }
-    
-    // 设置导入功能
-    function setupImportFunctions() {
-      // 导入方式切换
-      const importTabs = document.querySelectorAll('[data-import-tab]');
-      importTabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-          // 更新标签样式
-          importTabs.forEach(t => {
-            t.classList.remove('tab-active');
-            t.classList.add('text-gray-500');
-          });
-          this.classList.add('tab-active');
-          this.classList.remove('text-gray-500');
-          
-          // 切换面板
-          const tabId = this.dataset.importTab;
-          document.getElementById('fileImport').style.display = tabId === 'fileImport' ? 'block' : 'none';
-          document.getElementById('textImport').style.display = tabId === 'textImport' ? 'block' : 'none';
-        });
-      });
-      
-      // 文件选择按钮
-      const fileSelectBtn = document.getElementById('fileSelectBtn');
-      const fileInput = document.getElementById('fileInput');
-      fileSelectBtn.addEventListener('click', () => {
-        fileInput.click();
-      });
-      
-      // 文件选择处理
-      fileInput.addEventListener('change', handleFileSelect);
-      
-      // 拖放文件
-      const dropZone = document.querySelector('.border-dashed');
-      dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('border-blue-500');
-      });
-      
-      dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('border-blue-500');
-      });
-      
-      dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('border-blue-500');
-        
-        if (e.dataTransfer.files.length) {
-          fileInput.files = e.dataTransfer.files;
-          handleFileSelect(e);
-        }
-      });
-      
-      // 清除文件按钮
-      document.getElementById('fileClearBtn').addEventListener('click', () => {
-        fileInput.value = '';
-        document.getElementById('fileInfo').classList.add('hidden');
-      });
-      
-      // 导入按钮
-      document.getElementById('importBtn').addEventListener('click', importBookSources);
-    }
-    
-    // 处理文件选择
-    function handleFileSelect(e) {
-      const fileInput = document.getElementById('fileInput');
-      const fileInfo = document.getElementById('fileInfo');
-      const fileName = document.getElementById('fileName');
-      const fileSize = document.getElementById('fileSize');
-      
-      if (fileInput.files.length === 0) return;
-      
-      const file = fileInput.files[0];
-      
-      // 验证文件类型
-      if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
-        alert('请选择JSON格式的文件');
-        fileInput.value = '';
-        return;
-      }
-      
-      // 显示文件信息
-      fileName.textContent = file.name;
-      fileSize.textContent = formatFileSize(file.size);
-      fileInfo.classList.remove('hidden');
-    }
+    // 导入书源功能已移至 ../js/booksource/import.js
     
     // 格式化文件大小
     function formatFileSize(bytes) {
       if (bytes < 1024) return bytes + ' B';
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
-      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-    }
-    
-    // 导入书源
-    async function importBookSources() {
-      try {
-        // 获取选项
-        const overwrite = document.getElementById('importOverwrite').checked;
-        const autoEnable = document.getElementById('importEnable').checked;
-        
-        let sourcesData;
-        
-        // 根据当前选中的导入方式获取数据
-        const isFileImport = document.getElementById('fileImport').style.display !== 'none';
-        
-        if (isFileImport) {
-          // 从文件导入
-          const fileInput = document.getElementById('fileInput');
-          if (!fileInput.files.length) {
-            alert('请选择要导入的文件');
-            return;
-          }
-          
-          const file = fileInput.files[0];
-          sourcesData = await readJSONFile(file);
-        } else {
-          // 从文本导入
-          const importText = document.getElementById('importText').value.trim();
-          if (!importText) {
-            alert('请输入要导入的JSON数据');
-            return;
-          }
-          
-          try {
-            sourcesData = JSON.parse(importText);
-          } catch (error) {
-            alert('JSON格式不正确，请检查输入');
-            return;
-          }
-        }
-        
-        // 确保数据是数组格式
-        if (!Array.isArray(sourcesData)) {
-          sourcesData = [sourcesData];
-        }
-        
-        // 验证数据
-        if (sourcesData.length === 0) {
-          alert('没有有效的书源数据');
-          return;
-        }
-        
-        // 确认导入
-        if (!confirm(`确定要导入 ${sourcesData.length} 个书源吗？${overwrite ? '（将覆盖同名书源）' : ''}`)) {
-          return;
-        }
-        
-        // 为每个书源设置启用状态
-        if (autoEnable) {
-          sourcesData = sourcesData.map(source => ({
-            ...source,
-            enabled: true
-          }));
-        }
-        
-        // 显示状态
-        const importStatus = document.getElementById('importStatus');
-        importStatus.innerHTML = `<div class="text-blue-500"><i class="fas fa-spinner fa-spin mr-2"></i>正在导入...</div>`;
-        
-        // 提交数据
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/booksource/sources/import', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            sources: sourcesData,
-            overwrite: overwrite
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error('导入书源失败');
-        }
-        
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || '导入书源失败');
-        }
-        
-        // 显示成功信息
-        importStatus.innerHTML = `<div class="text-green-500"><i class="fas fa-check-circle mr-2"></i>成功导入 ${data.data.count} 个书源</div>`;
-        
-        // 重置文件输入
-        if (isFileImport) {
-          document.getElementById('fileInput').value = '';
-          document.getElementById('fileInfo').classList.add('hidden');
-        } else {
-          document.getElementById('importText').value = '';
-        }
-        
-        // 刷新书源列表
-        loadBookSources();
-        
-      } catch (error) {
-        console.error('导入书源失败:', error);
-        const importStatus = document.getElementById('importStatus');
-        importStatus.innerHTML = `<div class="text-red-500"><i class="fas fa-exclamation-circle mr-2"></i>${error.message}</div>`;
-      }
-    }
-    
-    // 读取JSON文件
-    function readJSONFile(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        
-        reader.onload = (event) => {
-          try {
-            const data = JSON.parse(event.target.result);
-            resolve(data);
-          } catch (error) {
-            reject(new Error('无效的JSON文件'));
-          }
-        };
-        
-        reader.onerror = () => {
-          reject(new Error('读取文件失败'));
-        };
-        
-        reader.readAsText(file);
-      });
-    }
-    
-    // 测试书源功能
-    function setupTestFunctions() {
-      // 获取元素
-      const testSourceSelect = document.getElementById('testSourceName');
-      const testKeywordInput = document.getElementById('testKeyword');
-      const testSearchBtn = document.getElementById('testSearchBtn');
-      const testClearBtn = document.getElementById('testClearBtn');
-      const testResults = document.getElementById('testResults');
-      
-      // 清除结果按钮
-      testClearBtn.addEventListener('click', () => {
-        testResults.style.display = 'none';
-        document.getElementById('bookDetailSection').style.display = 'none';
-        document.getElementById('chapterListSection').style.display = 'none';
-        document.getElementById('chapterContentSection').style.display = 'none';
-      });
-      
-      // 测试搜索按钮
-      testSearchBtn.addEventListener('click', async () => {
-        const sourceName = testSourceSelect.value;
-        const keyword = testKeywordInput.value.trim();
-        
-        if (!sourceName) {
-          alert('请选择要测试的书源');
-          return;
-        }
-        
-        if (!keyword) {
-          alert('请输入搜索关键词');
-          return;
-        }
-        
-        await testSearch(sourceName, keyword);
-      });
-    }
-    
-    // 测试书源搜索功能
-    async function testSearch(sourceName, keyword) {
-      try {
-        // 显示结果区域和加载状态
-        document.getElementById('testResults').style.display = 'block';
-        document.getElementById('searchResultsContent').innerHTML = '<div class="loader"></div>';
-        
-        // 隐藏其他结果区域
-        document.getElementById('bookDetailSection').style.display = 'none';
-        document.getElementById('chapterListSection').style.display = 'none';
-        document.getElementById('chapterContentSection').style.display = 'none';
-        
-        // 发送搜索请求
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/booksource/search?keyword=${encodeURIComponent(keyword)}&source=${encodeURIComponent(sourceName)}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('搜索失败');
-        }
-        
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || '搜索失败');
-        }
-        
-        // 渲染搜索结果
-        renderSearchResults(data.data, sourceName);
-        
-      } catch (error) {
-        console.error('测试搜索失败:', error);
-        document.getElementById('searchResultsContent').innerHTML = 
-          `<div class="text-red-500"><i class="fas fa-exclamation-circle mr-2"></i>${error.message}</div>`;
-      }
-    }
-    
-    // 渲染搜索结果
-    function renderSearchResults(results, sourceName) {
-      const container = document.getElementById('searchResultsContent');
-      
-      if (!results || results.length === 0) {
-        container.innerHTML = '<div class="text-gray-500">没有找到匹配的结果</div>';
-        return;
-      }
-      
-      let html = `
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-100">
-              <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">书名</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">作者</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-      `;
-      
-      results.forEach((book, index) => {
-        html += `
-          <tr>
-            <td class="px-4 py-2 whitespace-nowrap">
-              <span class="font-medium">${book.name || '未知'}</span>
-            </td>
-            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
-              ${book.author || '未知'}
-            </td>
-            <td class="px-4 py-2 whitespace-nowrap text-sm">
-              <button class="text-blue-500 hover:text-blue-700" 
-                onclick="testBookDetail('${sourceName}', '${encodeURIComponent(book.url)}')">
-                查看详情
-              </button>
-            </td>
-          </tr>
-        `;
-      });
-      
-      html += `
-            </tbody>
-          </table>
-        </div>
-      `;
-      
-      container.innerHTML = html;
-    }
-    
-    // 测试书籍详情
-    async function testBookDetail(sourceName, bookUrl) {
-      try {
-        // 显示详情区域和加载状态
-        const detailSection = document.getElementById('bookDetailSection');
-        detailSection.style.display = 'block';
-        document.getElementById('bookDetailContent').innerHTML = '<div class="loader"></div>';
-        
-        // 隐藏后续区域
-        document.getElementById('chapterListSection').style.display = 'none';
-        document.getElementById('chapterContentSection').style.display = 'none';
-        
-        // 解码URL
-        bookUrl = decodeURIComponent(bookUrl);
-        
-        // 发送请求
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/booksource/book/detail?url=${encodeURIComponent(bookUrl)}&sourceName=${encodeURIComponent(sourceName)}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('获取书籍详情失败');
-        }
-        
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || '获取书籍详情失败');
-        }
-        
-        // 渲染书籍详情
-        renderBookDetail(data.data, sourceName);
-        
-      } catch (error) {
-        console.error('测试书籍详情失败:', error);
-        document.getElementById('bookDetailContent').innerHTML = 
-          `<div class="text-red-500"><i class="fas fa-exclamation-circle mr-2"></i>${error.message}</div>`;
-      }
-    }
-    
-    // 渲染书籍详情
-    function renderBookDetail(detail, sourceName) {
-      const container = document.getElementById('bookDetailContent');
-      
-      if (!detail) {
-        container.innerHTML = '<div class="text-gray-500">没有找到书籍详情</div>';
-        return;
-      }
-      
-      let html = `
-        <div class="flex flex-col md:flex-row">
-          <div class="md:w-1/4 mb-4 md:mb-0 md:mr-4">
-            ${detail.cover ? 
-              `<img src="${detail.cover}" alt="${detail.name}" class="w-full max-w-xs rounded-md shadow-sm">` : 
-              `<div class="w-full h-40 bg-gray-200 rounded-md flex items-center justify-center">
-                <i class="fas fa-book text-gray-400 text-4xl"></i>
-              </div>`
-            }
-          </div>
-          <div class="md:w-3/4">
-            <h3 class="text-xl font-bold mb-2">${detail.name || '未知书名'}</h3>
-            <div class="space-y-2 mb-4">
-              <p><span class="font-medium">作者：</span>${detail.author || '未知'}</p>
-              <p><span class="font-medium">最新章节：</span>${detail.latestChapter || '未知'}</p>
-              <p><span class="font-medium">更新时间：</span>${detail.updateTime || '未知'}</p>
-            </div>
-            <div class="mb-4">
-              <p class="font-medium mb-1">简介：</p>
-              <p class="text-sm text-gray-700">${detail.intro || '暂无简介'}</p>
-            </div>
-            <div>
-              <button class="px-3 py-1 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
-                onclick="testChapterList('${sourceName}', '${encodeURIComponent(detail.chapterUrl || detail.url)}')">
-                获取章节列表
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      container.innerHTML = html;
-    }
-    
-    // 测试章节列表
-    async function testChapterList(sourceName, chapterUrl) {
-      try {
-        // 显示章节列表区域和加载状态
-        const chapterSection = document.getElementById('chapterListSection');
-        chapterSection.style.display = 'block';
-        document.getElementById('chapterListContent').innerHTML = '<div class="loader"></div>';
-        
-        // 隐藏章节内容区域
-        document.getElementById('chapterContentSection').style.display = 'none';
-        
-        // 解码URL
-        chapterUrl = decodeURIComponent(chapterUrl);
-        
-        // 发送请求
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/booksource/book/chapters?url=${encodeURIComponent(chapterUrl)}&sourceName=${encodeURIComponent(sourceName)}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('获取章节列表失败');
-        }
-        
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || '获取章节列表失败');
-        }
-        
-        // 渲染章节列表
-        renderChapterList(data.data, sourceName);
-        
-      } catch (error) {
-        console.error('测试章节列表失败:', error);
-        document.getElementById('chapterListContent').innerHTML = 
-          `<div class="text-red-500"><i class="fas fa-exclamation-circle mr-2"></i>${error.message}</div>`;
-      }
-    }
-    
-    // 渲染章节列表
-    function renderChapterList(chapters, sourceName) {
-      const container = document.getElementById('chapterListContent');
-      
-      if (!chapters || chapters.length === 0) {
-        container.innerHTML = '<div class="text-gray-500">没有找到章节</div>';
-        return;
-      }
-      
-      let html = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">`;
-      
-      chapters.forEach((chapter, index) => {
-        html += `
-          <div class="text-sm">
-            <a href="javascript:void(0)" class="hover:text-blue-500 hover:underline"
-              onclick="testChapterContent('${sourceName}', '${encodeURIComponent(chapter.url)}', '${encodeURIComponent(chapter.name)}')">
-              ${chapter.name || `第${index + 1}章`}
-            </a>
-          </div>
-        `;
-      });
-      
-      html += `</div>`;
-      
-      container.innerHTML = html;
-    }
-    
-    // 测试章节内容
-    async function testChapterContent(sourceName, chapterUrl, chapterName) {
-      try {
-        // 显示章节内容区域和加载状态
-        const contentSection = document.getElementById('chapterContentSection');
-        contentSection.style.display = 'block';
-        document.getElementById('chapterContentInfo').textContent = decodeURIComponent(chapterName);
-        document.getElementById('chapterContentDisplay').innerHTML = '<div class="loader"></div>';
-        
-        // 解码URL
-        chapterUrl = decodeURIComponent(chapterUrl);
-        
-        // 发送请求
-        const token = localStorage.getItem('token');
-        const response = await fetch(`/api/booksource/book/content?url=${encodeURIComponent(chapterUrl)}&sourceName=${encodeURIComponent(sourceName)}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('获取章节内容失败');
-        }
-        
-        const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || '获取章节内容失败');
-        }
-        
-        // 渲染章节内容
-        renderChapterContent(data.data);
-        
-      } catch (error) {
-        console.error('测试章节内容失败:', error);
-        document.getElementById('chapterContentDisplay').innerHTML = 
-          `<div class="text-red-500"><i class="fas fa-exclamation-circle mr-2"></i>${error.message}</div>`;
-      }
-    }
-    
-    // 渲染章节内容
-    function renderChapterContent(content) {
-      const container = document.getElementById('chapterContentDisplay');
-      
-      if (!content) {
-        container.innerHTML = '<div class="text-gray-500">没有找到章节内容</div>';
-        return;
-      }
-      
-      // 将内容按段落分割并格式化
-      const paragraphs = content.split(/\n+/).filter(Boolean);
-      
-      if (paragraphs.length === 0) {
-        container.innerHTML = '<div class="text-gray-500">章节内容为空</div>';
-        return;
-      }
-      
-      let html = `<div class="space-y-4">`;
-      
-      paragraphs.forEach(paragraph => {
-        html += `<p class="text-gray-800">${paragraph}</p>`;
-      });
-      
-      html += `</div>`;
-      
-      container.innerHTML = html;
-    }
-    
-    // 加载所有书源到测试选择器
-    function loadTestSourceSelect(sources) {
-      if (!sources || sources.length === 0) return;
-      
-      const select = document.getElementById('testSourceName');
-      
-      // 清空选项（保留第一个）
-      while (select.options.length > 1) {
-        select.remove(1);
-      }
-      
-      // 只添加启用的书源
-      const enabledSources = sources.filter(source => source.enabled);
-      
-      // 按分组组织书源
-      const sourcesByGroup = {};
-      enabledSources.forEach(source => {
-        const group = source.group || '未分组';
-        if (!sourcesByGroup[group]) {
-          sourcesByGroup[group] = [];
-        }
-        sourcesByGroup[group].push(source);
-      });
-      
-      // 添加分组和选项
-      Object.keys(sourcesByGroup).sort().forEach(group => {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = group;
-        
-        sourcesByGroup[group].sort((a, b) => a.name.localeCompare(b.name)).forEach(source => {
-          const option = document.createElement('option');
-          option.value = source.name;
-          option.textContent = source.name;
-          optgroup.appendChild(option);
-        });
-        
-        select.appendChild(optgroup);
-      });
+      else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      else return (bytes / 1048576).toFixed(1) + ' MB';
     }
   </script>
 </body>

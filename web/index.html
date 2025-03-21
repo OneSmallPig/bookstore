@@ -417,41 +417,35 @@
       }
     }
   </script>
-  <script src="src/js/auth.js"></script>
   <script>
+    // 本地实现isAdmin函数，不再依赖auth.js
+    function isAdmin() {
+      try {
+        const authData = localStorage.getItem('bookstore_auth');
+        if (!authData) return false;
+        
+        const { user } = JSON.parse(authData);
+        if (!user) return false;
+        
+        return user.role === 'admin' || 
+               (user.roles && user.roles.includes('admin')) || 
+               user.isAdmin === true;
+      } catch (error) {
+        console.error('检查管理员权限失败:', error);
+        return false;
+      }
+    }
+    
     // 在页面加载完成后检查管理员权限
     document.addEventListener('DOMContentLoaded', function() {
-      setTimeout(function() {
-        // 检查auth.js是否加载完成并正确定义了isAdmin函数
-        if (typeof auth !== 'undefined' && typeof auth.isAdmin === 'function') {
-          console.log('检查管理员权限...');
-          if (auth.isAdmin()) {
-            console.log('当前用户具有管理员权限，显示管理员菜单');
-            const adminLinks = document.querySelectorAll('.admin-only-link');
-            adminLinks.forEach(link => {
-              link.style.display = 'flex';
-            });
-          }
-        } else {
-          console.log('尝试从localStorage直接检查管理员权限');
-          // 尝试直接从localStorage检查用户权限
-          try {
-            const authData = localStorage.getItem('bookstore_auth');
-            if (authData) {
-              const userData = JSON.parse(authData).user;
-              if (userData && (userData.role === 'admin' || userData.isAdmin === true)) {
-                console.log('当前用户具有管理员权限，显示管理员菜单');
-                const adminLinks = document.querySelectorAll('.admin-only-link');
-                adminLinks.forEach(link => {
-                  link.style.display = 'flex';
-                });
-              }
-            }
-          } catch (error) {
-            console.error('检查管理员权限失败:', error);
-          }
-        }
-      }, 500); // 延迟500毫秒确保auth.js已加载
+      console.log('检查管理员权限...');
+      if (isAdmin()) {
+        console.log('当前用户具有管理员权限，显示管理员菜单');
+        const adminLinks = document.querySelectorAll('.admin-only-link');
+        adminLinks.forEach(link => {
+          link.style.display = 'flex';
+        });
+      }
     });
   </script>
 </body>
