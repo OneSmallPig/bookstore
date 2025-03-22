@@ -14,16 +14,97 @@ class BookSourceParser {
    * @param {Object} bookSource 书源配置对象
    */
   constructor(bookSource) {
-    this.bookSource = bookSource;
+    // 处理阅读3.0格式的书源，映射字段名到我们的内部格式
+    this.bookSource = this._mapBookSourceFields(bookSource);
     
     // 获取配置的测试超时时间
     const config = require('../../config/config');
-    this.testTimeout = config.bookSourceTest ? config.bookSourceTest.timeout : 10000;
+    this.testTimeout = config.bookSourceTest ? config.bookSourceTest.timeout : 30000; // 增加到30秒
     
+    // 创建自定义HTTP和HTTPS代理
+    const http = require('http');
+    const https = require('https');
+    
+    // 创建自定义Agent，处理DNS问题
+    const httpAgent = new http.Agent({
+      keepAlive: true,
+      maxSockets: 50,
+      timeout: 60000,
+      family: 4 // 强制使用IPv4
+    });
+    
+    const httpsAgent = new https.Agent({
+      keepAlive: true,
+      maxSockets: 50,
+      timeout: 60000,
+      family: 4, // 强制使用IPv4
+      rejectUnauthorized: false // 允许自签名证书，提高兼容性
+    });
+    
+    // 创建DNS解析器
+    const dns = require('dns');
+    
+    // 确保使用知名DNS服务器，避免被重定向到错误IP
+    dns.setServers([
+      '8.8.8.8',       // Google DNS
+      '114.114.114.114' // 国内通用DNS
+    ]);
+    
+    // 创建axios实例并配置
     this.axios = axios.create({
-      timeout: bookSource.timeout || 10000,
+      timeout: bookSource.timeout || 30000, // 默认超时时间设为30秒
       headers: this._getHeaders(),
-      responseType: 'arraybuffer' // 使用arraybuffer以支持不同编码
+      responseType: 'arraybuffer', // 使用arraybuffer以支持不同编码
+      maxRedirects: 10, // 增加最大重定向次数
+      validateStatus: status => status < 500, // 允许任何非500错误状态码
+      httpAgent: httpAgent,
+      httpsAgent: httpsAgent,
+      decompress: true, // 自动解压缩响应
+      
+      // 处理DNS解析问题
+      lookup: (hostname, options, callback) => {
+        // 排除明确的非法主机名
+        if (hostname === '0.0.0.0' || hostname === 'localhost') {
+          callback(new Error(`无效的主机名: ${hostname}`), null, null);
+          return;
+        }
+        
+        // 先用自定义的DNS服务器解析
+        dns.lookup(hostname, options, (err, address, family) => {
+          // 如果解析失败或解析到0.0.0.0，尝试替换主机名
+          if (err || address === '0.0.0.0') {
+            // 尝试检查这个域名是否有常见别名
+            if (hostname === 'www.ixs5200.com') {
+              // 已知www.ixs5200.com实际是www.18ys.net的别名
+              logger.info(`[DNS修复] 替换已知重定向域名: ${hostname} -> www.18ys.net`);
+              dns.lookup('www.18ys.net', options, callback);
+              return;
+            }
+            
+            // 如果是常见的流量劫持到0.0.0.0，尝试用公共DNS服务器重新解析
+            if (err) {
+              logger.warn(`[DNS解析] 域名解析失败 ${hostname}, 错误: ${err.message}, 尝试使用备用DNS服务器`);
+            } else {
+              logger.warn(`[DNS解析] 域名 ${hostname} 解析到无效IP: ${address}, 尝试使用备用DNS服务器`);
+            }
+            
+            // 使用备用DNS服务器和缓存重新解析
+            dns.resolve4(hostname, (err2, addresses) => {
+              if (err2 || !addresses || addresses.length === 0) {
+                logger.error(`[DNS解析] 备用DNS也无法解析域名 ${hostname}: ${err2 ? err2.message : '未找到有效IP'}`);
+                callback(err || new Error(`无法解析到有效IP: ${hostname}`), null, null);
+              } else {
+                // 使用找到的第一个有效IP
+                const validIP = addresses.find(ip => ip !== '0.0.0.0') || addresses[0];
+                logger.info(`[DNS解析] 使用备用DNS成功解析 ${hostname} -> ${validIP}`);
+                callback(null, validIP, 4);
+              }
+            });
+          } else {
+            callback(null, address, family);
+          }
+        });
+      }
     });
   }
 
@@ -64,24 +145,191 @@ class BookSourceParser {
     let retries = options.isTest ? 0 : (this.bookSource.retry || 3);
     let error;
     
+    // 修复可能导致DNS解析到0.0.0.0的URL问题
+    try {
+      // 确保URL格式正确
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        throw new Error(`无效的URL: 必须以http://或https://开头 - ${url}`);
+      }
+      
+      // 检查、清理和修复URL
+      url = url.trim();
+      
+      // 修复已知的域名重定向问题
+      try {
+        const parsedUrl = new URL(url);
+        
+        // 预处理已知的域名重定向
+        if (parsedUrl.hostname === 'www.ixs5200.com') {
+          // 这个域名会重定向到www.18ys.net
+          const newUrl = url.replace('www.ixs5200.com', 'www.18ys.net');
+          if (options.isTest) {
+            logger.info(`[请求] ${this.bookSource.name} - 预处理已知域名重定向: ${url} -> ${newUrl}`);
+          }
+          url = newUrl;
+        }
+        
+        // 重新解析URL，确保编码正确
+        const updatedUrl = new URL(url);
+        
+        // 确保路径和查询参数正确编码
+        let pathname = updatedUrl.pathname;
+        let search = updatedUrl.search;
+        
+        // 检查并重新编码路径中的中文字符
+        if (/[\u4e00-\u9fa5]/.test(pathname)) {
+          // 如果路径中有未编码的中文
+          pathname = pathname.split('/').map(segment => {
+            if (/[\u4e00-\u9fa5]/.test(segment)) {
+              return encodeURIComponent(segment);
+            }
+            return segment;
+          }).join('/');
+        }
+        
+        // 重新构建URL
+        url = `${updatedUrl.protocol}//${updatedUrl.host}${pathname}${search}`;
+        
+        if (options.isTest) {
+          logger.info(`[请求] ${this.bookSource.name} - URL验证并清理后: ${url}`);
+        }
+      } catch (err) {
+        if (options.isTest) {
+          logger.error(`[请求] ${this.bookSource.name} - URL验证失败: ${url}, 错误: ${err.message}`, err);
+        }
+        throw new Error(`无效的URL: ${err.message}`);
+      }
+    } catch (err) {
+      if (options.isTest) {
+        logger.error(`[请求] ${this.bookSource.name} - URL无效: ${url}, 错误: ${err.message}`, err);
+      }
+      throw new Error(`无效的URL: ${err.message}`);
+    }
+    
     // 测试模式下使用配置的超时时间
     if (options.isTest) {
       options.timeout = this.testTimeout;
       logger.info(`[请求] ${this.bookSource.name} - 发送请求: ${url}, 超时设置: ${options.timeout}ms`);
     }
 
+    // 配置当前请求的选项
+    const requestOptions = {
+      ...options,
+      headers: {
+        ...this._getHeaders(),
+        'Referer': new URL(url).origin, // 添加Referer头，有些网站需要
+        'Host': new URL(url).host, // 明确指定Host头，避免一些DNS问题
+        'Accept-Encoding': 'gzip, deflate, br', // 支持压缩
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Connection': 'keep-alive',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        ...(options.headers || {})
+      },
+      // 允许重定向
+      maxRedirects: 10,
+      validateStatus: (status) => {
+        return status >= 200 && status < 400; // 只接受2xx和3xx状态码
+      }
+    };
+
+    // 确定使用的HTTP方法和请求体
+    const method = (options.method || 'GET').toUpperCase();
+    let requestData = options.data || null;
+
     while (retries >= 0) {
       try {
         const startTime = Date.now();
-        const response = await this.axios.get(url, options);
+        
+        // 发送请求并处理可能的错误
+        let response;
+        try {
+          // 根据HTTP方法发送不同类型的请求
+          if (method === 'POST') {
+            // 处理表单数据
+            if (typeof requestData === 'string' && !requestOptions.headers['Content-Type']) {
+              // 默认使用表单编码
+              requestOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            }
+            
+            if (options.isTest) {
+              logger.info(`[请求] ${this.bookSource.name} - 发送POST请求，请求体: ${requestData}`);
+            }
+            
+            response = await this.axios.post(url, requestData, requestOptions);
+          } else {
+            // GET请求
+            response = await this.axios.get(url, requestOptions);
+          }
+        } catch (requestErr) {
+          // 特殊处理DNS解析失败的错误
+          if (requestErr.code === 'ECONNREFUSED' && requestErr.message.includes('0.0.0.0')) {
+            // 尝试使用别名域名
+            const parsedUrl = new URL(url);
+            let altDomain = null;
+            
+            // 检查已知的域名映射
+            if (parsedUrl.hostname === 'www.ixs5200.com') {
+              altDomain = 'www.18ys.net';
+            }
+            
+            if (altDomain && options.isTest) {
+              logger.info(`[请求] ${this.bookSource.name} - 连接被拒绝，尝试使用别名域名: ${parsedUrl.hostname} -> ${altDomain}`);
+              
+              // 替换域名并重试
+              const altUrl = url.replace(parsedUrl.hostname, altDomain);
+              try {
+                if (method === 'POST') {
+                  response = await this.axios.post(altUrl, requestData, {
+                    ...requestOptions,
+                    headers: {
+                      ...requestOptions.headers,
+                      'Host': altDomain,
+                      'Referer': altUrl.replace(/\/[^\/]*$/, '/') // 更新Referer
+                    }
+                  });
+                } else {
+                  response = await this.axios.get(altUrl, {
+                    ...requestOptions,
+                    headers: {
+                      ...requestOptions.headers,
+                      'Host': altDomain,
+                      'Referer': altUrl.replace(/\/[^\/]*$/, '/') // 更新Referer
+                    }
+                  });
+                }
+                
+                // 如果成功，更新URL
+                url = altUrl;
+              } catch (altErr) {
+                // 如果别名也失败，抛出原始错误
+                throw requestErr;
+              }
+            } else {
+              throw requestErr;
+            }
+          } else {
+            throw requestErr;
+          }
+        }
+        
         const endTime = Date.now();
         
         if (options.isTest) {
           logger.info(`[请求] ${this.bookSource.name} - 请求成功, 耗时: ${endTime - startTime}ms, 状态码: ${response.status}`);
         }
         
+        // 处理重定向
+        const finalUrl = response.request.res.responseUrl || url;
+        if (finalUrl !== url && options.isTest) {
+          logger.info(`[请求] ${this.bookSource.name} - 请求被重定向: ${url} -> ${finalUrl}`);
+          
+          // 更新请求URL为重定向后的URL，这对后续使用很重要
+          url = finalUrl;
+        }
+        
         // 处理编码
-        const charset = this._detectCharset(response) || this.bookSource.charset || 'utf-8';
+        let charset = options.charset || this._detectCharset(response) || this.bookSource.charset || 'utf-8';
         if (options.isTest) {
           logger.info(`[请求] ${this.bookSource.name} - 检测到编码: ${charset}`);
         }
@@ -121,11 +369,6 @@ class BookSourceParser {
           if (options.isTest) {
             logger.info(`[请求] ${this.bookSource.name} - 使用Cheerio解析，HTML长度: ${html.length}`);
           }
-        }
-        
-        const finalUrl = response.request.res.responseUrl || url;
-        if (finalUrl !== url && options.isTest) {
-          logger.info(`[请求] ${this.bookSource.name} - 请求被重定向: ${url} -> ${finalUrl}`);
         }
         
         return { 
@@ -202,6 +445,30 @@ class BookSourceParser {
         }
         return null;
       }
+      
+      // 处理阅读3.0中的property属性选择器，如[property="og:novel:author"]@content
+      if (selector.startsWith('[') && selector.includes(']@')) {
+        const parts = selector.split(']@');
+        const attrSelector = parts[0] + ']';
+        const attrName = parts[1];
+        
+        try {
+          const elements = $(attrSelector);
+          logger.debug(`[复杂选择器] 处理属性选择器: ${attrSelector}，找到 ${elements.length} 个元素`);
+          
+          if (elements.length === 0) return null;
+          
+          const result = elements.attr(attrName);
+          if (result) {
+            logger.debug(`[复杂选择器] 提取属性 ${attrName}：${result}`);
+            return result;
+          }
+          return null;
+        } catch (err) {
+          logger.error(`选择器应用失败: "${attrSelector}"`, err);
+          return null;
+        }
+      }
 
       // 处理级联选择器（用@分隔的多级选择器）
       if (selector.includes('@')) {
@@ -214,8 +481,13 @@ class BookSourceParser {
           
           // 处理第一个部分（根选择器）
           if (i === 0) {
+            // 如果是property属性选择器，如[property="og:novel:author"]
+            if (part.startsWith('[') && part.endsWith(']')) {
+              currentSelection = $(part);
+              logger.debug(`[复杂选择器] 处理属性选择器：${part}，找到 ${currentSelection.length} 个元素`);
+            }
             // 如果是class.xxx形式
-            if (part.startsWith('class.')) {
+            else if (part.startsWith('class.')) {
               const classNameRaw = part.substring(6);
               
               // 处理带空格的类名
@@ -272,9 +544,9 @@ class BookSourceParser {
             result = currentSelection.html();
             logger.debug(`[复杂选择器] 提取HTML，长度: ${result ? result.length : 0}`);
             break;
-          } else if (part === 'href' || part === 'src') {
+          } else if (part === 'href' || part === 'src' || part === 'content' || part === 'value') {
             const attrVal = currentSelection.attr(part);
-            result = attrVal ? this._resolveUrl(attrVal, baseUrl) : null;
+            result = attrVal ? (part === 'href' || part === 'src' ? this._resolveUrl(attrVal, baseUrl) : attrVal) : null;
             logger.debug(`[复杂选择器] 提取属性 ${part}：${result}`);
             break;
           } else if (part.startsWith('attr.')) {
@@ -577,13 +849,62 @@ class BookSourceParser {
    */
   _resolveUrl(url, baseUrl) {
     if (!url) return null;
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    
+    // 如果已经是绝对URL则直接返回
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      try {
+        // 验证URL格式
+        const parsedUrl = new URL(url);
+        // 检查主机名是否有效
+        if (parsedUrl.hostname === '0.0.0.0' || parsedUrl.hostname === 'localhost' || !parsedUrl.hostname.includes('.')) {
+          logger.warn(`[URL解析] ${this.bookSource.name} - 发现无效主机名: ${parsedUrl.hostname}，URL: ${url}`);
+          throw new Error(`无效的主机名: ${parsedUrl.hostname}`);
+        }
+        return url;
+      } catch (err) {
+        logger.warn(`[URL解析] ${this.bookSource.name} - URL格式无效: ${url}, ${err.message}`);
+        return null;
+      }
+    }
     
     try {
-      return new URL(url, baseUrl).href;
+      // 如果baseUrl不是完整URL，尝试使用书源URL
+      let effectiveBaseUrl = baseUrl;
+      if (!baseUrl || (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://'))) {
+        effectiveBaseUrl = this.bookSource.url || this.bookSource.bookSourceUrl;
+        if (!effectiveBaseUrl) {
+          throw new Error('无法解析相对URL，未提供有效的基础URL');
+        }
+      }
+      
+      // 尝试解析基础URL
+      try {
+        const parsedBaseUrl = new URL(effectiveBaseUrl);
+        // 检查主机名是否有效
+        if (parsedBaseUrl.hostname === '0.0.0.0' || parsedBaseUrl.hostname === 'localhost' || !parsedBaseUrl.hostname.includes('.')) {
+          logger.warn(`[URL解析] ${this.bookSource.name} - 基础URL包含无效主机名: ${parsedBaseUrl.hostname}，URL: ${effectiveBaseUrl}`);
+          throw new Error(`基础URL包含无效主机名: ${parsedBaseUrl.hostname}`);
+        }
+      } catch (err) {
+        logger.warn(`[URL解析] ${this.bookSource.name} - 基础URL格式无效: ${effectiveBaseUrl}, ${err.message}`);
+        throw new Error(`基础URL格式无效: ${err.message}`);
+      }
+      
+      // 解析完整URL
+      const resolvedUrl = new URL(url, effectiveBaseUrl).href;
+      
+      // 验证解析后的URL
+      const parsedResolvedUrl = new URL(resolvedUrl);
+      if (parsedResolvedUrl.hostname === '0.0.0.0' || parsedResolvedUrl.hostname === 'localhost' || !parsedResolvedUrl.hostname.includes('.')) {
+        logger.warn(`[URL解析] ${this.bookSource.name} - 解析后的URL包含无效主机名: ${parsedResolvedUrl.hostname}，URL: ${resolvedUrl}`);
+        throw new Error(`解析后的URL包含无效主机名: ${parsedResolvedUrl.hostname}`);
+      }
+      
+      return resolvedUrl;
     } catch (error) {
-      logger.error(`URL解析失败: ${url}, ${baseUrl}`, error);
-      return url;
+      logger.error(`URL解析失败: ${url}, 基础URL: ${baseUrl}`, error);
+      // 返回null而不是返回可能无效的URL
+      return null;
     }
   }
 
@@ -596,25 +917,142 @@ class BookSourceParser {
   async search(keyword, isTest = false) {
     try {
       // 替换搜索URL中的关键词占位符
-      const searchUrl = this.bookSource.searchUrl.replace(/\{keyword\}/g, encodeURIComponent(keyword));
+      let searchUrl = this.bookSource.searchUrl || this.bookSource.ruleSearchUrl;
+      if (!searchUrl) {
+        throw new Error('书源未提供搜索URL');
+      }
+      
+      // 检查是否有HTTP请求配置信息
+      let httpMethod = 'GET';
+      let httpBody = null;
+      let httpHeaders = {};
+      let charset = null;
+      
+      // 处理阅读3.0格式的搜索URL（例如："/search.php,{"method":"POST","body":"keyword={{key}}"}"）
+      if (searchUrl.includes(',{')) {
+        try {
+          const [urlPart, configPart] = searchUrl.split(',');
+          searchUrl = urlPart.trim();
+          
+          // 解析配置部分
+          const configStr = configPart.trim();
+          const config = JSON.parse(configStr);
+          
+          if (config.method) httpMethod = config.method.toUpperCase();
+          if (config.body) httpBody = config.body;
+          if (config.headers) httpHeaders = config.headers;
+          if (config.charset) charset = config.charset;
+          
+          if (isTest) {
+            logger.info(`[书源测试] ${this.bookSource.name} - 检测到请求配置: 方法=${httpMethod}, 编码=${charset || '默认'}`);
+          }
+        } catch (error) {
+          if (isTest) {
+            logger.error(`[书源测试] ${this.bookSource.name} - 解析搜索URL配置失败: ${error.message}`);
+          }
+          // 出错时仍然尝试使用URL部分
+        }
+      }
+      
+      // 支持多种关键词占位符格式
+      searchUrl = searchUrl.replace(/\{keyword\}/g, encodeURIComponent(keyword))
+                           .replace(/\{\{key\}\}/g, encodeURIComponent(keyword))
+                           .replace(/\{\{page\}\}/g, '1')
+                           .replace(/searchKey/g, encodeURIComponent(keyword));
+      
+      // 处理httpBody中的占位符
+      if (httpBody) {
+        httpBody = httpBody.replace(/\{keyword\}/g, encodeURIComponent(keyword))
+                          .replace(/\{\{key\}\}/g, encodeURIComponent(keyword))
+                          .replace(/\{\{page\}\}/g, '1')
+                          .replace(/searchKey/g, encodeURIComponent(keyword));
+      }
+      
+      // 处理相对URL（没有http或https开头的URL）
+      if (searchUrl && !searchUrl.startsWith('http://') && !searchUrl.startsWith('https://')) {
+        const bookSourceUrl = this.bookSource.url || this.bookSource.bookSourceUrl;
+        if (bookSourceUrl) {
+          try {
+            // 验证书源URL是否有效
+            const parsedSourceUrl = new URL(bookSourceUrl);
+            if (parsedSourceUrl.hostname === '0.0.0.0' || parsedSourceUrl.hostname === 'localhost' || !parsedSourceUrl.hostname.includes('.')) {
+              throw new Error(`书源URL包含无效主机名: ${parsedSourceUrl.hostname}`);
+            }
+            
+            // 使用书源的URL作为基础URL
+            searchUrl = new URL(searchUrl, bookSourceUrl).href;
+            
+            // 验证拼接后的URL
+            const parsedSearchUrl = new URL(searchUrl);
+            if (parsedSearchUrl.hostname === '0.0.0.0' || parsedSearchUrl.hostname === 'localhost' || !parsedSearchUrl.hostname.includes('.')) {
+              throw new Error(`拼接后的URL包含无效主机名: ${parsedSearchUrl.hostname}`);
+            }
+            
+            if (isTest) {
+              logger.info(`[书源测试] ${this.bookSource.name} - 将相对URL转换为绝对URL: ${searchUrl}`);
+            }
+          } catch (error) {
+            if (isTest) {
+              logger.error(`[书源测试] ${this.bookSource.name} - URL拼接失败: ${error.message}`);
+            }
+            throw new Error(`URL拼接失败: ${error.message}`);
+          }
+        } else {
+          throw new Error(`无法解析相对URL: ${searchUrl}，书源未提供网站URL`);
+        }
+      } else if (searchUrl) {
+        // 验证绝对URL是否有效
+        try {
+          const parsedSearchUrl = new URL(searchUrl);
+          if (parsedSearchUrl.hostname === '0.0.0.0' || parsedSearchUrl.hostname === 'localhost' || !parsedSearchUrl.hostname.includes('.')) {
+            throw new Error(`搜索URL包含无效主机名: ${parsedSearchUrl.hostname}`);
+          }
+        } catch (error) {
+          if (isTest) {
+            logger.error(`[书源测试] ${this.bookSource.name} - 搜索URL无效: ${error.message}`);
+          }
+          throw new Error(`搜索URL无效: ${error.message}`);
+        }
+      } else {
+        throw new Error('书源未提供搜索URL');
+      }
       
       // 测试模式下记录每一步详细信息
       if (isTest) {
-        logger.info(`[书源测试] ${this.bookSource.name} - 开始搜索，关键词: "${keyword}", URL: ${searchUrl}`);
+        logger.info(`[书源测试] ${this.bookSource.name} - 开始搜索，关键词: "${keyword}", URL: ${searchUrl}, 方法: ${httpMethod}`);
+        if (httpBody) {
+          logger.info(`[书源测试] ${this.bookSource.name} - 请求体: ${httpBody}`);
+        }
+      }
+      
+      // 准备请求选项
+      const requestOptions = { 
+        isTest,
+        method: httpMethod,
+        headers: httpHeaders
+      };
+      
+      if (charset) {
+        requestOptions.charset = charset;
+      }
+      
+      if (httpMethod === 'POST' && httpBody) {
+        requestOptions.data = httpBody;
       }
       
       // 发送请求，在测试模式下禁用重试
-      const { $, dom, url } = await this._request(searchUrl, { isTest });
+      const { $, dom, url } = await this._request(searchUrl, requestOptions);
       
       if (isTest) {
-        logger.info(`[书源测试] ${this.bookSource.name} - 获取搜索页面成功，使用选择器: "${this.bookSource.searchList}" 提取结果`);
+        logger.info(`[书源测试] ${this.bookSource.name} - 获取搜索页面成功，使用选择器: "${this.bookSource.searchList || this.bookSource.ruleSearchList}" 提取结果`);
       }
       
       // 提取搜索结果列表
-      const resultList = this._extract($, dom, this.bookSource.searchList, url);
+      const searchListRule = this.bookSource.searchList || this.bookSource.ruleSearchList;
+      const resultList = this._extract($, dom, searchListRule, url);
       if (!resultList || (Array.isArray(resultList) && resultList.length === 0)) {
         if (isTest) {
-          logger.warn(`[书源测试] ${this.bookSource.name} - 未找到匹配结果，选择器: "${this.bookSource.searchList}" 未能提取到内容`);
+          logger.warn(`[书源测试] ${this.bookSource.name} - 未找到匹配结果，选择器: "${searchListRule}" 未能提取到内容`);
         }
         return [];
       }
@@ -627,21 +1065,33 @@ class BookSourceParser {
       // 处理搜索结果
       const results = [];
       
+      // 映射阅读3.0的规则名到我们的规则名
+      const nameRule = this.bookSource.searchName || this.bookSource.ruleSearchName;
+      const authorRule = this.bookSource.searchAuthor || this.bookSource.ruleSearchAuthor;
+      const coverRule = this.bookSource.searchCover || this.bookSource.ruleSearchCoverUrl;
+      const detailRule = this.bookSource.searchDetail || this.bookSource.ruleSearchNoteUrl;
+      const introRule = this.bookSource.searchIntro || this.bookSource.ruleSearchIntroduce;
+      
       if ($ && !dom) {
         // 使用Cheerio处理
-        $(this.bookSource.searchList).each((i, element) => {
+        $(searchListRule).each((i, element) => {
           const $element = $(element);
           
           try {
             const book = {
-              name: this._extract($element, null, this.bookSource.searchName, url),
-              author: this.bookSource.searchAuthor ? this._extract($element, null, this.bookSource.searchAuthor, url) : null,
-              cover: this.bookSource.searchCover ? this._extract($element, null, this.bookSource.searchCover, url) : null,
-              detail: this._extract($element, null, this.bookSource.searchDetail, url),
-              intro: this.bookSource.searchIntro ? this._extract($element, null, this.bookSource.searchIntro, url) : null,
+              name: this._extract($element, null, nameRule, url),
+              author: authorRule ? this._extract($element, null, authorRule, url) : null,
+              cover: coverRule ? this._extract($element, null, coverRule, url) : null,
+              detail: this._extract($element, null, detailRule, url),
+              intro: introRule ? this._extract($element, null, introRule, url) : null,
               source: this.bookSource.name,
               sourceUrl: this.bookSource.url
             };
+            
+            // 确保详情链接是绝对URL
+            if (book.detail && !book.detail.startsWith('http')) {
+              book.detail = this._resolveUrl(book.detail, url);
+            }
             
             if (isTest && i < 3) { // 只记录前3个结果的详细信息，避免日志过多
               logger.info(`[书源测试] ${this.bookSource.name} - 搜索结果 #${i+1}:`);
@@ -657,21 +1107,26 @@ class BookSourceParser {
         });
       } else if (dom) {
         // 使用JSDOM处理
-        const elements = dom.querySelectorAll(this.bookSource.searchList);
+        const elements = dom.querySelectorAll(searchListRule);
         
         for (let i = 0; i < elements.length; i++) {
           const element = elements[i];
           
           try {
             const book = {
-              name: this._extractFromElement(element, this.bookSource.searchName),
-              author: this.bookSource.searchAuthor ? this._extractFromElement(element, this.bookSource.searchAuthor) : null,
-              cover: this.bookSource.searchCover ? this._extractFromElement(element, this.bookSource.searchCover) : null,
-              detail: this._resolveUrl(this._extractFromElement(element, this.bookSource.searchDetail), url),
-              intro: this.bookSource.searchIntro ? this._extractFromElement(element, this.bookSource.searchIntro) : null,
+              name: this._extractFromElement(element, nameRule),
+              author: authorRule ? this._extractFromElement(element, authorRule) : null,
+              cover: coverRule ? this._extractFromElement(element, coverRule) : null,
+              detail: this._extractFromElement(element, detailRule),
+              intro: introRule ? this._extractFromElement(element, introRule) : null,
               source: this.bookSource.name,
               sourceUrl: this.bookSource.url
             };
+            
+            // 确保详情链接是绝对URL
+            if (book.detail && !book.detail.startsWith('http')) {
+              book.detail = this._resolveUrl(book.detail, url);
+            }
             
             if (isTest && i < 3) { // 只记录前3个结果的详细信息
               logger.info(`[书源测试] ${this.bookSource.name} - 搜索结果 #${i+1}:`);
@@ -739,6 +1194,46 @@ class BookSourceParser {
    */
   async getBookDetail(url, isTest = false) {
     try {
+      // 处理相对URL
+      if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+        const baseUrl = this.bookSource.url || this.bookSource.bookSourceUrl;
+        if (!baseUrl) {
+          throw new Error('无法解析相对URL，书源未提供网站URL');
+        }
+        
+        // 验证书源URL
+        try {
+          const parsedBaseUrl = new URL(baseUrl);
+          if (parsedBaseUrl.hostname === '0.0.0.0' || parsedBaseUrl.hostname === 'localhost' || !parsedBaseUrl.hostname.includes('.')) {
+            throw new Error(`书源URL包含无效主机名: ${parsedBaseUrl.hostname}`);
+          }
+        } catch (error) {
+          throw new Error(`书源URL无效: ${error.message}`);
+        }
+        
+        // 解析完整URL
+        url = this._resolveUrl(url, baseUrl);
+        if (!url) {
+          throw new Error(`无法解析详情页URL: ${url}`);
+        }
+        
+        if (isTest) {
+          logger.info(`[书源测试] ${this.bookSource.name} - 将相对URL转换为绝对URL: ${url}`);
+        }
+      } else if (url) {
+        // 验证绝对URL
+        try {
+          const parsedUrl = new URL(url);
+          if (parsedUrl.hostname === '0.0.0.0' || parsedUrl.hostname === 'localhost' || !parsedUrl.hostname.includes('.')) {
+            throw new Error(`详情页URL包含无效主机名: ${parsedUrl.hostname}`);
+          }
+        } catch (error) {
+          throw new Error(`详情页URL无效: ${error.message}`);
+        }
+      } else {
+        throw new Error('未提供详情页URL');
+      }
+      
       // 发送请求
       const { $, dom, url: finalUrl } = await this._request(url, { isTest });
       
@@ -789,6 +1284,46 @@ class BookSourceParser {
    */
   async getChapterList(url, isTest = false) {
     try {
+      // 处理相对URL
+      if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+        const baseUrl = this.bookSource.url || this.bookSource.bookSourceUrl;
+        if (!baseUrl) {
+          throw new Error('无法解析相对URL，书源未提供网站URL');
+        }
+        
+        // 验证书源URL
+        try {
+          const parsedBaseUrl = new URL(baseUrl);
+          if (parsedBaseUrl.hostname === '0.0.0.0' || parsedBaseUrl.hostname === 'localhost' || !parsedBaseUrl.hostname.includes('.')) {
+            throw new Error(`书源URL包含无效主机名: ${parsedBaseUrl.hostname}`);
+          }
+        } catch (error) {
+          throw new Error(`书源URL无效: ${error.message}`);
+        }
+        
+        // 解析完整URL
+        url = this._resolveUrl(url, baseUrl);
+        if (!url) {
+          throw new Error(`无法解析章节列表URL: ${url}`);
+        }
+        
+        if (isTest) {
+          logger.info(`[书源测试] ${this.bookSource.name} - 将相对章节URL转换为绝对URL: ${url}`);
+        }
+      } else if (url) {
+        // 验证绝对URL
+        try {
+          const parsedUrl = new URL(url);
+          if (parsedUrl.hostname === '0.0.0.0' || parsedUrl.hostname === 'localhost' || !parsedUrl.hostname.includes('.')) {
+            throw new Error(`章节列表URL包含无效主机名: ${parsedUrl.hostname}`);
+          }
+        } catch (error) {
+          throw new Error(`章节列表URL无效: ${error.message}`);
+        }
+      } else {
+        throw new Error('未提供章节列表URL');
+      }
+      
       // 发送请求
       const { $, dom, url: finalUrl } = await this._request(url, { isTest });
       
@@ -839,6 +1374,46 @@ class BookSourceParser {
    */
   async getChapterContent(url, isTest = false) {
     try {
+      // 处理相对URL
+      if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+        const baseUrl = this.bookSource.url || this.bookSource.bookSourceUrl;
+        if (!baseUrl) {
+          throw new Error('无法解析相对URL，书源未提供网站URL');
+        }
+        
+        // 验证书源URL
+        try {
+          const parsedBaseUrl = new URL(baseUrl);
+          if (parsedBaseUrl.hostname === '0.0.0.0' || parsedBaseUrl.hostname === 'localhost' || !parsedBaseUrl.hostname.includes('.')) {
+            throw new Error(`书源URL包含无效主机名: ${parsedBaseUrl.hostname}`);
+          }
+        } catch (error) {
+          throw new Error(`书源URL无效: ${error.message}`);
+        }
+        
+        // 解析完整URL
+        url = this._resolveUrl(url, baseUrl);
+        if (!url) {
+          throw new Error(`无法解析章节内容URL: ${url}`);
+        }
+        
+        if (isTest) {
+          logger.info(`[书源测试] ${this.bookSource.name} - 将相对内容URL转换为绝对URL: ${url}`);
+        }
+      } else if (url) {
+        // 验证绝对URL
+        try {
+          const parsedUrl = new URL(url);
+          if (parsedUrl.hostname === '0.0.0.0' || parsedUrl.hostname === 'localhost' || !parsedUrl.hostname.includes('.')) {
+            throw new Error(`章节内容URL包含无效主机名: ${parsedUrl.hostname}`);
+          }
+        } catch (error) {
+          throw new Error(`章节内容URL无效: ${error.message}`);
+        }
+      } else {
+        throw new Error('未提供章节内容URL');
+      }
+      
       // 发送请求
       const { $, dom, url: finalUrl } = await this._request(url, { isTest });
       
@@ -881,6 +1456,87 @@ class BookSourceParser {
       logger.error(`获取章节内容失败: ${url}`, error);
       throw error;
     }
+  }
+
+  /**
+   * 将阅读3.0格式的书源映射到内部格式
+   * @param {Object} source - 原始书源对象
+   * @returns {Object} - 转换后的书源对象
+   * @private
+   */
+  _mapBookSourceFields(source) {
+    if (!source) return source;
+    
+    // 创建源对象的副本，避免修改原始对象
+    const result = JSON.parse(JSON.stringify(source));
+    
+    // 如果不是阅读3.0格式，直接返回
+    if (!result.bookSourceUrl && !result.ruleSearch && !result.ruleBookInfo && !result.ruleToc && !result.ruleContent) {
+      return result;
+    }
+    
+    // 基础信息映射
+    if (result.bookSourceName) result.name = result.bookSourceName;
+    if (result.bookSourceUrl) result.url = result.bookSourceUrl;
+    if (result.bookSourceGroup) result.group = result.bookSourceGroup;
+    if (!result.enabled && result.enable !== undefined) result.enabled = result.enable;
+    
+    // 创建规则对象
+    if (!result.searchRule) result.searchRule = {};
+    if (!result.bookInfoRule) result.bookInfoRule = {};
+    if (!result.chapterListRule) result.chapterListRule = {};
+    if (!result.contentRule) result.contentRule = {};
+    
+    // 搜索规则映射
+    if (result.ruleSearch) {
+      if (result.ruleSearch.searchUrl) result.searchUrl = result.ruleSearch.searchUrl;
+      if (result.ruleSearch.searchList) result.searchRule.searchList = result.ruleSearch.searchList;
+      if (result.ruleSearch.searchName) result.searchRule.name = result.ruleSearch.searchName;
+      if (result.ruleSearch.searchAuthor) result.searchRule.author = result.ruleSearch.searchAuthor;
+      if (result.ruleSearch.searchKind) result.searchRule.kind = result.ruleSearch.searchKind;
+      if (result.ruleSearch.searchLastChapter) result.searchRule.lastChapter = result.ruleSearch.searchLastChapter;
+      if (result.ruleSearch.searchIntroduce) result.searchRule.desc = result.ruleSearch.searchIntroduce;
+      if (result.ruleSearch.searchCoverUrl) result.searchRule.cover = result.ruleSearch.searchCoverUrl;
+      if (result.ruleSearch.searchNoteUrl) result.searchRule.bookUrl = result.ruleSearch.searchNoteUrl;
+    }
+    
+    // 书籍详情规则映射
+    if (result.ruleBookInfo) {
+      if (result.ruleBookInfo.bookUrlPattern) result.bookInfoRule.bookUrlPattern = result.ruleBookInfo.bookUrlPattern;
+      if (result.ruleBookInfo.tocUrl) result.bookInfoRule.chapterUrl = result.ruleBookInfo.tocUrl;
+      if (result.ruleBookInfo.bookName) result.bookInfoRule.name = result.ruleBookInfo.bookName;
+      if (result.ruleBookInfo.bookAuthor) result.bookInfoRule.author = result.ruleBookInfo.bookAuthor;
+      if (result.ruleBookInfo.bookKind) result.bookInfoRule.kind = result.ruleBookInfo.bookKind;
+      if (result.ruleBookInfo.bookLastChapter) result.bookInfoRule.lastChapter = result.ruleBookInfo.bookLastChapter;
+      if (result.ruleBookInfo.bookIntroduce) result.bookInfoRule.desc = result.ruleBookInfo.bookIntroduce;
+      if (result.ruleBookInfo.bookCoverUrl) result.bookInfoRule.cover = result.ruleBookInfo.bookCoverUrl;
+    }
+    
+    // 章节列表规则映射
+    if (result.ruleToc) {
+      if (result.ruleToc.chapterList) result.chapterListRule.chapterList = result.ruleToc.chapterList;
+      if (result.ruleToc.chapterName) result.chapterListRule.name = result.ruleToc.chapterName;
+      if (result.ruleToc.chapterUrl || result.ruleToc.contentUrl) {
+        result.chapterListRule.url = result.ruleToc.contentUrl || result.ruleToc.chapterUrl;
+      }
+    }
+    
+    // 内容规则映射
+    if (result.ruleContent) {
+      if (result.ruleContent.content) result.contentRule.content = result.ruleContent.content;
+      if (result.ruleContent.contentRules) result.contentRule.contentRules = result.ruleContent.contentRules;
+      if (result.ruleContent.contentFilters) result.contentRule.contentFilters = result.ruleContent.contentFilters;
+    }
+    
+    // 设置标识，表示这是转换后的格式
+    result.convertedFromLegacy = true;
+    
+    // 记录源和转换后的书源名
+    const sourceName = source.bookSourceName || source.name || 'unnamed';
+    const convertedName = result.name || 'unnamed';
+    logger.info(`[书源转换] 从阅读3.0格式转换: ${sourceName} -> ${convertedName}`);
+    
+    return result;
   }
 }
 
