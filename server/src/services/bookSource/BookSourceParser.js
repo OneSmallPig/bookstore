@@ -15,6 +15,11 @@ class BookSourceParser {
    */
   constructor(bookSource) {
     this.bookSource = bookSource;
+    
+    // 获取配置的测试超时时间
+    const config = require('../../config/config');
+    this.testTimeout = config.bookSourceTest ? config.bookSourceTest.timeout : 10000;
+    
     this.axios = axios.create({
       timeout: bookSource.timeout || 10000,
       headers: this._getHeaders(),
@@ -58,13 +63,29 @@ class BookSourceParser {
     // 在测试模式中不重试，正常模式中使用书源配置的重试次数
     let retries = options.isTest ? 0 : (this.bookSource.retry || 3);
     let error;
+    
+    // 测试模式下使用配置的超时时间
+    if (options.isTest) {
+      options.timeout = this.testTimeout;
+      logger.info(`[请求] ${this.bookSource.name} - 发送请求: ${url}, 超时设置: ${options.timeout}ms`);
+    }
 
     while (retries >= 0) {
       try {
+        const startTime = Date.now();
         const response = await this.axios.get(url, options);
+        const endTime = Date.now();
+        
+        if (options.isTest) {
+          logger.info(`[请求] ${this.bookSource.name} - 请求成功, 耗时: ${endTime - startTime}ms, 状态码: ${response.status}`);
+        }
         
         // 处理编码
         const charset = this._detectCharset(response) || this.bookSource.charset || 'utf-8';
+        if (options.isTest) {
+          logger.info(`[请求] ${this.bookSource.name} - 检测到编码: ${charset}`);
+        }
+        
         const html = iconv.decode(response.data, charset);
         
         // 根据需要决定是否使用JSDOM或cheerio
@@ -72,6 +93,10 @@ class BookSourceParser {
         let dom = null;
         
         if (this.bookSource.enableJs) {
+          if (options.isTest) {
+            logger.info(`[请求] ${this.bookSource.name} - 启用JavaScript，使用JSDOM解析`);
+          }
+          
           // 使用JSDOM执行JavaScript
           const jsdom = new JSDOM(html, {
             url: url,
@@ -85,9 +110,22 @@ class BookSourceParser {
           dom = jsdom.window.document;
           // 等待JavaScript执行完成（可根据需要调整等待时间）
           await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          if (options.isTest) {
+            logger.info(`[请求] ${this.bookSource.name} - JSDOM解析完成，等待JavaScript执行`);
+          }
         } else {
           // 使用cheerio进行快速解析（不执行JavaScript）
           $ = cheerio.load(html);
+          
+          if (options.isTest) {
+            logger.info(`[请求] ${this.bookSource.name} - 使用Cheerio解析，HTML长度: ${html.length}`);
+          }
+        }
+        
+        const finalUrl = response.request.res.responseUrl || url;
+        if (finalUrl !== url && options.isTest) {
+          logger.info(`[请求] ${this.bookSource.name} - 请求被重定向: ${url} -> ${finalUrl}`);
         }
         
         return { 
@@ -95,11 +133,15 @@ class BookSourceParser {
           html, 
           $, 
           dom,
-          url: response.request.res.responseUrl || url // 获取最终URL（处理重定向）
+          url: finalUrl // 获取最终URL（处理重定向）
         };
       } catch (err) {
         error = err;
-        logger.error(`请求失败: ${url}, 重试剩余: ${retries}`, err);
+        if (options.isTest) {
+          logger.error(`[请求] ${this.bookSource.name} - 请求失败: ${url}, 错误: ${err.message}`, err);
+        } else {
+          logger.error(`请求失败: ${url}, 重试剩余: ${retries}`, err);
+        }
         retries--;
         
         // 等待一段时间再重试
@@ -181,23 +223,28 @@ class BookSourceParser {
                 const classNames = classNameRaw.split(' ').filter(Boolean);
                 const cssSelector = classNames.map(name => `.${name}`).join('');
                 currentSelection = $(cssSelector);
+                logger.debug(`[复杂选择器] 处理空格类名：${classNameRaw} -> ${cssSelector}，找到 ${currentSelection.length} 个元素`);
               } else {
                 currentSelection = $(`.${classNameRaw}`);
+                logger.debug(`[复杂选择器] 处理类名：.${classNameRaw}，找到 ${currentSelection.length} 个元素`);
               }
             }
             // 如果是tag.xxx形式
             else if (part.startsWith('tag.')) {
               const tagName = part.substring(4);
               currentSelection = $(tagName);
+              logger.debug(`[复杂选择器] 处理标签：${tagName}，找到 ${currentSelection.length} 个元素`);
             }
             // 如果是id.xxx形式
             else if (part.startsWith('id.')) {
               const idName = part.substring(3);
               currentSelection = $(`#${idName}`);
+              logger.debug(`[复杂选择器] 处理ID：#${idName}，找到 ${currentSelection.length} 个元素`);
             }
             // 如果是普通CSS选择器
             else {
               currentSelection = $(part);
+              logger.debug(`[复杂选择器] 处理普通选择器：${part}，找到 ${currentSelection.length} 个元素`);
             }
             
             // 如果只有一个部分，返回结果
@@ -207,7 +254,10 @@ class BookSourceParser {
             }
             
             // 如果没有找到元素，返回null
-            if (currentSelection.length === 0) return null;
+            if (currentSelection.length === 0) {
+              logger.debug(`[复杂选择器] 第一部分 ${part} 没有找到元素，返回null`);
+              return null;
+            }
             continue;
           }
           
@@ -216,17 +266,21 @@ class BookSourceParser {
           // 检查是否是属性选择器
           if (part === 'text') {
             result = currentSelection.text().trim();
+            logger.debug(`[复杂选择器] 提取文本：${result.substring(0, 50)}${result.length > 50 ? '...' : ''}`);
             break;
           } else if (part === 'html') {
             result = currentSelection.html();
+            logger.debug(`[复杂选择器] 提取HTML，长度: ${result ? result.length : 0}`);
             break;
           } else if (part === 'href' || part === 'src') {
             const attrVal = currentSelection.attr(part);
             result = attrVal ? this._resolveUrl(attrVal, baseUrl) : null;
+            logger.debug(`[复杂选择器] 提取属性 ${part}：${result}`);
             break;
           } else if (part.startsWith('attr.')) {
             const attrName = part.substring(5);
             result = currentSelection.attr(attrName);
+            logger.debug(`[复杂选择器] 提取自定义属性 ${attrName}：${result}`);
             break;
           }
           
@@ -234,6 +288,7 @@ class BookSourceParser {
           if (part.startsWith('tag.')) {
             const tagName = part.substring(4);
             currentSelection = currentSelection.find(tagName);
+            logger.debug(`[复杂选择器] 在当前选择中查找标签：${tagName}，找到 ${currentSelection.length} 个元素`);
             if (currentSelection.length === 0) return null;
             
             // 如果是最后一个部分，返回文本内容
@@ -252,8 +307,10 @@ class BookSourceParser {
               const classNames = classNameRaw.split(' ').filter(Boolean);
               const cssSelector = classNames.map(name => `.${name}`).join('');
               currentSelection = currentSelection.find(cssSelector);
+              logger.debug(`[复杂选择器] 在当前选择中查找空格类名：${classNameRaw} -> ${cssSelector}，找到 ${currentSelection.length} 个元素`);
             } else {
               currentSelection = currentSelection.find(`.${classNameRaw}`);
+              logger.debug(`[复杂选择器] 在当前选择中查找类名：.${classNameRaw}，找到 ${currentSelection.length} 个元素`);
             }
             
             if (currentSelection.length === 0) return null;
@@ -269,6 +326,7 @@ class BookSourceParser {
           if (part.startsWith('id.')) {
             const idName = part.substring(3);
             currentSelection = currentSelection.find(`#${idName}`);
+            logger.debug(`[复杂选择器] 在当前选择中查找ID：#${idName}，找到 ${currentSelection.length} 个元素`);
             if (currentSelection.length === 0) return null;
             
             // 如果是最后一个部分，返回文本内容
@@ -281,6 +339,7 @@ class BookSourceParser {
           // 处理普通CSS选择器
           try {
             currentSelection = currentSelection.find(part);
+            logger.debug(`[复杂选择器] 在当前选择中查找：${part}，找到 ${currentSelection.length} 个元素`);
             if (currentSelection.length === 0) return null;
             
             // 如果是最后一个部分，返回文本内容
@@ -306,6 +365,7 @@ class BookSourceParser {
           const cssSelector = classNames.map(name => `.${name}`).join('');
           try {
             const elements = $(cssSelector);
+            logger.debug(`[复杂选择器] 处理独立空格类名：${classNameRaw} -> ${cssSelector}，找到 ${elements.length} 个元素`);
             if (elements.length === 0) return null;
             if (elements.length === 1) return elements.text().trim();
             return elements.map((i, el) => $(el).text().trim()).get();
@@ -316,6 +376,7 @@ class BookSourceParser {
         } else {
           try {
             const elements = $(`.${classNameRaw}`);
+            logger.debug(`[复杂选择器] 处理独立类名：.${classNameRaw}，找到 ${elements.length} 个元素`);
             if (elements.length === 0) return null;
             if (elements.length === 1) return elements.text().trim();
             return elements.map((i, el) => $(el).text().trim()).get();
@@ -331,6 +392,7 @@ class BookSourceParser {
         const tagName = selector.substring(4);
         try {
           const elements = $(tagName);
+          logger.debug(`[复杂选择器] 处理独立标签：${tagName}，找到 ${elements.length} 个元素`);
           if (elements.length === 0) return null;
           if (elements.length === 1) return elements.text().trim();
           return elements.map((i, el) => $(el).text().trim()).get();
@@ -345,6 +407,7 @@ class BookSourceParser {
         const idName = selector.substring(3);
         try {
           const elements = $(`#${idName}`);
+          logger.debug(`[复杂选择器] 处理独立ID：#${idName}，找到 ${elements.length} 个元素`);
           if (elements.length === 0) return null;
           if (elements.length === 1) return elements.text().trim();
           return elements.map((i, el) => $(el).text().trim()).get();
@@ -357,6 +420,7 @@ class BookSourceParser {
       // 普通选择器
       try {
         const elements = $(selector);
+        logger.debug(`[复杂选择器] 处理普通选择器：${selector}，找到 ${elements.length} 个元素`);
         if (elements.length === 0) return null;
         if (elements.length === 1) return elements.text().trim();
         return elements.map((i, el) => $(el).text().trim()).get();
@@ -417,15 +481,25 @@ class BookSourceParser {
       
       // 如果是复杂选择器，无论是JSDOM还是Cheerio，都使用我们的自定义处理
       if (isComplexSelector) {
-        return this._processComplexSelector($, selector, baseUrl);
+        logger.debug(`[内容提取] 使用复杂选择器处理: ${selector}`);
+        const result = this._processComplexSelector($, selector, baseUrl);
+        const resultSummary = result ? 
+          (Array.isArray(result) ? 
+            `数组[${result.length}]` : 
+            `"${result.substring(0, 50)}${result.length > 50 ? '...' : ''}"`) : 
+          'null';
+        logger.debug(`[内容提取] 复杂选择器 "${selector}" 结果: ${resultSummary}`);
+        return result;
       }
       
       // 以下处理简单选择器
+      logger.debug(`[内容提取] 使用简单选择器处理: ${selector}`);
       
       // 如果使用JSDOM
       if (dom) {
         // 处理XPath选择器
         if (selector.startsWith('//')) {
+          logger.debug(`[内容提取] 处理XPath选择器: ${selector}`);
           const result = [];
           const xpathResult = dom.evaluate(
             selector, 
@@ -440,12 +514,14 @@ class BookSourceParser {
             result.push(node.textContent);
           }
           
+          logger.debug(`[内容提取] XPath选择器 "${selector}" 找到 ${xpathResult.snapshotLength} 个节点`);
           return result.length === 1 ? result[0] : result;
         }
         
         // 处理普通CSS选择器
         try {
           const elements = dom.querySelectorAll(selector);
+          logger.debug(`[内容提取] DOM选择器 "${selector}" 找到 ${elements.length} 个元素`);
           if (elements.length === 0) return null;
           if (elements.length === 1) return elements[0].textContent.trim();
           
@@ -459,6 +535,7 @@ class BookSourceParser {
       
       // 普通Cheerio选择
       const elements = $(selector);
+      logger.debug(`[内容提取] Cheerio选择器 "${selector}" 找到 ${elements.length} 个元素`);
       if (elements.length === 0) return null;
       
       // 处理特殊属性选择
@@ -467,17 +544,24 @@ class BookSourceParser {
         const attrPart = parts[1].replace(']', '');
         const [attrName, attrValue] = attrPart.split('=');
         
+        logger.debug(`[内容提取] 处理属性选择器，属性: ${attrName}=${attrValue}`);
         const filteredElements = elements.filter(function() {
           return $(this).attr(attrName) === attrValue.replace(/['"]/g, '');
         });
         
+        logger.debug(`[内容提取] 属性过滤后剩余 ${filteredElements.length} 个元素`);
         if (filteredElements.length === 0) return null;
         if (filteredElements.length === 1) return filteredElements.text().trim();
         return filteredElements.map((i, el) => $(el).text().trim()).get();
       }
       
-      if (elements.length === 1) return elements.text().trim();
+      if (elements.length === 1) {
+        const result = elements.text().trim();
+        logger.debug(`[内容提取] 获取到单个元素文本: "${result.substring(0, 50)}${result.length > 50 ? '...' : ''}"`);
+        return result;
+      }
       
+      logger.debug(`[内容提取] 获取到 ${elements.length} 个元素文本`);
       return elements.map((i, el) => $(el).text().trim()).get();
     } catch (error) {
       logger.error(`提取内容失败: ${selector}`, error);
@@ -514,13 +598,30 @@ class BookSourceParser {
       // 替换搜索URL中的关键词占位符
       const searchUrl = this.bookSource.searchUrl.replace(/\{keyword\}/g, encodeURIComponent(keyword));
       
+      // 测试模式下记录每一步详细信息
+      if (isTest) {
+        logger.info(`[书源测试] ${this.bookSource.name} - 开始搜索，关键词: "${keyword}", URL: ${searchUrl}`);
+      }
+      
       // 发送请求，在测试模式下禁用重试
       const { $, dom, url } = await this._request(searchUrl, { isTest });
+      
+      if (isTest) {
+        logger.info(`[书源测试] ${this.bookSource.name} - 获取搜索页面成功，使用选择器: "${this.bookSource.searchList}" 提取结果`);
+      }
       
       // 提取搜索结果列表
       const resultList = this._extract($, dom, this.bookSource.searchList, url);
       if (!resultList || (Array.isArray(resultList) && resultList.length === 0)) {
+        if (isTest) {
+          logger.warn(`[书源测试] ${this.bookSource.name} - 未找到匹配结果，选择器: "${this.bookSource.searchList}" 未能提取到内容`);
+        }
         return [];
+      }
+      
+      if (isTest) {
+        const count = Array.isArray(resultList) ? resultList.length : 1;
+        logger.info(`[书源测试] ${this.bookSource.name} - 找到 ${count} 个搜索结果`);
       }
       
       // 处理搜索结果
@@ -531,17 +632,28 @@ class BookSourceParser {
         $(this.bookSource.searchList).each((i, element) => {
           const $element = $(element);
           
-          const book = {
-            name: this._extract($element, null, this.bookSource.searchName, url),
-            author: this.bookSource.searchAuthor ? this._extract($element, null, this.bookSource.searchAuthor, url) : null,
-            cover: this.bookSource.searchCover ? this._extract($element, null, this.bookSource.searchCover, url) : null,
-            detail: this._extract($element, null, this.bookSource.searchDetail, url),
-            intro: this.bookSource.searchIntro ? this._extract($element, null, this.bookSource.searchIntro, url) : null,
-            source: this.bookSource.name,
-            sourceUrl: this.bookSource.url
-          };
-          
-          results.push(book);
+          try {
+            const book = {
+              name: this._extract($element, null, this.bookSource.searchName, url),
+              author: this.bookSource.searchAuthor ? this._extract($element, null, this.bookSource.searchAuthor, url) : null,
+              cover: this.bookSource.searchCover ? this._extract($element, null, this.bookSource.searchCover, url) : null,
+              detail: this._extract($element, null, this.bookSource.searchDetail, url),
+              intro: this.bookSource.searchIntro ? this._extract($element, null, this.bookSource.searchIntro, url) : null,
+              source: this.bookSource.name,
+              sourceUrl: this.bookSource.url
+            };
+            
+            if (isTest && i < 3) { // 只记录前3个结果的详细信息，避免日志过多
+              logger.info(`[书源测试] ${this.bookSource.name} - 搜索结果 #${i+1}:`);
+              logger.info(`  书名: "${book.name}", 作者: "${book.author}", 详情URL: ${book.detail}`);
+            }
+            
+            results.push(book);
+          } catch (err) {
+            if (isTest) {
+              logger.error(`[书源测试] ${this.bookSource.name} - 提取第 ${i+1} 个搜索结果详情失败:`, err);
+            }
+          }
         });
       } else if (dom) {
         // 使用JSDOM处理
@@ -550,23 +662,42 @@ class BookSourceParser {
         for (let i = 0; i < elements.length; i++) {
           const element = elements[i];
           
-          const book = {
-            name: this._extractFromElement(element, this.bookSource.searchName),
-            author: this.bookSource.searchAuthor ? this._extractFromElement(element, this.bookSource.searchAuthor) : null,
-            cover: this.bookSource.searchCover ? this._extractFromElement(element, this.bookSource.searchCover) : null,
-            detail: this._resolveUrl(this._extractFromElement(element, this.bookSource.searchDetail), url),
-            intro: this.bookSource.searchIntro ? this._extractFromElement(element, this.bookSource.searchIntro) : null,
-            source: this.bookSource.name,
-            sourceUrl: this.bookSource.url
-          };
-          
-          results.push(book);
+          try {
+            const book = {
+              name: this._extractFromElement(element, this.bookSource.searchName),
+              author: this.bookSource.searchAuthor ? this._extractFromElement(element, this.bookSource.searchAuthor) : null,
+              cover: this.bookSource.searchCover ? this._extractFromElement(element, this.bookSource.searchCover) : null,
+              detail: this._resolveUrl(this._extractFromElement(element, this.bookSource.searchDetail), url),
+              intro: this.bookSource.searchIntro ? this._extractFromElement(element, this.bookSource.searchIntro) : null,
+              source: this.bookSource.name,
+              sourceUrl: this.bookSource.url
+            };
+            
+            if (isTest && i < 3) { // 只记录前3个结果的详细信息
+              logger.info(`[书源测试] ${this.bookSource.name} - 搜索结果 #${i+1}:`);
+              logger.info(`  书名: "${book.name}", 作者: "${book.author}", 详情URL: ${book.detail}`);
+            }
+            
+            results.push(book);
+          } catch (err) {
+            if (isTest) {
+              logger.error(`[书源测试] ${this.bookSource.name} - 提取第 ${i+1} 个搜索结果详情失败:`, err);
+            }
+          }
         }
+      }
+      
+      if (isTest) {
+        logger.info(`[书源测试] ${this.bookSource.name} - 搜索完成，共获取 ${results.length} 个有效结果`);
       }
       
       return results;
     } catch (error) {
-      logger.error(`搜索失败: ${keyword}`, error);
+      if (isTest) {
+        logger.error(`[书源测试] ${this.bookSource.name} - 搜索失败: ${error.message}`, error);
+      } else {
+        logger.error(`搜索失败: ${keyword}`, error);
+      }
       throw error;
     }
   }

@@ -628,6 +628,8 @@ class BookSourceController {
     try {
       const { sourceName, keyword, bookUrl, chapterUrl, type } = req.body;
       
+      logger.info(`开始测试书源: ${sourceName}, 类型: ${type || '完整测试'}, 关键词: "${keyword || '天才'}"`);
+      
       // 确保书源管理器已初始化
       if (!bookSourceManager.initialized) {
         await bookSourceManager.initialize();
@@ -636,11 +638,19 @@ class BookSourceController {
       // 获取书源
       const sourceData = bookSourceManager.getSourceByName(sourceName);
       if (!sourceData) {
+        logger.warn(`测试失败: 未找到书源 "${sourceName}"`);
         return res.status(404).json({
           success: false,
           message: `未找到书源: ${sourceName}`
         });
       }
+      
+      logger.info(`找到书源: ${sourceName}, 规则配置: ${JSON.stringify({
+        search: !!sourceData.searchUrl,
+        detail: !!sourceData.detailName,
+        chapter: !!sourceData.chapterList,
+        content: !!sourceData.contentRule
+      })}`);
       
       // 创建临时解析器进行测试
       const BookSourceParser = require('../../services/bookSource/BookSourceParser');
@@ -649,7 +659,10 @@ class BookSourceController {
       // 根据请求类型执行不同的测试
       if (type === 'search' && keyword) {
         // 测试搜索功能
+        logger.info(`执行搜索测试, 关键词: "${keyword}"`);
         const searchResults = await parser.search(keyword, true);
+        
+        logger.info(`搜索测试完成, 结果数量: ${searchResults ? searchResults.length : 0}`);
         
         return res.json({
           success: searchResults && searchResults.length > 0,
@@ -659,7 +672,13 @@ class BookSourceController {
       } 
       else if (type === 'detail' && bookUrl) {
         // 测试获取书籍详情
+        logger.info(`执行书籍详情测试, URL: ${bookUrl}`);
         const detail = await parser.getBookDetail(bookUrl, true);
+        
+        logger.info(`详情测试完成, 结果: ${detail ? '成功' : '失败'}`);
+        if (detail) {
+          logger.info(`书籍信息: 书名="${detail.name}", 作者="${detail.author}", 分类="${detail.category}"`);
+        }
         
         return res.json({
           success: !!detail,
@@ -669,7 +688,13 @@ class BookSourceController {
       } 
       else if (type === 'chapters' && chapterUrl) {
         // 测试获取章节列表
+        logger.info(`执行章节列表测试, URL: ${chapterUrl}`);
         const chapters = await parser.getChapterList(chapterUrl, true);
+        
+        logger.info(`章节列表测试完成, 结果数量: ${chapters ? chapters.length : 0}`);
+        if (chapters && chapters.length > 0) {
+          logger.info(`前3章: ${chapters.slice(0, 3).map(c => c.title).join(', ')}`);
+        }
         
         return res.json({
           success: chapters && chapters.length > 0,
@@ -679,7 +704,14 @@ class BookSourceController {
       } 
       else if (type === 'content' && chapterUrl) {
         // 测试获取章节内容
+        logger.info(`执行章节内容测试, URL: ${chapterUrl}`);
         const content = await parser.getChapterContent(chapterUrl, true);
+        
+        logger.info(`章节内容测试完成, 结果: ${content ? '成功' : '失败'}`);
+        if (content && content.content) {
+          const preview = content.content.substring(0, 100) + (content.content.length > 100 ? '...' : '');
+          logger.info(`内容预览: ${preview}`);
+        }
         
         return res.json({
           success: !!content,
@@ -690,12 +722,15 @@ class BookSourceController {
       else {
         // 默认执行完整测试
         const testKeyword = keyword || '天才';
+        logger.info(`执行完整测试流程, 关键词: "${testKeyword}"`);
         
         // 测试搜索功能
+        logger.info(`1. 开始搜索测试...`);
         const searchResults = await parser.search(testKeyword, true);
         
         // 如果没有搜索结果，直接返回测试失败
         if (!searchResults || searchResults.length === 0) {
+          logger.warn(`搜索测试失败: 未找到结果`);
           return res.json({
             success: false,
             message: '测试失败：未找到搜索结果',
@@ -703,27 +738,65 @@ class BookSourceController {
           });
         }
         
+        logger.info(`搜索测试成功, 找到 ${searchResults.length} 条结果`);
+        
         // 测试获取书籍详情
+        logger.info(`2. 开始书籍详情测试, URL: ${searchResults[0].detail}...`);
         const detail = await parser.getBookDetail(searchResults[0].detail, true);
         
-        // 测试获取章节列表
-        const chaptersUrl = detail.chapterUrl || detail.detailUrl;
-        const chapters = await parser.getChapterList(chaptersUrl, true);
-        
-        // 测试获取章节内容
-        let content = null;
-        if (chapters && chapters.length > 0) {
-          content = await parser.getChapterContent(chapters[0].url, true);
+        if (detail) {
+          logger.info(`详情测试成功, 书名: "${detail.name}", 作者: "${detail.author}"`);
+        } else {
+          logger.warn(`详情测试失败`);
         }
         
+        // 测试获取章节列表
+        const chaptersUrl = detail ? (detail.chapterUrl || detail.detailUrl) : null;
+        
+        if (chaptersUrl) {
+          logger.info(`3. 开始章节列表测试, URL: ${chaptersUrl}...`);
+          const chapters = await parser.getChapterList(chaptersUrl, true);
+          
+          if (chapters && chapters.length > 0) {
+            logger.info(`章节列表测试成功, 共 ${chapters.length} 章, 第一章: "${chapters[0].title}"`);
+            
+            // 测试获取章节内容
+            logger.info(`4. 开始章节内容测试, URL: ${chapters[0].url}...`);
+            const content = await parser.getChapterContent(chapters[0].url, true);
+            
+            if (content && content.content) {
+              const preview = content.content.substring(0, 100) + (content.content.length > 100 ? '...' : '');
+              logger.info(`章节内容测试成功, 内容预览: ${preview}`);
+            } else {
+              logger.warn(`章节内容测试失败`);
+            }
+            
+            return res.json({
+              success: true,
+              message: '书源测试成功',
+              data: {
+                searchResults,
+                detail,
+                chapters: chapters ? chapters.slice(0, 5) : [],
+                content
+              }
+            });
+          } else {
+            logger.warn(`章节列表测试失败: 未找到章节`);
+          }
+        } else {
+          logger.warn(`无法获取章节列表URL`);
+        }
+        
+        // 如果能获取到搜索结果和详情，但无法获取章节，也返回部分成功
         return res.json({
-          success: true,
-          message: '书源测试成功',
+          success: !!detail,
+          message: detail ? '书源测试部分成功（无法获取章节）' : '书源测试失败',
           data: {
             searchResults,
             detail,
-            chapters: chapters ? chapters.slice(0, 5) : [],
-            content
+            chapters: [],
+            content: null
           }
         });
       }
@@ -753,6 +826,9 @@ class BookSourceController {
         });
       }
 
+      // 导入配置
+      const config = require('../../config/config');
+
       // 生成唯一的任务ID
       const taskId = `test_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
       
@@ -763,7 +839,12 @@ class BookSourceController {
         completed: 0,
         inProgress: true,
         results: {},
-        startTime: new Date()
+        startTime: new Date(),
+        concurrency: config.bookSourceTest.concurrency, // 添加并发信息
+        settings: {
+          keyword: keyword || '天才',
+          timeout: config.bookSourceTest.timeout
+        }
       };
       
       // 存储任务状态（在生产环境中应该使用Redis或其他持久化存储）
@@ -776,7 +857,11 @@ class BookSourceController {
       res.json({
         success: true,
         message: '批量测试任务已提交',
-        data: { taskId }
+        data: { 
+          taskId,
+          concurrency: config.bookSourceTest.concurrency,
+          total: sourceNames.length
+        }
       });
       
       // 异步执行测试，使用独立的静态函数避免this指向问题
@@ -823,6 +908,22 @@ class BookSourceController {
         }
       }
       
+      // 计算时间信息
+      const startTime = new Date(taskStatus.startTime);
+      const currentTime = taskStatus.endTime ? new Date(taskStatus.endTime) : new Date();
+      const elapsedTime = Math.floor((currentTime - startTime) / 1000); // 秒
+      
+      // 计算进度和预估剩余时间
+      const progress = Math.round((taskStatus.completed / taskStatus.total) * 100);
+      
+      // 估算剩余时间（如果进度大于0且任务仍在进行中）
+      let estimatedTimeRemaining = null;
+      if (progress > 0 && taskStatus.inProgress) {
+        const timePerItem = elapsedTime / taskStatus.completed;
+        const remainingItems = taskStatus.total - taskStatus.completed;
+        estimatedTimeRemaining = Math.floor(timePerItem * remainingItems);
+      }
+      
       res.json({
         success: true,
         data: {
@@ -830,7 +931,11 @@ class BookSourceController {
           total: taskStatus.total,
           completed: taskStatus.completed,
           inProgress: taskStatus.inProgress,
-          progress: Math.round((taskStatus.completed / taskStatus.total) * 100),
+          progress: progress,
+          elapsedTime: elapsedTime,
+          estimatedTimeRemaining: estimatedTimeRemaining,
+          concurrency: taskStatus.concurrency || 1, // 并发数
+          settings: taskStatus.settings || {}, // 任务设置
           results: taskStatus.results,
           startTime: taskStatus.startTime,
           endTime: taskStatus.endTime
@@ -919,25 +1024,39 @@ async function processBatchImportStatic(taskId, sources, options, taskManager, s
  */
 async function processBatchTestStatic(taskId, sourceNames, keyword, sourceManager) {
   try {
+    logger.info(`开始批量测试任务 ${taskId}，共 ${sourceNames.length} 个书源`);
+    
+    // 导入配置
+    const config = require('../../config/config');
+    const concurrency = config.bookSourceTest.concurrency;
+    logger.info(`批量测试配置：并发数=${concurrency}，超时=${config.bookSourceTest.timeout}ms`);
+
     // 确保书源管理器已初始化
     if (!sourceManager.initialized) {
       await sourceManager.initialize();
     }
     
     const testKeyword = keyword || '天才';
+    logger.info(`使用测试关键词: "${testKeyword}"`);
     
-    // 对每个书源进行测试
-    for (const sourceName of sourceNames) {
+    // 创建书源队列
+    const sourceQueue = [...sourceNames];
+    const activePromises = new Map(); // 跟踪活动的Promise
+    
+    // 处理单个书源测试的函数
+    async function processSource(sourceName) {
       try {
+        logger.info(`开始测试书源: ${sourceName}`);
+        
         // 获取书源
         const sourceData = sourceManager.getSourceByName(sourceName);
         if (!sourceData) {
+          logger.warn(`无法找到书源: ${sourceName}`);
           global.testTasksStore[taskId].results[sourceName] = {
             success: false,
             message: `未找到书源: ${sourceName}`
           };
-          global.testTasksStore[taskId].completed++;
-          continue;
+          return;
         }
         
         // 创建解析器
@@ -945,53 +1064,74 @@ async function processBatchTestStatic(taskId, sourceNames, keyword, sourceManage
         const parser = new BookSourceParser(sourceData);
         
         // 测试搜索
+        logger.info(`[${sourceName}] 执行搜索测试，关键词: "${testKeyword}"`);
+        const startTime = Date.now();
         const searchResults = await parser.search(testKeyword, true);
+        const searchTime = Date.now() - startTime;
         
         if (!searchResults || searchResults.length === 0) {
+          logger.warn(`[${sourceName}] 搜索测试失败，未找到结果，耗时: ${searchTime}ms`);
           global.testTasksStore[taskId].results[sourceName] = {
             success: false,
             message: '搜索测试失败：未找到匹配结果',
-            searchResults: []
+            searchResults: [],
+            testTime: searchTime
           };
         } else {
           // 测试成功，记录结果
+          logger.info(`[${sourceName}] 搜索测试成功，找到 ${searchResults.length} 个结果，耗时: ${searchTime}ms`);
           global.testTasksStore[taskId].results[sourceName] = {
             success: true,
             message: '搜索测试成功',
             searchResults: searchResults,
             detail: null,
-            chapters: []
+            chapters: [],
+            testTime: searchTime
           };
           
           // 尝试获取书籍详情（如果有搜索结果）
           try {
+            logger.info(`[${sourceName}] 执行详情测试，URL: ${searchResults[0].detail}`);
+            const detailStartTime = Date.now();
             const detail = await parser.getBookDetail(searchResults[0].detail, true);
+            const detailTime = Date.now() - detailStartTime;
             
             if (detail) {
+              logger.info(`[${sourceName}] 详情测试成功，书名: "${detail.name}"，耗时: ${detailTime}ms`);
               global.testTasksStore[taskId].results[sourceName].detail = detail;
               global.testTasksStore[taskId].results[sourceName].message = '搜索和详情测试成功';
+              global.testTasksStore[taskId].results[sourceName].testTime += detailTime;
               
               // 尝试获取章节列表
               try {
                 const chapterUrl = detail.chapterUrl || detail.detailUrl;
+                logger.info(`[${sourceName}] 执行章节列表测试，URL: ${chapterUrl}`);
+                const chapterStartTime = Date.now();
                 const chapters = await parser.getChapterList(chapterUrl, true);
+                const chapterTime = Date.now() - chapterStartTime;
                 
                 if (chapters && chapters.length > 0) {
+                  logger.info(`[${sourceName}] 章节列表测试成功，共 ${chapters.length} 章，耗时: ${chapterTime}ms`);
                   global.testTasksStore[taskId].results[sourceName].chapters = 
                     chapters.slice(0, 5); // 只保存前5章
                   global.testTasksStore[taskId].results[sourceName].message = 
                     '搜索、详情和章节列表测试成功';
+                  global.testTasksStore[taskId].results[sourceName].testTime += chapterTime;
+                } else {
+                  logger.warn(`[${sourceName}] 章节列表测试失败，耗时: ${chapterTime}ms`);
                 }
               } catch (err) {
-                logger.error(`获取章节列表失败: ${sourceName}`, err);
+                logger.error(`[${sourceName}] 获取章节列表失败: ${err.message}`, err);
               }
+            } else {
+              logger.warn(`[${sourceName}] 详情测试失败，耗时: ${detailTime}ms`);
             }
           } catch (err) {
-            logger.error(`获取书籍详情失败: ${sourceName}`, err);
+            logger.error(`[${sourceName}] 获取书籍详情失败: ${err.message}`, err);
           }
         }
       } catch (err) {
-        logger.error(`测试书源失败: ${sourceName}`, err);
+        logger.error(`测试书源失败: ${sourceName}, 错误: ${err.message}`, err);
         global.testTasksStore[taskId].results[sourceName] = {
           success: false,
           message: `测试失败: ${err.message}`
@@ -1000,11 +1140,51 @@ async function processBatchTestStatic(taskId, sourceNames, keyword, sourceManage
       
       // 更新进度
       global.testTasksStore[taskId].completed++;
+      logger.info(`完成书源测试: ${sourceName}，进度: ${global.testTasksStore[taskId].completed}/${global.testTasksStore[taskId].total}`);
     }
     
-    // 标记任务已完成
-    global.testTasksStore[taskId].inProgress = false;
-    global.testTasksStore[taskId].endTime = new Date();
+    // 调度函数：当有空闲线程时，分配新的书源进行测试
+    async function scheduleNextSource() {
+      // 如果有待处理的书源且活动Promise数量小于并发上限
+      while (sourceQueue.length > 0 && activePromises.size < concurrency) {
+        const sourceName = sourceQueue.shift();
+        logger.info(`分配书源到测试线程: ${sourceName}，当前活动线程: ${activePromises.size}/${concurrency}`);
+        const promise = processSource(sourceName);
+        
+        // 将Promise添加到活动Map中
+        activePromises.set(sourceName, promise);
+        
+        // 设置Promise完成后的处理
+        promise.then(() => {
+          activePromises.delete(sourceName);
+          // 递归调度下一个任务
+          return scheduleNextSource();
+        }).catch(error => {
+          activePromises.delete(sourceName);
+          logger.error(`处理书源 ${sourceName} 出错:`, error);
+          global.testTasksStore[taskId].completed++;
+          // 递归调度下一个任务
+          return scheduleNextSource();
+        });
+      }
+      
+      // 如果所有书源都已分配且没有活动Promise，则所有任务已完成
+      if (sourceQueue.length === 0 && activePromises.size === 0) {
+        // 标记任务已完成
+        global.testTasksStore[taskId].inProgress = false;
+        global.testTasksStore[taskId].endTime = new Date();
+        logger.info(`批量测试任务 ${taskId} 完成，总耗时: ${Math.floor((new Date() - new Date(global.testTasksStore[taskId].startTime)) / 1000)}秒`);
+      }
+    }
+    
+    // 开始调度处理
+    await scheduleNextSource();
+    
+    // 等待所有活动的Promise完成（如果有）
+    if (activePromises.size > 0) {
+      logger.info(`等待 ${activePromises.size} 个剩余测试完成...`);
+      await Promise.all(Array.from(activePromises.values()));
+    }
     
   } catch (error) {
     logger.error(`批量测试任务处理失败: ${taskId}`, error);

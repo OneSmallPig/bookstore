@@ -2987,15 +2987,12 @@
         
         // 创建所有请求的Promise
         const promises = sourceNames.map(sourceName => 
-          fetch(`/api/booksource/source`, {
+          fetch(`/api/booksource/sources/${sourceName}`, {
             method: 'DELETE',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              name: sourceName
-            })
+            }
           }).then(response => {
             if (!response.ok) throw new Error(`删除失败: ${sourceName}`);
             return response.json();
@@ -3257,18 +3254,14 @@
     // 编辑书源
     async function editSource(sourceName) {
       try {
-        const token = getAuthToken();
-        if (!token) {
-          throw new Error('未找到认证令牌');
-        }
-        
         // 显示加载提示
         showToast('正在加载书源...', 'info');
         
         // 获取书源详情
-        const response = await fetch(`/api/booksource/source?name=${encodeURIComponent(sourceName)}`, {
+        const response = await fetch(`/api/booksource/sources/${encodeURIComponent(sourceName)}`, {
+          method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${getAuthToken()}`
           }
         });
         
@@ -3313,15 +3306,12 @@
         showToast('正在删除书源...', 'info', 0);
         
         // 发送删除请求
-        const response = await fetch(`/api/booksource/source`, {
+        const response = await fetch(`/api/booksource/sources/${sourceName}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: sourceName
-          })
+          }
         });
         
         if (!response.ok) {
@@ -3514,6 +3504,59 @@
         timeout = setTimeout(() => func.apply(context, args), wait);
       };
     }
+
+    async function getSourceJson(sourceName) {
+      try {
+        // 显示加载提示
+        showToast('正在加载书源数据...', 'info', 0);
+        
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
+        const response = await fetch(`/api/booksource/sources/${encodeURIComponent(sourceName)}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('获取书源数据失败');
+        }
+        
+        const data = await response.json();
+        return data.data;
+      } catch (error) {
+        console.error('获取书源数据失败:', error);
+        showToast(`获取书源数据失败: ${error.message}`, 'error');
+        return null;
+      }
+    }
+
+    /**
+     * 显示章节信息
+     */
+    function showChapterInfo(chapters) {
+      if (!chapters || chapters.length === 0) {
+        return '<div class="text-muted">无章节信息</div>';
+      }
+      
+      return `
+        <div class="d-flex flex-column">
+          <div class="text-muted mb-2">共 ${chapters.length} 章，显示前 ${Math.min(chapters.length, 5)} 章：</div>
+          <div class="list-group">
+            ${chapters.slice(0, 5).map((chapter, index) => `
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                <span>${chapter.title}</span>
+                <span class="badge bg-secondary">#${index+1}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    };
   </script>
 </body>
 </html> 

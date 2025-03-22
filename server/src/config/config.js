@@ -78,6 +78,12 @@ const config = {
     rateWindow: getEnv('API_RATE_WINDOW', '15m')
   },
   
+  // 书源测试配置
+  bookSourceTest: {
+    concurrency: parseNumber(getEnv('BOOK_SOURCE_TEST_CONCURRENCY', 5), 5),
+    timeout: parseNumber(getEnv('BOOK_SOURCE_TEST_TIMEOUT', 10000), 10000),
+  },
+  
   // 跨域配置
   cors: {
     origin: getEnv('CORS_ORIGIN', isProd ? '*' : 'http://localhost:5173'),
