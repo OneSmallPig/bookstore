@@ -1427,7 +1427,7 @@
         
         // 创建所有测试搜索的Promise
         const searchPromises = sourceNames.map(sourceName => 
-          fetch(`/api/booksource/test/search`, {
+          fetch(`/api/booksource/sources/test`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -1435,7 +1435,8 @@
             },
             body: JSON.stringify({
               sourceName,
-              keyword
+              keyword,
+              type: 'search'  // 显式指定测试类型为搜索
             })
           }).then(response => {
             if (!response.ok) {
@@ -2166,11 +2167,7 @@
         document.getElementById('bookDetailSection').style.display = 'block';
         document.getElementById('bookDetailContent').innerHTML = '<div class="loader"></div>';
         
-        // 隐藏章节列表和内容区域
-        document.getElementById('chapterListSection').style.display = 'none';
-        document.getElementById('chapterContentSection').style.display = 'none';
-        
-        // 滚动到详情区域
+        // 滚动到书籍详情区域
         document.getElementById('bookDetailSection').scrollIntoView({ behavior: 'smooth' });
         
         // 获取认证令牌
@@ -2179,8 +2176,8 @@
           throw new Error('未找到认证令牌');
         }
         
-        // 发起测试书籍详情请求
-        const response = await fetch(`/api/booksource/test/detail`, {
+        // 发起测试请求
+        const response = await fetch(`/api/booksource/sources/test`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -2188,7 +2185,8 @@
           },
           body: JSON.stringify({
             sourceName,
-            bookUrl: decodeURIComponent(bookUrl)
+            bookUrl: decodeURIComponent(bookUrl),
+            type: 'detail'  // 显式指定测试类型为书籍详情
           })
         });
         
@@ -2283,7 +2281,7 @@
         }
         
         // 发起测试章节列表请求
-        const response = await fetch(`/api/booksource/test/chapters`, {
+        const response = await fetch(`/api/booksource/sources/test`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -2291,7 +2289,8 @@
           },
           body: JSON.stringify({
             sourceName,
-            chapterUrl: decodeURIComponent(chapterUrl)
+            chapterUrl: decodeURIComponent(chapterUrl),
+            type: 'chapters'  // 显式指定测试类型为章节列表
           })
         });
         
@@ -2371,7 +2370,7 @@
         }
         
         // 发起测试章节内容请求
-        const response = await fetch(`/api/booksource/test/content`, {
+        const response = await fetch(`/api/booksource/sources/test`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -2379,7 +2378,8 @@
           },
           body: JSON.stringify({
             sourceName,
-            chapterUrl: decodeURIComponent(chapterUrl)
+            chapterUrl: decodeURIComponent(chapterUrl),
+            type: 'content'  // 显式指定测试类型为章节内容
           })
         });
         

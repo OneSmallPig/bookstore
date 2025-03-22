@@ -137,6 +137,156 @@ class BookSourceParser {
   }
 
   /**
+   * 处理复杂选择器
+   * @param {Object} $ Cheerio对象
+   * @param {string} selector 复杂选择器
+   * @param {string} baseUrl 基础URL
+   * @returns {string|Array|null} 提取的内容
+   */
+  _processComplexSelector($, selector, baseUrl) {
+    try {
+      // 处理多个选择器（用|分隔的备选选择器）
+      if (selector.includes('|')) {
+        const selectors = selector.split('|');
+        for (const sel of selectors) {
+          try {
+            const result = this._processComplexSelector($, sel.trim(), baseUrl);
+            if (result) return result;
+          } catch (err) {
+            logger.error(`处理选择器 "${sel}" 失败，尝试下一个`, err);
+            continue;
+          }
+        }
+        return null;
+      }
+
+      // 处理级联选择器（用@分隔的多级选择器）
+      if (selector.includes('@')) {
+        const parts = selector.split('@');
+        let currentSelection = $;
+        let result = null;
+        
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i].trim();
+          
+          // 处理属性选择
+          if (part === 'text') {
+            result = currentSelection.text().trim();
+            break;
+          } else if (part === 'html') {
+            result = currentSelection.html();
+            break;
+          } else if (part === 'href' || part === 'src') {
+            const attrVal = currentSelection.attr(part);
+            result = attrVal ? this._resolveUrl(attrVal, baseUrl) : null;
+            break;
+          } else if (part.startsWith('attr.')) {
+            const attrName = part.substring(5);
+            result = currentSelection.attr(attrName);
+            break;
+          }
+          
+          // 处理tag.xxx形式的选择器
+          if (part.startsWith('tag.')) {
+            const tagName = part.substring(4);
+            currentSelection = currentSelection.find(tagName);
+            if (currentSelection.length === 0) return null;
+            
+            // 如果是最后一个部分，返回文本内容
+            if (i === parts.length - 1) {
+              result = currentSelection.text().trim();
+            }
+            continue;
+          }
+          
+          // 处理class.xxx形式的选择器（包括带空格的多类名）
+          if (part.startsWith('class.')) {
+            const classNameRaw = part.substring(6);
+            
+            // 如果类名中包含空格，需要特殊处理
+            if (classNameRaw.includes(' ')) {
+              // 将"class.a b c"转换为".a.b.c"
+              const classNames = classNameRaw.split(' ').filter(Boolean);
+              const selector = classNames.map(name => `.${name}`).join('');
+              currentSelection = currentSelection.find(selector);
+            } else {
+              // 普通单类名
+              currentSelection = currentSelection.find(`.${classNameRaw}`);
+            }
+            
+            if (currentSelection.length === 0) return null;
+            
+            // 如果是最后一个部分，返回文本内容
+            if (i === parts.length - 1) {
+              result = currentSelection.text().trim();
+            }
+            continue;
+          }
+          
+          // 处理id.xxx形式的选择器
+          if (part.startsWith('id.')) {
+            const idName = part.substring(3);
+            currentSelection = currentSelection.find(`#${idName}`);
+            if (currentSelection.length === 0) return null;
+            
+            // 如果是最后一个部分，返回文本内容
+            if (i === parts.length - 1) {
+              result = currentSelection.text().trim();
+            }
+            continue;
+          }
+          
+          // 处理普通CSS选择器
+          try {
+            currentSelection = currentSelection.find(part);
+            if (currentSelection.length === 0) return null;
+            
+            // 如果是最后一个部分，返回文本内容
+            if (i === parts.length - 1) {
+              result = currentSelection.text().trim();
+            }
+          } catch (err) {
+            logger.error(`无效的CSS选择器: "${part}"`, err);
+            return null;
+          }
+        }
+        
+        return result;
+      }
+      
+      // 处理class.xxx形式的选择器（但不包含@符号）
+      if (selector.startsWith('class.')) {
+        const classNameRaw = selector.substring(6);
+        
+        // 如果类名中包含空格，需要特殊处理
+        if (classNameRaw.includes(' ')) {
+          // 将"class.a b c"转换为".a.b.c"
+          const classNames = classNameRaw.split(' ').filter(Boolean);
+          const newSelector = classNames.map(name => `.${name}`).join('');
+          try {
+            const elements = $(newSelector);
+            if (elements.length === 0) return null;
+            if (elements.length === 1) return elements.text().trim();
+            return elements.map((i, el) => $(el).text().trim()).get();
+          } catch (err) {
+            logger.error(`选择器转换失败: "${classNameRaw}" -> "${newSelector}"`, err);
+            return null;
+          }
+        }
+      }
+      
+      // 为普通选择器返回内容
+      const elements = $(selector);
+      if (elements.length === 0) return null;
+      if (elements.length === 1) return elements.text().trim();
+      return elements.map((i, el) => $(el).text().trim()).get();
+    } catch (error) {
+      logger.error(`处理复杂选择器失败: ${selector}`, error);
+      return null;
+    }
+  }
+
+  /**
    * 根据选择器从DOM中提取内容
    * @param {Object} $ Cheerio对象
    * @param {Object} dom JSDOM文档对象
@@ -169,6 +319,12 @@ class BookSourceParser {
           return result.length === 1 ? result[0] : result;
         }
         
+        // 检查是否有特殊选择器 (tag.|class.|id.等)
+        if (selector.includes('tag.') || selector.includes('class.') || selector.includes('id.') || 
+            (selector.includes('@') && !selector.includes('[@'))) {
+          return this._processComplexSelector($, selector, baseUrl);
+        }
+        
         // 处理CSS选择器
         const elements = dom.querySelectorAll(selector);
         if (elements.length === 0) return null;
@@ -177,24 +333,23 @@ class BookSourceParser {
         return Array.from(elements).map(el => el.textContent.trim());
       }
       
-      // 使用Cheerio
+      // 普通Cheerio选择
       const elements = $(selector);
       if (elements.length === 0) return null;
       
       // 处理特殊属性选择
-      if (selector.includes('@')) {
-        const parts = selector.split('@');
-        const attrName = parts[1];
+      if (selector.includes('[@')) {
+        const parts = selector.split('[@');
+        const attrPart = parts[1].replace(']', '');
+        const [attrName, attrValue] = attrPart.split('=');
         
-        if (attrName === 'href' || attrName === 'src') {
-          // 处理URL
-          const href = elements.attr(attrName);
-          if (!href) return null;
-          
-          return this._resolveUrl(href, baseUrl);
-        }
+        const filteredElements = elements.filter(function() {
+          return $(this).attr(attrName) === attrValue.replace(/['"]/g, '');
+        });
         
-        return elements.attr(attrName);
+        if (filteredElements.length === 0) return null;
+        if (filteredElements.length === 1) return filteredElements.text().trim();
+        return filteredElements.map((i, el) => $(el).text().trim()).get();
       }
       
       if (elements.length === 1) return elements.text().trim();

@@ -620,19 +620,25 @@ class BookSourceController {
   }
 
   /**
-   * 测试书源
+   * 测试书源功能
    * @param {Object} req 请求对象
    * @param {Object} res 响应对象
    */
   async testBookSource(req, res) {
     try {
-      const sourceData = req.body;
-      const keyword = req.query.keyword || '天才';
+      const { sourceName, keyword, bookUrl, chapterUrl, type } = req.body;
       
-      if (!sourceData || !sourceData.name || !sourceData.url) {
-        return res.status(400).json({
+      // 确保书源管理器已初始化
+      if (!bookSourceManager.initialized) {
+        await bookSourceManager.initialize();
+      }
+      
+      // 获取书源
+      const sourceData = bookSourceManager.getSourceByName(sourceName);
+      if (!sourceData) {
+        return res.status(404).json({
           success: false,
-          message: '无效的书源数据，必须提供name和url'
+          message: `未找到书源: ${sourceName}`
         });
       }
       
@@ -640,41 +646,87 @@ class BookSourceController {
       const BookSourceParser = require('../../services/bookSource/BookSourceParser');
       const parser = new BookSourceParser(sourceData);
       
-      // 测试搜索功能
-      const searchResults = await parser.search(keyword);
-      
-      // 如果没有搜索结果，直接返回测试失败
-      if (!searchResults || searchResults.length === 0) {
+      // 根据请求类型执行不同的测试
+      if (type === 'search' && keyword) {
+        // 测试搜索功能
+        const searchResults = await parser.search(keyword);
+        
         return res.json({
-          success: false,
-          message: '测试失败：未找到搜索结果',
-          data: { searchResults: [] }
+          success: searchResults && searchResults.length > 0,
+          message: searchResults && searchResults.length > 0 ? '搜索成功' : '搜索失败：未找到匹配结果',
+          data: searchResults || []
+        });
+      } 
+      else if (type === 'detail' && bookUrl) {
+        // 测试获取书籍详情
+        const detail = await parser.getBookDetail(bookUrl);
+        
+        return res.json({
+          success: !!detail,
+          message: detail ? '获取书籍详情成功' : '获取书籍详情失败',
+          data: detail || null
+        });
+      } 
+      else if (type === 'chapters' && chapterUrl) {
+        // 测试获取章节列表
+        const chapters = await parser.getChapterList(chapterUrl);
+        
+        return res.json({
+          success: chapters && chapters.length > 0,
+          message: chapters && chapters.length > 0 ? '获取章节列表成功' : '获取章节列表失败',
+          data: chapters || []
+        });
+      } 
+      else if (type === 'content' && chapterUrl) {
+        // 测试获取章节内容
+        const content = await parser.getChapterContent(chapterUrl);
+        
+        return res.json({
+          success: !!content,
+          message: content ? '获取章节内容成功' : '获取章节内容失败',
+          data: content || null
         });
       }
-      
-      // 测试获取书籍详情
-      const detail = await parser.getBookDetail(searchResults[0].detail);
-      
-      // 测试获取章节列表
-      const chapterUrl = detail.chapterUrl || detail.detailUrl;
-      const chapters = await parser.getChapterList(chapterUrl);
-      
-      // 测试获取章节内容
-      let content = null;
-      if (chapters && chapters.length > 0) {
-        content = await parser.getChapterContent(chapters[0].url);
-      }
-      
-      res.json({
-        success: true,
-        message: '书源测试成功',
-        data: {
-          searchResults,
-          detail,
-          chapters: chapters ? chapters.slice(0, 5) : [],
-          content
+      else {
+        // 默认执行完整测试
+        const testKeyword = keyword || '天才';
+        
+        // 测试搜索功能
+        const searchResults = await parser.search(testKeyword);
+        
+        // 如果没有搜索结果，直接返回测试失败
+        if (!searchResults || searchResults.length === 0) {
+          return res.json({
+            success: false,
+            message: '测试失败：未找到搜索结果',
+            data: { searchResults: [] }
+          });
         }
-      });
+        
+        // 测试获取书籍详情
+        const detail = await parser.getBookDetail(searchResults[0].detail);
+        
+        // 测试获取章节列表
+        const chaptersUrl = detail.chapterUrl || detail.detailUrl;
+        const chapters = await parser.getChapterList(chaptersUrl);
+        
+        // 测试获取章节内容
+        let content = null;
+        if (chapters && chapters.length > 0) {
+          content = await parser.getChapterContent(chapters[0].url);
+        }
+        
+        return res.json({
+          success: true,
+          message: '书源测试成功',
+          data: {
+            searchResults,
+            detail,
+            chapters: chapters ? chapters.slice(0, 5) : [],
+            content
+          }
+        });
+      }
     } catch (error) {
       logger.error('测试书源失败', error);
       res.status(500).json({
