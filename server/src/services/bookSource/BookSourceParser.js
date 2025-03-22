@@ -163,13 +163,56 @@ class BookSourceParser {
       // 处理级联选择器（用@分隔的多级选择器）
       if (selector.includes('@')) {
         const parts = selector.split('@');
-        let currentSelection = $;
+        let currentSelection = $('body');  // 从body开始，确保是Cheerio对象
         let result = null;
         
         for (let i = 0; i < parts.length; i++) {
           const part = parts[i].trim();
           
-          // 处理属性选择
+          // 处理第一个部分（根选择器）
+          if (i === 0) {
+            // 如果是class.xxx形式
+            if (part.startsWith('class.')) {
+              const classNameRaw = part.substring(6);
+              
+              // 处理带空格的类名
+              if (classNameRaw.includes(' ')) {
+                const classNames = classNameRaw.split(' ').filter(Boolean);
+                const cssSelector = classNames.map(name => `.${name}`).join('');
+                currentSelection = $(cssSelector);
+              } else {
+                currentSelection = $(`.${classNameRaw}`);
+              }
+            }
+            // 如果是tag.xxx形式
+            else if (part.startsWith('tag.')) {
+              const tagName = part.substring(4);
+              currentSelection = $(tagName);
+            }
+            // 如果是id.xxx形式
+            else if (part.startsWith('id.')) {
+              const idName = part.substring(3);
+              currentSelection = $(`#${idName}`);
+            }
+            // 如果是普通CSS选择器
+            else {
+              currentSelection = $(part);
+            }
+            
+            // 如果只有一个部分，返回结果
+            if (parts.length === 1) {
+              if (currentSelection.length === 0) return null;
+              return currentSelection.text().trim();
+            }
+            
+            // 如果没有找到元素，返回null
+            if (currentSelection.length === 0) return null;
+            continue;
+          }
+          
+          // 处理后续部分
+          
+          // 检查是否是属性选择器
           if (part === 'text') {
             result = currentSelection.text().trim();
             break;
@@ -186,7 +229,7 @@ class BookSourceParser {
             break;
           }
           
-          // 处理tag.xxx形式的选择器
+          // 处理 tag.xxx 形式
           if (part.startsWith('tag.')) {
             const tagName = part.substring(4);
             currentSelection = currentSelection.find(tagName);
@@ -199,18 +242,16 @@ class BookSourceParser {
             continue;
           }
           
-          // 处理class.xxx形式的选择器（包括带空格的多类名）
+          // 处理 class.xxx 形式
           if (part.startsWith('class.')) {
             const classNameRaw = part.substring(6);
             
-            // 如果类名中包含空格，需要特殊处理
+            // 处理带空格的类名
             if (classNameRaw.includes(' ')) {
-              // 将"class.a b c"转换为".a.b.c"
               const classNames = classNameRaw.split(' ').filter(Boolean);
-              const selector = classNames.map(name => `.${name}`).join('');
-              currentSelection = currentSelection.find(selector);
+              const cssSelector = classNames.map(name => `.${name}`).join('');
+              currentSelection = currentSelection.find(cssSelector);
             } else {
-              // 普通单类名
               currentSelection = currentSelection.find(`.${classNameRaw}`);
             }
             
@@ -223,7 +264,7 @@ class BookSourceParser {
             continue;
           }
           
-          // 处理id.xxx形式的选择器
+          // 处理 id.xxx 形式
           if (part.startsWith('id.')) {
             const idName = part.substring(3);
             currentSelection = currentSelection.find(`#${idName}`);
@@ -254,34 +295,102 @@ class BookSourceParser {
         return result;
       }
       
-      // 处理class.xxx形式的选择器（但不包含@符号）
+      // 处理独立的 class.xxx 形式选择器（不包含@）
       if (selector.startsWith('class.')) {
         const classNameRaw = selector.substring(6);
         
-        // 如果类名中包含空格，需要特殊处理
+        // 处理带空格的类名
         if (classNameRaw.includes(' ')) {
-          // 将"class.a b c"转换为".a.b.c"
           const classNames = classNameRaw.split(' ').filter(Boolean);
-          const newSelector = classNames.map(name => `.${name}`).join('');
+          const cssSelector = classNames.map(name => `.${name}`).join('');
           try {
-            const elements = $(newSelector);
+            const elements = $(cssSelector);
             if (elements.length === 0) return null;
             if (elements.length === 1) return elements.text().trim();
             return elements.map((i, el) => $(el).text().trim()).get();
           } catch (err) {
-            logger.error(`选择器转换失败: "${classNameRaw}" -> "${newSelector}"`, err);
+            logger.error(`选择器转换失败: "${classNameRaw}" -> "${cssSelector}"`, err);
+            return null;
+          }
+        } else {
+          try {
+            const elements = $(`.${classNameRaw}`);
+            if (elements.length === 0) return null;
+            if (elements.length === 1) return elements.text().trim();
+            return elements.map((i, el) => $(el).text().trim()).get();
+          } catch (err) {
+            logger.error(`选择器应用失败: ".${classNameRaw}"`, err);
             return null;
           }
         }
       }
       
-      // 为普通选择器返回内容
-      const elements = $(selector);
-      if (elements.length === 0) return null;
-      if (elements.length === 1) return elements.text().trim();
-      return elements.map((i, el) => $(el).text().trim()).get();
+      // 处理独立的 tag.xxx 形式选择器
+      if (selector.startsWith('tag.')) {
+        const tagName = selector.substring(4);
+        try {
+          const elements = $(tagName);
+          if (elements.length === 0) return null;
+          if (elements.length === 1) return elements.text().trim();
+          return elements.map((i, el) => $(el).text().trim()).get();
+        } catch (err) {
+          logger.error(`选择器应用失败: "${tagName}"`, err);
+          return null;
+        }
+      }
+      
+      // 处理独立的 id.xxx 形式选择器
+      if (selector.startsWith('id.')) {
+        const idName = selector.substring(3);
+        try {
+          const elements = $(`#${idName}`);
+          if (elements.length === 0) return null;
+          if (elements.length === 1) return elements.text().trim();
+          return elements.map((i, el) => $(el).text().trim()).get();
+        } catch (err) {
+          logger.error(`选择器应用失败: "#${idName}"`, err);
+          return null;
+        }
+      }
+      
+      // 普通选择器
+      try {
+        const elements = $(selector);
+        if (elements.length === 0) return null;
+        if (elements.length === 1) return elements.text().trim();
+        return elements.map((i, el) => $(el).text().trim()).get();
+      } catch (err) {
+        logger.error(`选择器应用失败: "${selector}"`, err);
+        return null;
+      }
     } catch (error) {
       logger.error(`处理复杂选择器失败: ${selector}`, error);
+      return null;
+    }
+  }
+
+  /**
+   * 安全地将选择器应用到cheerio对象上
+   * @param {Object} $ Cheerio对象
+   * @param {string} selector 选择器
+   * @param {string} baseUrl 基础URL
+   * @returns {Object|null} 选择结果或null
+   */
+  _safeSelect($, selector, baseUrl) {
+    try {
+      // 先检查是否是复杂选择器
+      if (selector.includes('tag.') || 
+          selector.includes('class.') || 
+          selector.includes('id.') || 
+          (selector.includes('@') && !selector.includes('[@')) ||
+          selector.includes('|')) {
+        return this._processComplexSelector($, selector, baseUrl);
+      }
+      
+      // 普通选择器
+      return $(selector);
+    } catch (error) {
+      logger.error(`选择器应用失败: ${selector}`, error);
       return null;
     }
   }
@@ -298,6 +407,20 @@ class BookSourceParser {
     if (!selector) return null;
     
     try {
+      // 先检查是否是复杂选择器
+      const isComplexSelector = selector.includes('tag.') || 
+                               selector.includes('class.') || 
+                               selector.includes('id.') || 
+                               (selector.includes('@') && !selector.includes('[@')) ||
+                               selector.includes('|');
+      
+      // 如果是复杂选择器，无论是JSDOM还是Cheerio，都使用我们的自定义处理
+      if (isComplexSelector) {
+        return this._processComplexSelector($, selector, baseUrl);
+      }
+      
+      // 以下处理简单选择器
+      
       // 如果使用JSDOM
       if (dom) {
         // 处理XPath选择器
@@ -319,18 +442,18 @@ class BookSourceParser {
           return result.length === 1 ? result[0] : result;
         }
         
-        // 检查是否有特殊选择器 (tag.|class.|id.等)
-        if (selector.includes('tag.') || selector.includes('class.') || selector.includes('id.') || 
-            (selector.includes('@') && !selector.includes('[@'))) {
-          return this._processComplexSelector($, selector, baseUrl);
+        // 处理普通CSS选择器
+        try {
+          const elements = dom.querySelectorAll(selector);
+          if (elements.length === 0) return null;
+          if (elements.length === 1) return elements[0].textContent.trim();
+          
+          return Array.from(elements).map(el => el.textContent.trim());
+        } catch (err) {
+          logger.error(`JSDOM选择器执行失败: ${selector}，尝试使用Cheerio`, err);
+          // 如果JSDOM选择失败，回退到使用Cheerio
+          return this._safeSelect($, selector, baseUrl);
         }
-        
-        // 处理CSS选择器
-        const elements = dom.querySelectorAll(selector);
-        if (elements.length === 0) return null;
-        if (elements.length === 1) return elements[0].textContent.trim();
-        
-        return Array.from(elements).map(el => el.textContent.trim());
       }
       
       // 普通Cheerio选择
