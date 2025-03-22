@@ -212,15 +212,34 @@
       <div class="card-header flex justify-between items-center">
         <div>书源列表</div>
         <div class="flex space-x-2">
-          <input type="text" id="sourceSearch" placeholder="搜索书源..." class="px-3 py-1 text-sm border border-gray-300 rounded-md">
-          <select id="sourceGroup" class="px-3 py-1 text-sm border border-gray-300 rounded-md">
-            <option value="">所有分组</option>
+          <input type="text" id="sourceSearchInput" placeholder="搜索书源..." class="px-3 py-1 text-sm border border-gray-300 rounded-md">
+          <select id="groupFilter" class="px-3 py-1 text-sm border border-gray-300 rounded-md">
+            <option value="all">所有分组</option>
           </select>
         </div>
       </div>
       <div class="card-body" id="sourceListContainer">
         <div class="flex justify-center py-8">
           <div class="loader"></div>
+        </div>
+      </div>
+      <!-- 批量操作浮动按钮 -->
+      <div id="batchOperationsBar" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 rounded-lg shadow-lg px-4 py-2 hidden z-10">
+        <div class="flex items-center space-x-3">
+          <span class="text-sm font-medium" id="selectedSourcesInfo">已选择 0 个书源</span>
+          <div class="h-4 border-r border-gray-300"></div>
+          <button id="batchEnableBtn" class="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700">
+            <i class="fas fa-play mr-1"></i>批量启用
+          </button>
+          <button id="batchDisableBtn" class="px-3 py-1 text-xs font-medium text-white bg-yellow-600 rounded hover:bg-yellow-700">
+            <i class="fas fa-pause mr-1"></i>批量停用
+          </button>
+          <button id="batchDeleteBtn" class="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700">
+            <i class="fas fa-trash mr-1"></i>批量删除
+          </button>
+          <button id="batchCancelBtn" class="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-200 rounded hover:bg-gray-300">
+            取消
+          </button>
         </div>
       </div>
     </div>
@@ -569,22 +588,24 @@
               <div class="flex justify-between items-center mb-3">
                 <label class="block text-sm font-medium text-gray-700">选择书源</label>
                 <div class="flex space-x-2">
-                  <div class="relative">
+                  <div class="relative w-[184px]">
                     <input 
                       type="text" 
                       id="testSourceFilter" 
                       placeholder="搜索书源..." 
-                      class="px-3 py-1 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      class="w-full h-8 pl-3 pr-3 py-1 text-sm border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     >
-                    <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                  </div>
+                  <div class="relative w-[102px]">
+                    <select id="testSourceGroupFilter" class="w-full h-8 pl-3 pr-8 py-1 text-sm font-bold border border-gray-300 rounded-lg bg-white shadow-sm appearance-none focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                      <option value="" class="font-bold">所有分组</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                       </svg>
                     </div>
                   </div>
-                  <select id="testSourceGroupFilter" class="px-3 py-1 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
-                    <option value="">所有分组</option>
-                  </select>
                 </div>
               </div>
               
@@ -728,16 +749,7 @@
     
     // 获取认证令牌
     function getAuthToken() {
-      try {
-        const authData = localStorage.getItem('bookstore_auth');
-        if (!authData) return null;
-        
-        const { token } = JSON.parse(authData);
-        return token;
-      } catch (error) {
-        console.error('获取认证令牌失败:', error);
-        return null;
-      }
+      return localStorage.getItem('token');
     }
     
     // 检查当前用户是否是管理员
@@ -808,24 +820,71 @@
     
     // 页面初始化
     document.addEventListener('DOMContentLoaded', function() {
+      // 首先进行管理员权限验证
+      checkAdminAccess();
+      
+      // 初始化页面数据
+      init();
+      
+      // 添加批量操作按钮事件监听
+      document.getElementById('batchEnableBtn').addEventListener('click', batchEnableSources);
+      document.getElementById('batchDisableBtn').addEventListener('click', batchDisableSources);
+      document.getElementById('batchDeleteBtn').addEventListener('click', batchDeleteSources);
+      document.getElementById('batchCancelBtn').addEventListener('click', () => {
+        // 取消所有选择
+        document.getElementById('selectAllCheckbox').checked = false;
+        document.querySelectorAll('.source-checkbox').forEach(checkbox => {
+          checkbox.checked = false;
+          const row = checkbox.closest('.source-item');
+          if (row) {
+            row.classList.remove('bg-blue-50');
+          }
+        });
+        
+        // 隐藏批量操作栏
+        document.getElementById('batchOperationsBar').classList.add('hidden');
+      });
+      
+      // 初始隐藏批量操作栏
+      document.getElementById('batchOperationsBar').classList.add('hidden');
+    });
+    
+    async function init() {
       // 移动端菜单切换
       const menuButton = document.querySelector('.menu-button');
-      const navMenu = document.querySelector('.nav-menu');
+      const sidebar = document.querySelector('.sidebar');
       
-      if (menuButton && navMenu) {
+      if (menuButton && sidebar) {
         menuButton.addEventListener('click', function() {
-          navMenu.classList.toggle('hidden');
+          sidebar.classList.toggle('hidden');
         });
       }
       
-      // 初始化权限验证
-      checkAdminAccess();
+      // 设置选项卡切换功能
+      setupTabFunctions();
       
-      // 选项卡切换
+      // 初始化导入面板
+      setupImportFunctions();
+      
+      // 设置添加/编辑面板功能
+      setupEditFunctions();
+      
+      // 初始化测试面板功能
+      setupTestFunctions();
+      
+      // 加载书源分组
+      await loadSourceGroups();
+      
+      // 初始化搜索和过滤功能
+      setupSearchAndFilter();
+    }
+    
+    // 设置选项卡切换功能
+    function setupTabFunctions() {
       const tabs = document.querySelectorAll('[data-tab]');
       tabs.forEach(tab => {
         tab.addEventListener('click', function() {
-          // 重置所有选项卡
+          // 重置所有选项卡样式
           tabs.forEach(t => {
             t.classList.remove('tab-active');
             t.classList.add('text-gray-500');
@@ -835,27 +894,70 @@
           this.classList.add('tab-active');
           this.classList.remove('text-gray-500');
           
-          // 显示对应面板
+          // 隐藏所有面板
           const panels = document.querySelectorAll('.card');
           panels.forEach(panel => {
             panel.style.display = 'none';
           });
           
-          const tabId = this.dataset.tab;
-          document.getElementById(tabId).style.display = 'block';
+          // 显示对应面板
+          const panelId = this.getAttribute('data-tab');
+          const panel = document.getElementById(panelId);
+          if (panel) {
+            panel.style.display = 'block';
+            
+            // 如果切换到测试面板，加载已启用的书源到测试选择列表
+            if (panelId === 'testPanel') {
+              // 检查是否已经加载了测试书源
+              if (!testSourcePagination.allSources || testSourcePagination.allSources.length === 0) {
+                // 使用已加载的书源数据而不是重新请求
+                if (sourcePagination && sourcePagination.allSources && sourcePagination.allSources.length > 0) {
+                  console.log('使用已加载的书源数据...');
+                  loadTestSources(sourcePagination.allSources);
+                } else {
+                  // 如果没有源数据，则尝试重新加载
+                  console.log('重新加载书源数据...');
+                  loadBookSources().then(sources => {
+                    if (sources && sources.data) {
+                      loadTestSources(sources.data);
+                    }
+                  });
+                }
+              }
+            }
+          }
         });
       });
+    }
+    
+    // 设置搜索和过滤功能
+    function setupSearchAndFilter() {
+      const searchInput = document.getElementById('sourceSearchInput');
+      const groupFilter = document.getElementById('groupFilter');
       
-      // 设置导入面板功能
-      setupImportFunctions();
+      if (searchInput) {
+        searchInput.addEventListener('keyup', debounce(function(e) {
+          if (e.key === 'Enter' || this.value.trim() === '') {
+            loadBookSources();
+          }
+        }, 300));
+      }
       
-      // 设置测试面板功能
-      setupTestFunctions();
+      if (groupFilter) {
+        groupFilter.addEventListener('change', function() {
+          loadBookSources();
+        });
+      }
       
-      // 设置添加/编辑面板功能
-      setupEditFunctions();
-    });
-
+      // 添加搜索按钮事件
+      const searchButton = document.getElementById('sourceSearchButton');
+      if (searchButton) {
+        searchButton.addEventListener('click', function() {
+          loadBookSources();
+        });
+      }
+    }
+    
     // 设置导入面板功能
     function setupImportFunctions() {
       // 导入选项卡切换
@@ -1029,6 +1131,15 @@
         });
       }
     }
+    
+    // 分页状态对象
+    const sourcePagination = {
+      pageSize: 20,
+      currentPage: 1,
+      totalPages: 1,
+      allSources: [],
+      filteredSources: []
+    };
     
     // 分页状态对象
     const testSourcePagination = {
@@ -1579,13 +1690,257 @@
     async function loadBookSources() {
       try {
         const token = getAuthToken();
-        if (!token) {
-          throw new Error('未找到认证令牌');
+        
+        // 显示加载提示
+        const container = document.getElementById('sourceListContainer');
+        container.innerHTML = '<div class="text-center py-8"><div class="loader"></div><p class="mt-2">加载中...</p></div>';
+        
+        // 获取搜索和筛选条件
+        const searchInput = document.getElementById('sourceSearchInput');
+        const groupFilter = document.getElementById('groupFilter');
+        const searchValue = searchInput ? searchInput.value.trim() : '';
+        const selectedGroup = groupFilter ? groupFilter.value : 'all';
+        
+        // 构建API请求路径
+        let apiPath = '/api/booksource/sources';
+        const params = [];
+        
+        if (searchValue) {
+          params.push(`keyword=${encodeURIComponent(searchValue)}`);
         }
         
+        if (selectedGroup && selectedGroup !== 'all') {
+          params.push(`group=${encodeURIComponent(selectedGroup)}`);
+        }
+        
+        if (params.length > 0) {
+          apiPath += `?${params.join('&')}`;
+        }
+        
+        // 发送API请求
+        const response = await fetch(apiPath, {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('加载书源失败');
+        }
+        
+        const data = await response.json();
+        
+        // 存储所有书源数据供其他功能使用
+        sourcePagination.allSources = data.data;
+        
+        // 渲染书源列表
+        renderSourceList(data.data);
+        
+        // 更新分页信息
+        updatePagination(data);
+        
+        return data;
+        
+      } catch (error) {
+        console.error('加载书源失败:', error);
+        document.getElementById('sourceListContainer').innerHTML = `
+          <div class="text-center py-8 text-red-500">
+            <i class="fas fa-exclamation-circle text-xl mb-2"></i>
+            <p>加载失败: ${error.message}</p>
+            <button class="mt-2 bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" onclick="loadBookSources()">
+              <i class="fas fa-sync-alt mr-1"></i> 重试
+            </button>
+          </div>
+        `;
+        return null;
+      }
+    }
+    
+    // 渲染书源列表
+    function renderSourceList(sources) {
+      const container = document.getElementById('sourceListContainer');
+      container.innerHTML = '';
+
+      // 如果没有书源，显示提示信息
+      if (!sources || sources.length === 0) {
+        container.innerHTML = '<div class="text-center text-gray-500 py-8">暂无书源，请添加或导入</div>';
+        return;
+      }
+
+      // 创建表格头部
+      const tableHeader = document.createElement('div');
+      tableHeader.className = 'grid grid-cols-12 gap-2 mb-2 px-3 py-2 bg-gray-100 rounded-md text-sm font-medium text-gray-700';
+      tableHeader.innerHTML = `
+        <div class="col-span-1 flex items-center">
+          <input type="checkbox" id="selectAllCheckbox" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+        </div>
+        <div class="col-span-3">名称</div>
+        <div class="col-span-2">分组</div>
+        <div class="col-span-4">URL</div>
+        <div class="col-span-2">状态</div>
+      `;
+      container.appendChild(tableHeader);
+
+      // 循环添加每个书源
+      sources.forEach(source => {
+        const isEnabled = source.enable !== false;
+        const statusColor = isEnabled ? 'text-green-600' : 'text-gray-400';
+        const statusText = isEnabled ? '启用' : '停用';
+        
+        const sourceElement = document.createElement('div');
+        sourceElement.className = 'source-item grid grid-cols-12 gap-2 mb-2 px-3 py-2 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer transition-colors';
+        sourceElement.setAttribute('data-name', source.name);
+        sourceElement.setAttribute('data-enabled', isEnabled.toString());
+        
+        sourceElement.innerHTML = `
+          <div class="col-span-1 flex items-center">
+            <input type="checkbox" class="source-checkbox w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+          </div>
+          <div class="col-span-3 truncate" title="${source.name}">${source.name}</div>
+          <div class="col-span-2 truncate" title="${source.group || '未分组'}">${source.group || '未分组'}</div>
+          <div class="col-span-4 truncate" title="${source.url || ''}">${source.url || ''}</div>
+          <div class="col-span-2 flex items-center space-x-2">
+            <span class="${statusColor}">${statusText}</span>
+            <div class="flex space-x-1 ml-auto">
+              <button class="edit-btn p-1 text-blue-600 hover:text-blue-800" title="编辑">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </button>
+              <button class="toggle-btn p-1 ${isEnabled ? 'text-yellow-600 hover:text-yellow-800' : 'text-green-600 hover:text-green-800'}" title="${isEnabled ? '停用' : '启用'}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${isEnabled ? 'M10 9v6m4-6v6M9 3h6v4H9V3z' : 'M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z'}" />
+                </svg>
+              </button>
+              <button class="delete-btn p-1 text-red-600 hover:text-red-800" title="删除">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+              <button class="test-btn p-1 text-purple-600 hover:text-purple-800" title="测试">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        `;
+        
+        container.appendChild(sourceElement);
+        
+        // 添加选择框事件监听
+        const checkbox = sourceElement.querySelector('.source-checkbox');
+        checkbox.addEventListener('change', (e) => {
+          // 防止事件冒泡
+          e.stopPropagation();
+          
+          // 高亮选中的行
+          if (checkbox.checked) {
+            sourceElement.classList.add('bg-blue-50');
+          } else {
+            sourceElement.classList.remove('bg-blue-50');
+          }
+          
+          // 更新全选框状态
+          updateSelectAllCheckboxState();
+          
+          // 更新批量操作栏
+          updateBatchOperationsBar();
+        });
+        
+        // 添加行点击事件 - 点击行时选择/取消选择
+        sourceElement.addEventListener('click', (e) => {
+          // 如果点击的是按钮，不触发选择
+          if (e.target.closest('.edit-btn') || e.target.closest('.delete-btn') || 
+              e.target.closest('.toggle-btn') || e.target.closest('.test-btn')) {
+            return;
+          }
+          
+          // 切换复选框状态
+          checkbox.checked = !checkbox.checked;
+          
+          // 手动触发change事件
+          checkbox.dispatchEvent(new Event('change'));
+        });
+        
+        // 添加按钮事件监听
+        const editBtn = sourceElement.querySelector('.edit-btn');
+        const deleteBtn = sourceElement.querySelector('.delete-btn');
+        const toggleBtn = sourceElement.querySelector('.toggle-btn');
+        const testBtn = sourceElement.querySelector('.test-btn');
+        
+        editBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          editSource(source.name);
+        });
+        
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteSource(source.name);
+        });
+        
+        toggleBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleSource(source.name, !isEnabled);
+        });
+        
+        testBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          testSource(source.name);
+        });
+      });
+      
+      // 添加全选复选框事件监听
+      const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+      selectAllCheckbox.addEventListener('change', () => {
+        const isChecked = selectAllCheckbox.checked;
+        document.querySelectorAll('.source-checkbox').forEach(checkbox => {
+          checkbox.checked = isChecked;
+          const row = checkbox.closest('.source-item');
+          if (row) {
+            if (isChecked) {
+              row.classList.add('bg-blue-50');
+            } else {
+              row.classList.remove('bg-blue-50');
+            }
+          }
+        });
+        
+        // 更新批量操作栏
+        updateBatchOperationsBar();
+      });
+    }
+    
+    // 更新全选复选框状态
+    function updateSelectAllCheckboxState() {
+      const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+      const checkboxes = document.querySelectorAll('.source-checkbox');
+      const checkedCheckboxes = document.querySelectorAll('.source-checkbox:checked');
+      
+      if (checkboxes.length === 0) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+      } else if (checkedCheckboxes.length === 0) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+      } else if (checkedCheckboxes.length === checkboxes.length) {
+        selectAllCheckbox.checked = true;
+        selectAllCheckbox.indeterminate = false;
+      } else {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = true;
+      }
+    }
+    
+    // 加载书源分组
+    async function loadSourceGroups() {
+      try {
+        const token = getAuthToken();
+        
+        // 调用获取所有书源的API
         const response = await fetch('/api/booksource/sources', {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': token ? `Bearer ${token}` : '',
           }
         });
         
@@ -1594,139 +1949,48 @@
         }
         
         const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || '获取书源失败');
-        }
         
-        // 渲染书源列表
-        renderBookSources(data.data);
-        
-        // 加载书源分组
-        loadSourceGroups(data.data);
-        
-        // 更新导出分组下拉框
-        updateExportGroups(data.data);
-        
-        // 更新测试书源选择器
-        loadTestSources(data.data);
+        // 更新分组下拉框
+        updateGroupDropdown(data.data);
         
       } catch (error) {
-        console.error('加载书源列表失败:', error);
-        document.getElementById('sourceListContainer').innerHTML = 
-          `<div class="text-center py-8 text-red-500">
-            <i class="fas fa-exclamation-circle text-xl mb-2"></i>
-            <p>加载书源失败: ${error.message}</p>
-          </div>`;
+        console.error('加载书源分组失败:', error);
       }
     }
     
-    // 渲染书源列表
-    function renderBookSources(sources) {
-      const container = document.getElementById('sourceListContainer');
+    // 更新分组下拉框
+    function updateGroupDropdown(sources) {
+      const groupFilter = document.getElementById('groupFilter');
+      if (!groupFilter) return;
       
-      if (!sources || sources.length === 0) {
-        container.innerHTML = 
-          `<div class="text-center py-8 text-gray-500">
-            <i class="fas fa-info-circle text-xl mb-2"></i>
-            <p>暂无书源，请添加新书源或导入书源</p>
-          </div>`;
-        return;
-      }
+      // 保存当前选择的值
+      const currentValue = groupFilter.value;
       
-      let html = `
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">分组</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-      `;
-      
-      sources.forEach(source => {
-        html += `
-          <tr class="source-item">
-            <td class="px-4 py-4 whitespace-nowrap">
-              <div class="font-medium text-gray-900">${source.name}</div>
-            </td>
-            <td class="px-4 py-4 whitespace-nowrap">
-              <span class="text-sm text-gray-500">${source.group || '-'}</span>
-            </td>
-            <td class="px-4 py-4 whitespace-nowrap">
-              <span class="text-sm text-gray-500">${source.url || '-'}</span>
-            </td>
-            <td class="px-4 py-4 whitespace-nowrap">
-              ${source.enabled ? 
-                '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">启用</span>' : 
-                '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">禁用</span>'
-              }
-            </td>
-            <td class="px-4 py-4 whitespace-nowrap text-sm">
-              <div class="flex space-x-2">
-                <button class="text-blue-500 hover:text-blue-700" onclick="editSource('${source.name}')">
-                  <i class="fas fa-edit"></i>
-                </button>
-                <button class="text-${source.enabled ? 'yellow' : 'green'}-500 hover:text-${source.enabled ? 'yellow' : 'green'}-700" 
-                  onclick="toggleSource('${source.name}', ${!source.enabled})">
-                  <i class="fas fa-${source.enabled ? 'pause' : 'play'}"></i>
-                </button>
-                <button class="text-red-500 hover:text-red-700" onclick="deleteSource('${source.name}')">
-                  <i class="fas fa-trash"></i>
-                </button>
-                <button class="text-purple-500 hover:text-purple-700" onclick="testSource('${source.name}')">
-                  <i class="fas fa-vial"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      });
-      
-      html += `
-            </tbody>
-          </table>
-        </div>
-      `;
-      
-      container.innerHTML = html;
-    }
-    
-    // 加载书源分组
-    function loadSourceGroups(sources) {
+      // 获取所有组
       const groups = new Set();
-      
-      // 提取所有分组
       sources.forEach(source => {
-        if (source.group) {
-          groups.add(source.group);
+        if (source.group && source.group.trim() !== '') {
+          groups.add(source.group.trim());
         }
       });
       
-      // 更新分组筛选器
-      const groupSelect = document.getElementById('sourceGroup');
-      groupSelect.innerHTML = '<option value="">所有分组</option>';
+      // 创建下拉框选项
+      let options = '<option value="all">所有分组</option>';
       
-      groups.forEach(group => {
-        const option = document.createElement('option');
-        option.value = group;
-        option.textContent = group;
-        groupSelect.appendChild(option);
+      // 添加未分组选项
+      options += '<option value="none">未分组</option>';
+      
+      // 添加其他分组
+      Array.from(groups).sort().forEach(group => {
+        options += `<option value="${group}">${group}</option>`;
       });
       
-      // 更新数据列表（用于添加/编辑页面）
-      const groupDatalist = document.getElementById('groupList');
-      if (groupDatalist) {
-        groupDatalist.innerHTML = '';
-        groups.forEach(group => {
-          const option = document.createElement('option');
-          option.value = group;
-          groupDatalist.appendChild(option);
-        });
+      // 设置下拉框内容
+      groupFilter.innerHTML = options;
+      
+      // 恢复之前的选择
+      if (groups.has(currentValue) || currentValue === 'all' || currentValue === 'none') {
+        groupFilter.value = currentValue;
       }
     }
     
@@ -2213,6 +2477,734 @@
         // 聚焦关键词输入框
         document.getElementById('testKeyword').focus();
       }, 300);
+    }
+
+    // 更新批量操作栏的显示状态
+    function updateBatchOperationsBar() {
+      const checkboxes = document.querySelectorAll('.source-checkbox:checked');
+      const batchBar = document.getElementById('batchOperationsBar');
+      const infoElement = document.getElementById('selectedSourcesInfo');
+      
+      if (checkboxes.length > 0) {
+        // 显示批量操作栏
+        batchBar.classList.remove('hidden');
+        
+        // 更新已选择的数量
+        if (infoElement) {
+          infoElement.textContent = `已选择 ${checkboxes.length} 个书源`;
+        }
+        
+        // 根据选中书源的状态，禁用/启用某些按钮
+        const batchEnableBtn = document.getElementById('batchEnableBtn');
+        const batchDisableBtn = document.getElementById('batchDisableBtn');
+        
+        // 检查是否所有选中的书源都已启用/禁用
+        const allEnabled = Array.from(checkboxes).every(cb => {
+          const row = cb.closest('.source-item');
+          return row && row.getAttribute('data-enabled') === 'true';
+        });
+        
+        const allDisabled = Array.from(checkboxes).every(cb => {
+          const row = cb.closest('.source-item');
+          return row && row.getAttribute('data-enabled') === 'false';
+        });
+        
+        if (batchEnableBtn) {
+          batchEnableBtn.disabled = allEnabled;
+          batchEnableBtn.classList.toggle('opacity-50', allEnabled);
+          batchEnableBtn.classList.toggle('cursor-not-allowed', allEnabled);
+        }
+        
+        if (batchDisableBtn) {
+          batchDisableBtn.disabled = allDisabled;
+          batchDisableBtn.classList.toggle('opacity-50', allDisabled);
+          batchDisableBtn.classList.toggle('cursor-not-allowed', allDisabled);
+        }
+      } else {
+        // 隐藏批量操作栏
+        batchBar.classList.add('hidden');
+      }
+    }
+    
+    // 获取选中的书源名称
+    function getSelectedSourceNames() {
+      const checkboxes = document.querySelectorAll('.source-checkbox:checked');
+      const sourceNames = [];
+      
+      checkboxes.forEach(checkbox => {
+        const row = checkbox.closest('.source-item');
+        if (row) {
+          const sourceName = row.getAttribute('data-name');
+          if (sourceName) {
+            sourceNames.push(sourceName);
+          }
+        }
+      });
+      
+      return sourceNames;
+    }
+    
+    // 批量启用书源
+    async function batchEnableSources() {
+      const sourceNames = getSelectedSourceNames();
+      if (sourceNames.length === 0) return;
+      
+      try {
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
+        // 显示确认对话框
+        const confirmed = await showConfirmDialog(
+          '批量启用书源',
+          `确定要启用选中的 ${sourceNames.length} 个书源吗？`
+        );
+        
+        if (!confirmed) return;
+        
+        // 显示加载提示
+        showToast('正在处理...', 'info', 0);
+        
+        // 创建所有请求的Promise
+        const promises = sourceNames.map(sourceName => 
+          fetch(`/api/booksource/toggle`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              name: sourceName,
+              enabled: true
+            })
+          }).then(response => {
+            if (!response.ok) throw new Error(`操作失败: ${sourceName}`);
+            return response.json();
+          })
+        );
+        
+        // 等待所有请求完成
+        await Promise.all(promises);
+        
+        // 重新加载书源列表
+        await loadBookSources();
+        
+        // 显示成功消息
+        showToast(`成功启用 ${sourceNames.length} 个书源`, 'success');
+        
+      } catch (error) {
+        console.error('批量启用书源失败:', error);
+        showToast(`操作失败: ${error.message}`, 'error');
+      }
+    }
+    
+    // 批量停用书源
+    async function batchDisableSources() {
+      const sourceNames = getSelectedSourceNames();
+      if (sourceNames.length === 0) return;
+      
+      try {
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
+        // 显示确认对话框
+        const confirmed = await showConfirmDialog(
+          '批量停用书源',
+          `确定要停用选中的 ${sourceNames.length} 个书源吗？`
+        );
+        
+        if (!confirmed) return;
+        
+        // 显示加载提示
+        showToast('正在处理...', 'info', 0);
+        
+        // 创建所有请求的Promise
+        const promises = sourceNames.map(sourceName => 
+          fetch(`/api/booksource/toggle`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              name: sourceName,
+              enabled: false
+            })
+          }).then(response => {
+            if (!response.ok) throw new Error(`操作失败: ${sourceName}`);
+            return response.json();
+          })
+        );
+        
+        // 等待所有请求完成
+        await Promise.all(promises);
+        
+        // 重新加载书源列表
+        await loadBookSources();
+        
+        // 显示成功消息
+        showToast(`成功停用 ${sourceNames.length} 个书源`, 'success');
+        
+      } catch (error) {
+        console.error('批量停用书源失败:', error);
+        showToast(`操作失败: ${error.message}`, 'error');
+      }
+    }
+    
+    // 批量删除书源
+    async function batchDeleteSources() {
+      const sourceNames = getSelectedSourceNames();
+      if (sourceNames.length === 0) return;
+      
+      try {
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
+        // 显示确认对话框
+        const confirmed = await showConfirmDialog(
+          '批量删除书源',
+          `确定要删除选中的 ${sourceNames.length} 个书源吗？此操作不可恢复！`,
+          'danger'
+        );
+        
+        if (!confirmed) return;
+        
+        // 显示加载提示
+        showToast('正在处理...', 'info', 0);
+        
+        // 创建所有请求的Promise
+        const promises = sourceNames.map(sourceName => 
+          fetch(`/api/booksource/source`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              name: sourceName
+            })
+          }).then(response => {
+            if (!response.ok) throw new Error(`删除失败: ${sourceName}`);
+            return response.json();
+          })
+        );
+        
+        // 等待所有请求完成
+        await Promise.all(promises);
+        
+        // 重新加载书源列表
+        await loadBookSources();
+        
+        // 显示成功消息
+        showToast(`成功删除 ${sourceNames.length} 个书源`, 'success');
+        
+      } catch (error) {
+        console.error('批量删除书源失败:', error);
+        showToast(`操作失败: ${error.message}`, 'error');
+      }
+    }
+    
+    // 帮助函数：显示确认对话框
+    function showConfirmDialog(title, message, type = 'warning') {
+      return new Promise((resolve) => {
+        const dialogId = 'confirmDialog';
+        let dialog = document.getElementById(dialogId);
+        
+        // 如果对话框已存在，先移除
+        if (dialog) {
+          document.body.removeChild(dialog);
+        }
+        
+        // 创建新的对话框
+        dialog = document.createElement('div');
+        dialog.id = dialogId;
+        dialog.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
+        
+        const iconClass = type === 'danger' ? 'text-red-500' : 'text-yellow-500';
+        const iconType = type === 'danger' ? 'exclamation-triangle' : 'exclamation-circle';
+        
+        dialog.innerHTML = `
+          <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div class="px-6 py-4 flex items-center">
+              <i class="fas fa-${iconType} ${iconClass} text-2xl mr-3"></i>
+              <h3 class="text-lg font-medium text-gray-900">${title}</h3>
+            </div>
+            <div class="px-6 pb-4">
+              <p class="text-sm text-gray-600">${message}</p>
+            </div>
+            <div class="px-6 py-3 bg-gray-50 flex justify-end space-x-2 rounded-b-lg">
+              <button id="${dialogId}-cancel" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                取消
+              </button>
+              <button id="${dialogId}-confirm" class="px-4 py-2 text-sm font-medium text-white ${type === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-600 hover:bg-yellow-700'} rounded-md">
+                确定
+              </button>
+            </div>
+          </div>
+        `;
+        
+        document.body.appendChild(dialog);
+        
+        // 添加事件监听
+        document.getElementById(`${dialogId}-cancel`).addEventListener('click', () => {
+          document.body.removeChild(dialog);
+          resolve(false);
+        });
+        
+        document.getElementById(`${dialogId}-confirm`).addEventListener('click', () => {
+          document.body.removeChild(dialog);
+          resolve(true);
+        });
+      });
+    }
+    
+    // 更新分页信息和控件
+    function updatePagination(data) {
+      const paginationContainer = document.getElementById('paginationContainer');
+      if (!paginationContainer) return;
+      
+      // 重置分页容器
+      paginationContainer.innerHTML = '';
+      
+      // 如果没有数据或数据不足一页，不显示分页
+      if (!data || !data.data || data.data.length === 0) {
+        paginationContainer.classList.add('hidden');
+        return;
+      }
+      
+      // 显示分页区域
+      paginationContainer.classList.remove('hidden');
+      
+      // 获取分页信息
+      const currentPage = data.page || 1;
+      const totalPages = data.total_pages || 1;
+      const pageSize = data.page_size || 10;
+      const totalItems = data.total || 0;
+      
+      // 开始构建分页UI
+      let paginationHTML = `
+        <div class="flex flex-col sm:flex-row justify-between items-center mt-4 text-sm">
+          <div class="text-gray-600 mb-2 sm:mb-0">
+            共 ${totalItems} 个书源，每页 ${pageSize} 个，第 ${currentPage}/${totalPages} 页
+          </div>
+          <div class="flex space-x-1">
+      `;
+      
+      // 上一页按钮
+      paginationHTML += `
+        <button class="pagination-btn px-3 py-1 rounded ${currentPage === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}" 
+          data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      `;
+      
+      // 页码按钮
+      // 确定显示哪些页码
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, startPage + 4);
+      
+      // 调整以确保显示5个页码
+      if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+      }
+      
+      // 第一页
+      if (startPage > 1) {
+        paginationHTML += `
+          <button class="pagination-btn px-3 py-1 rounded bg-white text-gray-700 hover:bg-gray-100" data-page="1">1</button>
+        `;
+        
+        // 如果第一页和开始页相差超过1，显示省略号
+        if (startPage > 2) {
+          paginationHTML += `
+            <span class="px-3 py-1">...</span>
+          `;
+        }
+      }
+      
+      // 中间页码
+      for (let i = startPage; i <= endPage; i++) {
+        paginationHTML += `
+          <button class="pagination-btn px-3 py-1 rounded ${i === currentPage ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}" 
+            data-page="${i}">${i}</button>
+        `;
+      }
+      
+      // 最后一页
+      if (endPage < totalPages) {
+        // 如果结束页和最后一页相差超过1，显示省略号
+        if (endPage < totalPages - 1) {
+          paginationHTML += `
+            <span class="px-3 py-1">...</span>
+          `;
+        }
+        
+        paginationHTML += `
+          <button class="pagination-btn px-3 py-1 rounded bg-white text-gray-700 hover:bg-gray-100" 
+            data-page="${totalPages}">${totalPages}</button>
+        `;
+      }
+      
+      // 下一页按钮
+      paginationHTML += `
+        <button class="pagination-btn px-3 py-1 rounded ${currentPage === totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-100'}" 
+          data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      `;
+      
+      paginationHTML += `
+          </div>
+        </div>
+      `;
+      
+      // 设置HTML并添加事件监听
+      paginationContainer.innerHTML = paginationHTML;
+      
+      // 添加分页按钮点击事件
+      const pageButtons = paginationContainer.querySelectorAll('.pagination-btn');
+      pageButtons.forEach(button => {
+        if (!button.disabled) {
+          button.addEventListener('click', function() {
+            const pageNumber = parseInt(this.getAttribute('data-page'));
+            if (!isNaN(pageNumber)) {
+              loadPage(pageNumber);
+            }
+          });
+        }
+      });
+    }
+    
+    // 加载指定页面
+    async function loadPage(pageNumber) {
+      try {
+        const token = getAuthToken();
+        
+        // 显示加载提示
+        const container = document.getElementById('sourceListContainer');
+        container.innerHTML = '<div class="text-center py-8"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">加载中...</p></div>';
+        
+        // 获取搜索和筛选条件
+        const searchInput = document.getElementById('sourceSearchInput');
+        const groupFilter = document.getElementById('groupFilter');
+        const searchValue = searchInput ? searchInput.value.trim() : '';
+        const selectedGroup = groupFilter ? groupFilter.value : 'all';
+        
+        // 构建API请求路径
+        let apiPath = `/api/booksource/sources?page=${pageNumber}`;
+        
+        if (searchValue) {
+          apiPath += `&keyword=${encodeURIComponent(searchValue)}`;
+        }
+        
+        if (selectedGroup && selectedGroup !== 'all') {
+          apiPath += `&group=${encodeURIComponent(selectedGroup)}`;
+        }
+        
+        // 发送API请求
+        const response = await fetch(apiPath, {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('加载书源失败');
+        }
+        
+        const data = await response.json();
+        
+        // 渲染书源列表
+        renderSourceList(data.data);
+        
+        // 更新分页信息
+        updatePagination(data);
+        
+        // 滚动到页面顶部
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+      } catch (error) {
+        console.error('加载书源页面失败:', error);
+        document.getElementById('sourceListContainer').innerHTML = `
+          <div class="text-center py-8 text-red-500">
+            <i class="fas fa-exclamation-circle text-xl mb-2"></i>
+            <p>加载失败: ${error.message}</p>
+            <button class="mt-2 bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" onclick="loadBookSources()">
+              <i class="fas fa-sync-alt mr-1"></i> 重试
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    // 编辑书源
+    async function editSource(sourceName) {
+      try {
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
+        // 显示加载提示
+        showToast('正在加载书源...', 'info');
+        
+        // 获取书源详情
+        const response = await fetch(`/api/booksource/source?name=${encodeURIComponent(sourceName)}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('获取书源详情失败');
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || '获取书源详情失败');
+        }
+        
+        const source = data.data;
+        
+        // 打开编辑面板并填充数据
+        openEditPanel(source);
+        
+      } catch (error) {
+        console.error('编辑书源失败:', error);
+        showToast(`编辑失败: ${error.message}`, 'error');
+      }
+    }
+
+    // 删除书源
+    async function deleteSource(sourceName) {
+      try {
+        // 显示确认对话框
+        const confirmed = await showConfirmDialog(
+          '删除书源',
+          `确定要删除书源「${sourceName}」吗？此操作不可恢复！`,
+          'danger'
+        );
+        
+        if (!confirmed) return;
+        
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
+        // 显示加载提示
+        showToast('正在删除书源...', 'info', 0);
+        
+        // 发送删除请求
+        const response = await fetch(`/api/booksource/source`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: sourceName
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('删除书源失败');
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || '删除书源失败');
+        }
+        
+        // 重新加载书源列表
+        await loadBookSources();
+        
+        // 显示成功消息
+        showToast(`书源「${sourceName}」已删除`, 'success');
+        
+      } catch (error) {
+        console.error('删除书源失败:', error);
+        showToast(`删除失败: ${error.message}`, 'error');
+      }
+    }
+    
+    // 切换书源状态（启用/禁用）
+    async function toggleSource(sourceName, enabled) {
+      try {
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
+        // 显示加载提示
+        showToast(`正在${enabled ? '启用' : '禁用'}书源...`, 'info', 0);
+        
+        // 发送请求
+        const response = await fetch(`/api/booksource/toggle`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: sourceName,
+            enabled: enabled
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`${enabled ? '启用' : '禁用'}书源失败`);
+        }
+        
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || `${enabled ? '启用' : '禁用'}书源失败`);
+        }
+        
+        // 重新加载书源列表
+        await loadBookSources();
+        
+        // 显示成功消息
+        showToast(`书源「${sourceName}」已${enabled ? '启用' : '禁用'}`, 'success');
+        
+      } catch (error) {
+        console.error(`${enabled ? '启用' : '禁用'}书源失败:`, error);
+        showToast(`操作失败: ${error.message}`, 'error');
+      }
+    }
+    
+    // 测试书源
+    async function testSource(sourceName) {
+      try {
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error('未找到认证令牌');
+        }
+        
+        // 显示加载提示
+        showToast('正在准备测试...', 'info', 0);
+        
+        // 跳转到测试页面，将书源名称传递过去
+        window.location.href = `/book-source-testing.html?source=${encodeURIComponent(sourceName)}`;
+        
+      } catch (error) {
+        console.error('测试书源失败:', error);
+        showToast(`测试失败: ${error.message}`, 'error');
+      }
+    }
+
+    // 显示提示消息
+    function showToast(message, type = 'info', duration = 3000) {
+      // 创建toast容器（如果不存在）
+      let toastContainer = document.getElementById('toastContainer');
+      if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'fixed top-4 right-4 z-50 flex flex-col items-end space-y-2';
+        document.body.appendChild(toastContainer);
+      }
+      
+      // 生成唯一ID
+      const toastId = 'toast-' + Date.now();
+      
+      // 设置toast类型样式
+      let typeClass, icon;
+      switch (type) {
+        case 'success':
+          typeClass = 'bg-green-50 text-green-800 border-green-200';
+          icon = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+          break;
+        case 'error':
+          typeClass = 'bg-red-50 text-red-800 border-red-200';
+          icon = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>';
+          break;
+        case 'warning':
+          typeClass = 'bg-yellow-50 text-yellow-800 border-yellow-200';
+          icon = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>';
+          break;
+        case 'info':
+        default:
+          typeClass = 'bg-blue-50 text-blue-800 border-blue-200';
+          icon = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+          break;
+      }
+      
+      // 创建toast元素
+      const toast = document.createElement('div');
+      toast.id = toastId;
+      toast.className = `flex items-center p-3 pr-4 max-w-xs rounded shadow-lg border ${typeClass} transition-all transform translate-x-0 opacity-100`;
+      toast.innerHTML = `
+        <div class="flex-shrink-0 mr-2">
+          ${icon}
+        </div>
+        <div class="text-sm font-medium">${message}</div>
+        <button class="ml-auto text-gray-400 hover:text-gray-600 focus:outline-none">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      `;
+      
+      // 添加到容器
+      toastContainer.appendChild(toast);
+      
+      // 添加关闭按钮事件
+      const closeButton = toast.querySelector('button');
+      closeButton.addEventListener('click', () => {
+        removeToast(toastId);
+      });
+      
+      // 如果duration为0，不自动消失
+      if (duration > 0) {
+        // 设置定时消失
+        setTimeout(() => {
+          removeToast(toastId);
+        }, duration);
+      }
+      
+      return toastId;
+    }
+    
+    // 移除Toast
+    function removeToast(toastId) {
+      const toast = document.getElementById(toastId);
+      if (toast) {
+        // 添加淡出动画
+        toast.classList.replace('translate-x-0', 'translate-x-2');
+        toast.classList.replace('opacity-100', 'opacity-0');
+        
+        // 动画结束后移除元素
+        setTimeout(() => {
+          if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+          }
+          
+          // 检查是否还有其他toast，如果没有则移除容器
+          const toastContainer = document.getElementById('toastContainer');
+          if (toastContainer && toastContainer.children.length === 0) {
+            document.body.removeChild(toastContainer);
+          }
+        }, 300);
+      }
+    }
+    
+    // 辅助函数：延迟函数执行（防抖）
+    function debounce(func, wait) {
+      let timeout;
+      return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+      };
     }
   </script>
 </body>

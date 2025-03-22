@@ -46,7 +46,7 @@ const register = async (req, res) => {
         email: newUser.email,
         avatar: newUser.avatar,
         role: newUser.role,
-        createdAt: newUser.createdAt
+        createdAt: newUser.created_at
       },
       token
     });
@@ -100,7 +100,7 @@ const login = async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         role: user.role,
-        createdAt: user.createdAt
+        createdAt: user.created_at
       },
       token
     });
@@ -124,7 +124,7 @@ const getCurrentUser = async (req, res) => {
         email: user.email,
         avatar: user.avatar,
         role: user.role,
-        createdAt: user.createdAt,
+        createdAt: user.created_at,
         lastLogin: user.lastLogin
       }
     });
