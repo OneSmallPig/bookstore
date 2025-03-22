@@ -1,3 +1,33 @@
+// 获取认证令牌函数
+function getAuthToken() {
+  // 首先尝试直接从token获取
+  const directToken = localStorage.getItem('token');
+  if (directToken) {
+    return directToken;
+  }
+  
+  // 如果没有直接的token，尝试从bookstore_auth中获取
+  try {
+    const authData = localStorage.getItem('bookstore_auth');
+    if (authData) {
+      const parsedData = JSON.parse(authData);
+      if (parsedData && parsedData.token) {
+        return parsedData.token;
+      }
+    }
+  } catch (e) {
+    console.error('从bookstore_auth获取token失败:', e);
+  }
+  
+  // 尝试从cachedToken获取
+  const cachedToken = localStorage.getItem('cachedToken');
+  if (cachedToken) {
+    return cachedToken;
+  }
+  
+  return null;
+}
+
 // 导入书源
 async function importBookSources() {
   try {
