@@ -25,5 +25,7 @@ router.post('/sources/batch-import', bookSourceController.batchImportSources);
 router.get('/sources/import-tasks/:taskId', bookSourceController.getImportTaskProgress);
 router.post('/sources/export', bookSourceController.exportSources);
 router.post('/sources/test', bookSourceController.testBookSource);
+router.post('/sources/batch-test', bookSourceController.batchTestBookSources);
+router.get('/sources/batch-test/:taskId', bookSourceController.getBatchTestProgress);
 
 module.exports = router; 

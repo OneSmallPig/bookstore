@@ -55,10 +55,11 @@ class BookSourceParser {
    * @returns {Promise<Object>} 响应对象，包含响应数据和解析后的DOM
    */
   async _request(url, options = {}) {
-    let retries = this.bookSource.retry || 3;
+    // 在测试模式中不重试，正常模式中使用书源配置的重试次数
+    let retries = options.isTest ? 0 : (this.bookSource.retry || 3);
     let error;
 
-    while (retries > 0) {
+    while (retries >= 0) {
       try {
         const response = await this.axios.get(url, options);
         
@@ -505,15 +506,16 @@ class BookSourceParser {
   /**
    * 搜索书籍
    * @param {string} keyword 搜索关键词
+   * @param {boolean} isTest 是否为测试模式
    * @returns {Promise<Array>} 搜索结果列表
    */
-  async search(keyword) {
+  async search(keyword, isTest = false) {
     try {
       // 替换搜索URL中的关键词占位符
       const searchUrl = this.bookSource.searchUrl.replace(/\{keyword\}/g, encodeURIComponent(keyword));
       
-      // 发送请求
-      const { $, dom, url } = await this._request(searchUrl);
+      // 发送请求，在测试模式下禁用重试
+      const { $, dom, url } = await this._request(searchUrl, { isTest });
       
       // 提取搜索结果列表
       const resultList = this._extract($, dom, this.bookSource.searchList, url);
@@ -601,11 +603,13 @@ class BookSourceParser {
   /**
    * 获取书籍详情
    * @param {string} url 书籍详情页URL
-   * @returns {Promise<Object>} 书籍详情
+   * @param {boolean} isTest 是否为测试模式
+   * @returns {Promise<Object>} 书籍详情对象
    */
-  async getBookDetail(url) {
+  async getBookDetail(url, isTest = false) {
     try {
-      const { $, dom, url: finalUrl } = await this._request(url);
+      // 发送请求
+      const { $, dom, url: finalUrl } = await this._request(url, { isTest });
       
       // 获取章节列表URL
       let chapterUrl = this.bookSource.detailChapterUrl 
@@ -649,11 +653,13 @@ class BookSourceParser {
   /**
    * 获取章节列表
    * @param {string} url 章节列表页URL
+   * @param {boolean} isTest 是否为测试模式
    * @returns {Promise<Array>} 章节列表
    */
-  async getChapterList(url) {
+  async getChapterList(url, isTest = false) {
     try {
-      const { $, dom, url: finalUrl } = await this._request(url);
+      // 发送请求
+      const { $, dom, url: finalUrl } = await this._request(url, { isTest });
       
       const chapters = [];
       
@@ -697,11 +703,13 @@ class BookSourceParser {
   /**
    * 获取章节内容
    * @param {string} url 章节内容页URL
-   * @returns {Promise<Object>} 章节内容
+   * @param {boolean} isTest 是否为测试模式
+   * @returns {Promise<Object>} 章节内容对象
    */
-  async getChapterContent(url) {
+  async getChapterContent(url, isTest = false) {
     try {
-      const { $, dom, url: finalUrl } = await this._request(url);
+      // 发送请求
+      const { $, dom, url: finalUrl } = await this._request(url, { isTest });
       
       // 提取内容
       let content = this._extract($, dom, this.bookSource.contentRule, finalUrl);

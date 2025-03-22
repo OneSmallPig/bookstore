@@ -1348,7 +1348,8 @@
     
     // 更新选中的源数量
     function updateSelectedSourcesCount() {
-      const selectedItems = document.querySelectorAll('.test-source-item[data-selected="true"], .test-source-checkbox:checked');
+      // 只通过复选框的选中状态来计数，避免重复
+      const selectedItems = document.querySelectorAll('.test-source-checkbox:checked');
       const countElement = document.getElementById('selectedSourcesCount');
       if (countElement) {
         countElement.textContent = selectedItems.length;
@@ -1425,43 +1426,59 @@
           throw new Error('未找到认证令牌');
         }
         
-        // 创建所有测试搜索的Promise
-        const searchPromises = sourceNames.map(sourceName => 
-          fetch(`/api/booksource/sources/test`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              sourceName,
-              keyword,
-              type: 'search'  // 显式指定测试类型为搜索
-            })
-          }).then(response => {
-            if (!response.ok) {
-              return { 
-                sourceName, 
-                success: false, 
-                error: '请求失败' 
-              };
-            }
-            return response.json().then(data => ({
-              sourceName,
-              ...data
-            }));
-          }).catch(error => ({
-            sourceName,
-            success: false,
-            error: error.message
-          }))
-        );
+        // 显示进度指示器
+        const progressContainer = document.createElement('div');
+        progressContainer.id = 'batchTestProgress';
+        progressContainer.className = 'mb-4';
+        progressContainer.innerHTML = `
+          <div class="text-sm text-gray-600 mb-2">
+            <span>测试进度：</span>
+            <span id="batchTestProgressText">0%</span>
+            <span class="ml-1">(0/${sourceNames.length})</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2">
+            <div id="batchTestProgressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        `;
         
-        // 等待所有搜索完成
-        const results = await Promise.all(searchPromises);
+        // 添加进度指示器到搜索结果区域
+        document.getElementById('searchResultsContent').innerHTML = '';
+        document.getElementById('searchResultsContent').appendChild(progressContainer);
+        document.getElementById('searchResultsContent').appendChild(document.createElement('div')).className = 'loader';
         
-        // 显示搜索结果
-        renderMultipleSearchResults(results);
+        // 发送批量测试请求
+        const response = await fetch(`/api/booksource/sources/batch-test`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sourceNames,
+            keyword
+          })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorMessage;
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorJson.error || `请求失败：${response.status} ${response.statusText}`;
+          } catch (e) {
+            errorMessage = `请求失败：${response.status} ${response.statusText}`;
+          }
+          throw new Error(errorMessage);
+        }
+        
+        const result = await response.json();
+        
+        if (!result.success || !result.data || !result.data.taskId) {
+          throw new Error(result.message || '提交测试任务失败');
+        }
+        
+        // 轮询获取测试进度
+        await pollTestProgress(result.data.taskId, sourceNames.length);
         
       } catch (error) {
         console.error('测试搜索失败:', error);
@@ -1469,10 +1486,276 @@
           `<div class="text-red-500 py-2">
             <i class="fas fa-exclamation-circle mr-2"></i>${error.message}
           </div>`;
+        // 用户反馈
+        showToast(`测试失败: ${error.message}`, 'error');
       }
     }
     
-    // 渲染多个书源的搜索结果
+    // 轮询测试进度
+    async function pollTestProgress(taskId, totalSources) {
+      try {
+        // 轮询间隔（毫秒）
+        const pollInterval = 1000;
+        // 最长轮询时间（30分钟）
+        const maxPollTime = 30 * 60 * 1000;
+        // 开始时间
+        const startTime = Date.now();
+        
+        // 轮询函数
+        const poll = async () => {
+          // 检查是否超时
+          if (Date.now() - startTime > maxPollTime) {
+            throw new Error('测试任务超时');
+          }
+          
+          // 获取最新进度
+          const response = await fetch(`/api/booksource/sources/batch-test/${taskId}`, {
+            headers: {
+              'Authorization': `Bearer ${getAuthToken()}`
+            }
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            let errorMessage;
+            try {
+              const errorJson = JSON.parse(errorText);
+              errorMessage = errorJson.message || errorJson.error || `获取测试进度失败：${response.status} ${response.statusText}`;
+            } catch (e) {
+              errorMessage = `获取测试进度失败：${response.status} ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
+          }
+          
+          const result = await response.json();
+          
+          if (!result.success) {
+            throw new Error(result.message || '获取测试进度失败');
+          }
+          
+          // 更新进度条
+          const { data } = result;
+          const progressBar = document.getElementById('batchTestProgressBar');
+          const progressText = document.getElementById('batchTestProgressText');
+          
+          if (progressBar && progressText) {
+            progressBar.style.width = `${data.progress}%`;
+            progressText.textContent = `${data.progress}%`;
+            
+            const progressCounter = progressText.nextElementSibling;
+            if (progressCounter) {
+              progressCounter.textContent = `(${data.completed}/${data.total})`;
+            }
+          }
+          
+          // 如果任务仍在进行中，继续轮询
+          if (data.inProgress) {
+            setTimeout(poll, pollInterval);
+          } else {
+            // 任务完成，显示结果
+            renderBatchTestResults(data.results);
+          }
+        };
+        
+        // 开始轮询
+        await poll();
+      } catch (error) {
+        console.error('轮询测试进度失败:', error);
+        document.getElementById('searchResultsContent').innerHTML = 
+          `<div class="text-red-500 py-2">
+            <i class="fas fa-exclamation-circle mr-2"></i>${error.message}
+          </div>`;
+        
+        // 用户反馈
+        showToast(`进度获取失败: ${error.message}`, 'error');
+      }
+    }
+    
+    // 渲染批量测试结果
+    function renderBatchTestResults(results) {
+      const resultsContainer = document.getElementById('searchResultsContent');
+      if (!resultsContainer) return;
+      
+      // 保留进度条
+      const progressElement = document.getElementById('batchTestProgress');
+      
+      // 清空其他内容
+      resultsContainer.innerHTML = '';
+      if (progressElement) {
+        resultsContainer.appendChild(progressElement);
+      }
+      
+      if (!results || Object.keys(results).length === 0) {
+        resultsContainer.innerHTML += 
+          `<div class="text-gray-500 py-2">
+            <i class="fas fa-info-circle mr-2"></i>没有测试结果
+          </div>`;
+        return;
+      }
+      
+      // 统计成功/失败数量
+      let successCount = 0;
+      let failCount = 0;
+      
+      Object.values(results).forEach(result => {
+        if (result.success) successCount++;
+        else failCount++;
+      });
+      
+      // 显示统计信息
+      const statsElement = document.createElement('div');
+      statsElement.className = 'flex justify-between items-center mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg';
+      statsElement.innerHTML = `
+        <div class="text-sm font-medium">
+          测试结果：
+          <span class="text-green-500">${successCount} 成功</span> / 
+          <span class="text-red-500">${failCount} 失败</span>
+        </div>
+        <div>
+          <button id="expandAllResults" class="text-sm text-blue-600 hover:text-blue-800">全部展开</button>
+          <span class="mx-2">|</span>
+          <button id="collapseAllResults" class="text-sm text-blue-600 hover:text-blue-800">全部折叠</button>
+        </div>
+      `;
+      resultsContainer.appendChild(statsElement);
+      
+      // 添加书源测试结果
+      const sourceKeys = Object.keys(results).sort((a, b) => {
+        if (results[a].success && !results[b].success) return -1;
+        if (!results[a].success && results[b].success) return 1;
+        return a.localeCompare(b);
+      });
+      
+      sourceKeys.forEach(sourceName => {
+        const result = results[sourceName];
+        const sourceElement = document.createElement('div');
+        sourceElement.className = `mb-3 border ${result.success ? 'border-green-200' : 'border-red-200'} rounded-lg overflow-hidden`;
+        
+        // 源标题和状态
+        sourceElement.innerHTML = `
+          <div class="flex justify-between items-center p-3 ${result.success ? 'bg-green-50' : 'bg-red-50'} cursor-pointer source-result-header">
+            <div class="font-medium flex items-center">
+              <i class="fas ${result.success ? 'fa-check-circle text-green-500' : 'fa-times-circle text-red-500'} mr-2"></i>
+              ${sourceName}
+            </div>
+            <div>
+              <span class="text-sm ${result.success ? 'text-green-600' : 'text-red-600'}">${result.message}</span>
+              <i class="fas fa-chevron-down ml-2 text-gray-400 toggle-icon"></i>
+            </div>
+          </div>
+          <div class="p-3 border-t border-gray-200 source-result-content" style="display: none;">
+            ${renderSourceTestDetail(result)}
+          </div>
+        `;
+        
+        resultsContainer.appendChild(sourceElement);
+      });
+      
+      // 添加交互事件
+      document.querySelectorAll('.source-result-header').forEach(header => {
+        header.addEventListener('click', function() {
+          const content = this.nextElementSibling;
+          const icon = this.querySelector('.toggle-icon');
+          
+          if (content.style.display === 'none') {
+            content.style.display = 'block';
+            icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+          } else {
+            content.style.display = 'none';
+            icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+          }
+        });
+      });
+      
+      // 全部展开/折叠按钮
+      document.getElementById('expandAllResults').addEventListener('click', function() {
+        document.querySelectorAll('.source-result-content').forEach(content => {
+          content.style.display = 'block';
+        });
+        document.querySelectorAll('.toggle-icon').forEach(icon => {
+          icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+        });
+      });
+      
+      document.getElementById('collapseAllResults').addEventListener('click', function() {
+        document.querySelectorAll('.source-result-content').forEach(content => {
+          content.style.display = 'none';
+        });
+        document.querySelectorAll('.toggle-icon').forEach(icon => {
+          icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+        });
+      });
+    }
+    
+    // 渲染单个书源的测试详情
+    function renderSourceTestDetail(result) {
+      if (!result) return '无测试结果';
+      
+      let html = '';
+      
+      // 搜索结果
+      if (result.searchResults && result.searchResults.length > 0) {
+        html += `
+          <div class="mb-3">
+            <h4 class="text-sm font-medium mb-2">搜索结果 (${result.searchResults.length})</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+        `;
+        
+        result.searchResults.slice(0, 6).forEach(book => {
+          html += `
+            <div class="text-sm p-2 border border-gray-100 rounded bg-gray-50">
+              <div class="font-medium">${book.name || '未知书名'}</div>
+              ${book.author ? `<div class="text-gray-600 text-xs">作者: ${book.author}</div>` : ''}
+            </div>
+          `;
+        });
+        
+        if (result.searchResults.length > 6) {
+          html += `<div class="text-sm text-gray-500">... 等 ${result.searchResults.length - 6} 项</div>`;
+        }
+        
+        html += `</div></div>`;
+      }
+      
+      // 书籍详情
+      if (result.detail) {
+        const detail = result.detail;
+        html += `
+          <div class="mb-3">
+            <h4 class="text-sm font-medium mb-2">书籍详情</h4>
+            <div class="text-sm p-3 border border-gray-100 rounded bg-gray-50">
+              <div class="font-medium">${detail.name || '未知书名'}</div>
+              ${detail.author ? `<div class="text-gray-600">作者: ${detail.author}</div>` : ''}
+              ${detail.category ? `<div class="text-gray-600">分类: ${detail.category}</div>` : ''}
+              ${detail.intro ? `<div class="mt-2 text-gray-700">${detail.intro.substring(0, 100)}${detail.intro.length > 100 ? '...' : ''}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }
+      
+      // 章节列表
+      if (result.chapters && result.chapters.length > 0) {
+        html += `
+          <div>
+            <h4 class="text-sm font-medium mb-2">章节列表 (${result.chapters.length})</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-1">
+        `;
+        
+        result.chapters.forEach((chapter, index) => {
+          html += `
+            <div class="text-sm p-1">
+              ${index + 1}. ${chapter.title || '未知章节'}
+            </div>
+          `;
+        });
+        
+        html += `</div></div>`;
+      }
+      
+      return html || '<div class="text-gray-500">无详细测试结果</div>';
+    }
+    
+    // 渲染多个搜索结果
     function renderMultipleSearchResults(results) {
       const container = document.getElementById('searchResultsContent');
       
