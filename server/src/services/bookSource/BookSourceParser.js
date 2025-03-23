@@ -236,11 +236,11 @@ class BookSourceParser {
         } else if (typeof this.bookSource.header === 'object') {
           customHeaders = this.bookSource.header;
         }
-        
-        Object.assign(headers, customHeaders);
-        
-        if (isTest) {
-          logger.info(`应用自定义请求头: ${JSON.stringify(customHeaders)}`);
+          
+          Object.assign(headers, customHeaders);
+          
+          if (isTest) {
+            logger.info(`应用自定义请求头: ${JSON.stringify(customHeaders)}`);
         }
       }
       
@@ -498,9 +498,9 @@ class BookSourceParser {
           const result = this._extract($, dom, s, baseUrl);
           if (result) return result;
         }
-        return null;
-      }
-      
+          return null;
+        }
+        
       // 处理JS表达式 (阅读3.0格式)
       if (selector.startsWith('js:') || selector.startsWith('@js:')) {
         const jsCode = selector.startsWith('@js:') ? selector.substring(4) : selector.substring(3);
@@ -525,10 +525,10 @@ class BookSourceParser {
             try {
               // 检查是否是替换模式
               if (i < regexParts.length - 1) {
-                const pattern = regexParts[i];
-                const replacement = regexParts[i+1] || '';
+              const pattern = regexParts[i];
+              const replacement = regexParts[i+1] || '';
                 try {
-                  const regex = new RegExp(pattern, 'g');
+              const regex = new RegExp(pattern, 'g');
                   content = content.replace(regex, replacement);
                   i++; // 跳过下一个部分，因为它是替换字符串
                 } catch (e) {
@@ -546,7 +546,7 @@ class BookSourceParser {
                   logger.error(`正则匹配失败: ${regexParts[i]}`, e);
                 }
               }
-            } catch (err) {
+        } catch (err) {
               logger.error(`正则处理失败: ${err.message}`);
             }
           }
@@ -805,6 +805,78 @@ class BookSourceParser {
     if (!$ || !selector) return null;
     
     try {
+      // 特殊处理爱小说网的选择器格式 "class.left@tag.li!0"
+      if (selector.includes('@tag.') && selector.includes('!')) {
+        // 例如: class.left@tag.li!0 - 表示找到class为left的元素中的所有li标签，跳过第0个(标题行)
+        const [classSelector, tagSelector] = selector.split('@tag.');
+        
+        // 获取class选择器部分
+        let className = '';
+        if (classSelector.startsWith('class.')) {
+          className = classSelector.substring(6);
+        } else {
+          logger.error(`未知的复杂选择器前缀: ${classSelector}`);
+          return null;
+        }
+        
+        // 解析tag选择器部分 (li!0 或 li!0:1:2)
+        const [tagName, skipIndices] = tagSelector.split('!');
+        
+        if (!tagName) {
+          logger.error(`标签名称为空: ${tagSelector}`);
+          return null;
+        }
+        
+        // 爱小说网特殊处理 - 对于class.left@tag.li!0这种选择器
+        if (className === 'left' && tagName === 'li') {
+          // 直接找到所有的li元素，除了第一个(rowheader)
+          const liElements = $(`.${className} .lastest ul li`).not('.rowheader');
+          
+          if (liElements.length === 0) {
+            // 尝试更宽松的查询
+            logger.warn(`未找到.${className} .lastest ul li，尝试直接查找.left li`);
+            return $(`.left li`).not('.rowheader');
+          }
+          
+          return liElements;
+        }
+        
+        // 找到对应class的元素
+        const classElements = $(`.${className}`);
+        if (!classElements.length) {
+          logger.warn(`未找到类名为 ${className} 的元素`);
+          return null;
+        }
+        
+        // 找到类元素内的所有标签元素
+        const allTagElements = classElements.find(tagName);
+        if (!allTagElements.length) {
+          logger.warn(`在 .${className} 中未找到 ${tagName} 标签元素`);
+          return null;
+        }
+        
+        // 处理跳过索引
+        const skipIndexArray = skipIndices.split(':').map(idx => parseInt(idx, 10));
+        
+        // 收集不应该跳过的元素
+        const results = [];
+        allTagElements.each((index, element) => {
+          // 如果当前索引不在跳过列表中，则收集该元素
+          if (!skipIndexArray.includes(index)) {
+            results.push($(element));
+          }
+        });
+        
+        if (results.length === 0) {
+          logger.warn(`在应用跳过索引后没有剩余元素: ${skipIndices}`);
+          return null;
+        }
+        
+        // 返回匹配的元素数组
+        return results;
+      }
+      
+      // 原有处理逻辑
       let selectorType = '';
       let remainingSelector = '';
       
@@ -1105,6 +1177,19 @@ class BookSourceParser {
     }
     
     try {
+      if (isTest) {
+        logger.info(`搜索关键字: ${keyword}`);
+      }
+      
+      // 针对爱小说网的特殊处理
+      if (this.bookSource.name && this.bookSource.name.includes('爱小说')) {
+        if (isTest) {
+          logger.info(`使用爱小说网专用解析器`);
+        }
+        return await this._searchAixiaoshuo(keyword, isTest);
+      }
+      
+      // 以下是原有的通用搜索逻辑
       // 再次修复已知问题，确保搜索时书源是最新的
       this._fixKnownIssues(isTest);
       
@@ -1115,10 +1200,6 @@ class BookSourceParser {
           logger.error(error.message);
         }
         throw error;
-      }
-      
-      if (isTest) {
-        logger.info(`搜索关键字: ${keyword}`);
       }
       
       // 构建搜索URL
@@ -1221,6 +1302,9 @@ class BookSourceParser {
         if (!bookElements || !Array.isArray(bookElements) || bookElements.length === 0) {
           if (isTest) {
             logger.warn('未找到搜索结果');
+            // 添加更详细的调试信息
+            logger.warn(`书源: ${this.bookSource.name}, 选择器: ${bookListSelector}, URL: ${searchUrl}`);
+            logger.warn(`响应内容首部: ${response.content.substring(0, 200)}...`);
           }
           return [];
         }
@@ -1236,7 +1320,7 @@ class BookSourceParser {
         const lastChapterSelector = this.bookSource.search.lastChapter;
         const coverSelector = this.bookSource.search.cover;
         const introSelector = this.bookSource.search.intro;
-        const bookUrlSelector = this.bookSource.search.bookUrl;
+        const bookUrlSelector = this.bookSource.search.detail || this.bookSource.search.bookUrl;
         
         if (!nameSelector || !bookUrlSelector) {
           const error = new Error('书源未指定书名或URL选择器');
@@ -1246,15 +1330,86 @@ class BookSourceParser {
           throw error;
         }
         
+        if (isTest) {
+          logger.info(`使用的选择器：name=${nameSelector}, detail=${bookUrlSelector}, author=${authorSelector}`);
+        }
+        
+        // 检查是否为爱小说网
+        const isAiXiaoshuo = this.bookSource.name && this.bookSource.name.includes('爱小说');
+        if (isAiXiaoshuo && isTest) {
+          logger.info(`检测到爱小说网站，将使用特殊解析逻辑`);
+          
+          // 记录一个元素示例，以便调试
+          if (bookElements && bookElements.length > 0) {
+            const sampleElement = bookElements[0].jquery ? bookElements[0].html() : $(bookElements[0]).html();
+            logger.info(`示例元素HTML：${sampleElement.substring(0, 200)}...`);
+          }
+        }
+        
         for (const element of bookElements) {
           try {
-            const name = this._extractFromElement(element, nameSelector, searchUrl);
-            const author = authorSelector ? this._extractFromElement(element, authorSelector, searchUrl) : '';
-            const kind = kindSelector ? this._extractFromElement(element, kindSelector, searchUrl) : '';
-            const lastChapter = lastChapterSelector ? this._extractFromElement(element, lastChapterSelector, searchUrl) : '';
-            const cover = coverSelector ? this._extractFromElement(element, coverSelector, searchUrl) : '';
-            const intro = introSelector ? this._extractFromElement(element, introSelector, searchUrl) : '';
-            const bookUrl = this._extractFromElement(element, bookUrlSelector, searchUrl);
+            let name, author, kind, lastChapter, cover, intro, bookUrl;
+            
+            // 爱小说网特殊处理 - 直接使用选择器而不是复杂的嵌套解析
+            if (isAiXiaoshuo) {
+              if (element.jquery) {
+                // 直接从li元素内提取所需信息
+                const nameEl = element.find('.n2 a');
+                const authorEl = element.find('.a2 a');
+                const kindEl = element.find('.nt');
+                const chapterEl = element.find('.c2 a');
+                
+                name = nameEl.text().trim();
+                author = authorEl.text().trim();
+                kind = kindEl.text().trim();
+                lastChapter = chapterEl.text().trim();
+                bookUrl = nameEl.attr('href');
+                cover = '';
+                intro = '';
+                
+                // 确保URL是完整的
+                if (bookUrl && !bookUrl.startsWith('http')) {
+                  bookUrl = this._resolveUrl(bookUrl, searchUrl);
+                }
+                
+                if (isTest) {
+                  logger.info(`爱小说网解析结果: 书名=${name}, 作者=${author}, URL=${bookUrl}`);
+                }
+              } else {
+                if (isTest) {
+                  logger.warn(`爱小说网解析失败: 元素不是jQuery对象，将尝试标准解析`);
+                }
+                // 后备标准解析
+                name = this._extractFromElement(element, nameSelector, searchUrl);
+                author = authorSelector ? this._extractFromElement(element, authorSelector, searchUrl) : '';
+                kind = kindSelector ? this._extractFromElement(element, kindSelector, searchUrl) : '';
+                lastChapter = lastChapterSelector ? this._extractFromElement(element, lastChapterSelector, searchUrl) : '';
+                cover = coverSelector ? this._extractFromElement(element, coverSelector, searchUrl) : '';
+                intro = introSelector ? this._extractFromElement(element, introSelector, searchUrl) : '';
+                bookUrl = this._extractFromElement(element, bookUrlSelector, searchUrl);
+              }
+            } else if (element.jquery) {
+              // 通用处理方式 - 当_extract返回jQuery对象数组时
+              name = nameSelector ? element.find(nameSelector.replace(/^.*?@/, '')).text().trim() : '';
+              author = authorSelector ? element.find(authorSelector.replace(/^.*?@/, '')).text().trim() : '';
+              kind = kindSelector ? element.find(kindSelector.replace(/^.*?@/, '')).text().trim() : '';
+              lastChapter = lastChapterSelector ? element.find(lastChapterSelector.replace(/^.*?@/, '')).text().trim() : '';
+              cover = coverSelector ? element.find(coverSelector.replace(/^.*?@/, '')).attr('src') : '';
+              intro = introSelector ? element.find(introSelector.replace(/^.*?@/, '')).text().trim() : '';
+              
+              // 提取书籍URL
+              const urlElement = element.find(bookUrlSelector.replace(/^.*?@/, ''));
+              bookUrl = urlElement.attr('href');
+            } else {
+              // 标准信息提取方式
+              name = this._extractFromElement(element, nameSelector, searchUrl);
+              author = authorSelector ? this._extractFromElement(element, authorSelector, searchUrl) : '';
+              kind = kindSelector ? this._extractFromElement(element, kindSelector, searchUrl) : '';
+              lastChapter = lastChapterSelector ? this._extractFromElement(element, lastChapterSelector, searchUrl) : '';
+              cover = coverSelector ? this._extractFromElement(element, coverSelector, searchUrl) : '';
+              intro = introSelector ? this._extractFromElement(element, introSelector, searchUrl) : '';
+              bookUrl = this._extractFromElement(element, bookUrlSelector, searchUrl);
+            }
             
             if (!name || !bookUrl) {
               if (isTest) {
@@ -1270,7 +1425,8 @@ class BookSourceParser {
               lastChapter,
               cover,
               intro,
-              bookUrl: this._resolveUrl(bookUrl, searchUrl)
+              bookUrl: bookUrl && !bookUrl.startsWith('http') ? this._resolveUrl(bookUrl, searchUrl) : bookUrl,
+              detail: bookUrl && !bookUrl.startsWith('http') ? this._resolveUrl(bookUrl, searchUrl) : bookUrl
             });
             
             if (isTest) {
@@ -1321,120 +1477,256 @@ class BookSourceParser {
   }
 
   /**
-   * 从DOM元素中提取数据
-   * @param {Element} element DOM元素
-   * @param {string} selector 选择器或XPath表达式
-   * @param {string} baseUrl 基础URL
-   * @returns {string|null} 提取的内容
+   * 爱小说网专用搜索方法
+   * @param {string} keyword 搜索关键字
+   * @param {boolean} isTest 是否为测试模式
+   * @returns {Promise<Array>} 搜索结果
    * @private
    */
-  _extractFromElement(element, selector, baseUrl) {
-    if (!element || !selector) {
-      return null;
-    }
-    
+  async _searchAixiaoshuo(keyword, isTest = false) {
     try {
-      // 处理简单属性选择
-      if (selector === 'text') {
-        return element.textContent ? element.textContent.trim() : null;
-      }
+      // 构建搜索URL
+      const baseUrl = this._getBaseUrl();
+      let searchUrl = this.bookSource.searchUrl || this.bookSource.search.url;
       
-      if (selector === 'html' || selector === 'innerHTML') {
-        return element.innerHTML;
-      }
-      
-      if (selector === 'outerHtml' || selector === 'outerHTML') {
-        return element.outerHTML;
-      }
-      
-      // 处理属性选择 (@属性名)
-      if (selector.startsWith('@')) {
-        const attr = selector.substring(1);
-        const value = element.getAttribute(attr);
-        
-        // 特殊处理链接属性
-        if (value && (attr === 'href' || attr === 'src' || attr === 'data-src' || attr === 'data-original')) {
-          return this._resolveUrl(value, baseUrl);
+      if (!searchUrl) {
+        const error = new Error('书源未配置搜索URL');
+        if (isTest) {
+          logger.error(error.message);
         }
-        
-        return value;
+        throw error;
       }
       
-      // 处理嵌套选择器 (selector->property)
-      if (selector.includes('->')) {
-        const [childSelector, property] = selector.split('->').map(s => s.trim());
-        
-        // 先找到子元素
-        let childElement;
-        try {
-          // 尝试使用CSS选择器
-          childElement = element.querySelector(childSelector);
-        } catch (e) {
-          logger.warn(`无效的CSS选择器: ${childSelector}`);
-          return null;
-        }
-        
-        if (!childElement) return null;
-        
-        // 递归提取属性
-        return this._extractFromElement(childElement, property, baseUrl);
+      // 替换关键字
+      searchUrl = searchUrl.replace(/{{key}}|{{keyword}}|searchKey/g, encodeURIComponent(keyword));
+      
+      // 确保URL是完整的
+      searchUrl = this._resolveUrl(searchUrl, baseUrl);
+      
+      if (isTest) {
+        logger.info(`搜索URL: ${searchUrl}`);
       }
       
-      // 处理CSS选择器
-      try {
-        // 尝试使用CSS选择器
-        const selected = element.querySelector(selector);
-        if (selected) {
-          return selected.textContent ? selected.textContent.trim() : null;
+      // 发送搜索请求
+      const response = await this._request(searchUrl, { isTest });
+      
+      if (!response || !response.content) {
+        if (isTest) {
+          logger.error('搜索请求失败: 没有响应内容');
         }
-      } catch (e) {
-        // 选择器无效或其他错误
-        logger.warn(`CSS选择器执行失败: ${selector}, 错误: ${e.message}`);
+        return [];
       }
       
-      // 处理特殊语法选择器
-      if (selector.startsWith('class.') || selector.startsWith('id.') || selector.startsWith('tag.')) {
-        let cssSelector = '';
+      // 使用cheerio解析HTML内容
+      const $ = response.$;
+      
+      // 分析页面结构
+      if (isTest) {
+        logger.info(`页面结构分析开始`);
         
-        if (selector.startsWith('class.')) {
-          const className = selector.substring(6);
-          cssSelector = `.${className}`;
-        } else if (selector.startsWith('id.')) {
-          const idName = selector.substring(3);
-          cssSelector = `#${idName}`;
-        } else if (selector.startsWith('tag.')) {
-          const tagName = selector.substring(4);
-          cssSelector = tagName;
-        }
+        // 分析.left元素
+        const leftElements = $('.left');
+        logger.info(`找到${leftElements.length}个.left元素`);
         
-        try {
-          // 处理索引，例如 tag.li:5
-          if (cssSelector.includes(':')) {
-            const [selectorPart, indexPart] = cssSelector.split(':');
-            const index = parseInt(indexPart, 10);
+        if (leftElements.length > 0) {
+          // 分析.lastest元素
+          const lastestElements = leftElements.find('.lastest');
+          logger.info(`找到${lastestElements.length}个.lastest元素`);
+          
+          if (lastestElements.length > 0) {
+            // 分析ul元素
+            const ulElements = lastestElements.find('ul');
+            logger.info(`找到${ulElements.length}个ul元素`);
             
-            const elements = element.querySelectorAll(selectorPart);
-            if (elements.length > index) {
-              return elements[index].textContent ? elements[index].textContent.trim() : null;
-            }
-          } else {
-            // 普通选择器
-            const selected = element.querySelector(cssSelector);
-            if (selected) {
-              return selected.textContent ? selected.textContent.trim() : null;
+            if (ulElements.length > 0) {
+              // 分析li元素
+              const liElements = ulElements.find('li');
+              logger.info(`找到${liElements.length}个li元素，其中rowheader: ${liElements.filter('.rowheader').length}个`);
             }
           }
-        } catch (e) {
-          logger.warn(`特殊选择器执行失败: ${selector}, 错误: ${e.message}`);
+        }
+        
+        logger.info(`页面结构分析完成`);
+      }
+      
+      // 尝试多种选择器组合
+      let bookItems = $('.left .lastest ul li').not('.rowheader');
+      
+      if (!bookItems.length) {
+        // 尝试备用选择器
+        bookItems = $('.left ul li').not('.rowheader');
+        
+        if (!bookItems.length) {
+          // 再次尝试更宽松的选择器
+          bookItems = $('ul li').not('.rowheader').filter((i, el) => {
+            return $(el).find('.n2 a').length > 0 && $(el).find('.a2 a').length > 0;
+          });
         }
       }
       
-      // 如果以上都失败，返回元素自身的文本内容作为后备
-      return element.textContent ? element.textContent.trim() : null;
+      if (!bookItems.length) {
+        if (isTest) {
+          logger.warn('未找到搜索结果列表');
+          logger.warn(`响应内容摘要：${response.content.substring(0, 500)}...`);
+          // 检查页面中是否存在特定模式
+          if (response.content.includes('未找到相关内容')) {
+            logger.info('页面显示"未找到相关内容"，这可能是正常的零结果响应');
+          }
+        }
+        return [];
+      }
+      
+      if (isTest) {
+        logger.info(`找到 ${bookItems.length} 个搜索结果项`);
+      }
+      
+      // 解析搜索结果
+      const bookList = [];
+      
+      bookItems.each((index, item) => {
+        try {
+          const $item = $(item);
+          
+          // 获取元素HTML内容以便调试
+          if (isTest) {
+            const itemHtml = $item.html().substring(0, 200).replace(/\n/g, '');
+            logger.info(`解析第 ${index+1} 个结果: ${itemHtml}...`);
+          }
+          
+          // 提取书籍信息
+          let nameElement = $item.find('.n2 a');
+          let authorElement = $item.find('.a2 a');
+          let kindElement = $item.find('.nt');
+          let chapterElement = $item.find('.c2 a');
+          
+          // 如果元素不存在，尝试其他可能的选择器
+          if (!nameElement.length) {
+            if (isTest) logger.warn('未找到.n2 a元素，尝试直接查找a元素');
+            nameElement = $item.find('a').first();
+          }
+          
+          const name = nameElement.text().trim();
+          const author = authorElement.length ? authorElement.text().trim() : '';
+          const kind = kindElement.length ? kindElement.text().trim() : '';
+          const lastChapter = chapterElement.length ? chapterElement.text().trim() : '';
+          let bookUrl = nameElement.attr('href');
+          
+          // 记录调试信息
+          if (isTest) {
+            logger.info(`解析结果: 书名="${name}", 作者="${author}", 分类="${kind}", URL=${bookUrl}`);
+          }
+          
+          // 确保URL是完整的
+          if (bookUrl && !bookUrl.startsWith('http')) {
+            bookUrl = this._resolveUrl(bookUrl, searchUrl);
+          }
+          
+          if (!name || !bookUrl) {
+            if (isTest) {
+              logger.warn(`跳过无效结果: 书名=${name}, URL=${bookUrl}`);
+            }
+            return; // 在each回调中相当于continue
+          }
+          
+          bookList.push({
+            name,
+            author,
+            kind,
+            lastChapter,
+            cover: '',  // 暂无封面
+            intro: '',  // 暂无简介
+            bookUrl,
+            detail: bookUrl
+          });
+          
+          if (isTest) {
+            logger.info(`成功解析书籍: ${name} (${author})`);
+          }
+        } catch (err) {
+          if (isTest) {
+            logger.warn(`解析搜索结果项失败: ${err.message}`);
+          }
+        }
+      });
+      
+      if (isTest) {
+        logger.info(`总计成功解析 ${bookList.length} 本书`);
+      }
+      
+      return bookList;
     } catch (error) {
-      logger.error(`从DOM元素提取数据失败: ${selector}, 错误: ${error.message}`, error);
-      return null;
+      if (isTest) {
+        logger.error(`爱小说网搜索失败: ${error.message}`);
+        if (error.stack) {
+          logger.error(`错误堆栈: ${error.stack}`);
+        }
+      }
+      throw error;
     }
+  }
+  
+  /**
+   * 清理章节内容
+   * @param {string} content 原始内容
+   * @returns {string} 清理后的内容
+   * @private
+   */
+  _cleanContent(content) {
+    if (!content) return '';
+    
+    // 替换HTML标签为换行符
+    content = content.replace(/<\/?(p|br|div)[^>]*>/gi, '\n');
+    
+    // 去除其他HTML标签
+    content = content.replace(/<[^>]+>/g, '');
+    
+    // 解码HTML实体
+    content = content.replace(/&nbsp;/g, ' ')
+                     .replace(/&lt;/g, '<')
+                     .replace(/&gt;/g, '>')
+                     .replace(/&amp;/g, '&')
+                     .replace(/&quot;/g, '"')
+                     .replace(/&#39;/g, "'");
+    
+    // 去除多余空行
+    content = content.replace(/\n{3,}/g, '\n\n');
+    
+    // 去除常见的广告文本
+    const adPatterns = [
+      /温馨提示：方便下次阅读，可以点击.*收藏/,
+      /[（(]?推荐地址：.*[）)]?/,
+      /[（(]?本文来自.*[）)]?/,
+      /喜欢.*请大家收藏/,
+      /更新最快的小说网站/,
+      /找本书的.*最新章节/,
+      /本章未完.*请翻页/,
+      /注册会员.*章节/,
+      /如果觉得好看.*收藏/,
+      /记住本站的网址.*/,
+      /请记住本书首发域名.*/,
+      /请使用访问本站/,
+      /如果您觉得网站好看.*/,
+      /如果被章节内容错误/,
+      /^http:\/\//,
+      /^在线阅读/,
+      /请记住本站域名/,
+      /本站网址：/,
+      /小说更新最快/,
+      /百度搜索.*最新章节/,
+      /【完结】/
+    ];
+    
+    for (const pattern of adPatterns) {
+      content = content.replace(pattern, '');
+    }
+    
+    // 去除段落前后空白
+    content = content.split('\n')
+                     .map(line => line.trim())
+                     .filter(line => line)
+                     .join('\n\n');
+    
+    return content;
   }
 
   /**
@@ -1546,139 +1838,6 @@ class BookSourceParser {
     ensureNestedStruct(mappedSource, 'content');
     
     return mappedSource;
-  }
-
-  /**
-   * 获取章节列表页URL
-   * @param {Object} book 书籍信息
-   * @param {boolean} isTest 是否为测试模式
-   * @returns {Promise<string>} 章节列表页URL
-   * @private
-   */
-  async _getChapterUrl(book, isTest = false) {
-    if (!book || !book.bookUrl) {
-      throw new Error('书籍信息不完整');
-    }
-    
-    try {
-      // 不同书源的章节URL规则处理
-      let chapterUrl = '';
-      
-      // 1. 优先使用书源配置的章节URL规则
-      if (this.bookSource.chapters && this.bookSource.chapters.url) {
-        if (isTest) {
-          logger.info(`使用书源配置的章节URL规则: ${this.bookSource.chapters.url}`);
-        }
-        
-        // 替换变量
-        chapterUrl = this.bookSource.chapters.url.replace(/{{bookUrl}}/g, book.bookUrl);
-        
-        // 检查是否存在未替换的变量
-        if (chapterUrl.includes('{{')) {
-          if (isTest) {
-            logger.warn(`章节URL中存在未替换的变量: ${chapterUrl}`);
-          }
-          // 不尝试替换变量，继续尝试其他方法
-        } else {
-          // 解析为完整URL
-          chapterUrl = this._resolveUrl(chapterUrl, book.bookUrl);
-          
-          if (isTest) {
-            logger.info(`解析得到章节URL: ${chapterUrl}`);
-          }
-          
-          return chapterUrl;
-        }
-      }
-      
-      // 2. 如果没有配置或替换失败，尝试从书籍详情页中提取章节列表URL
-      if (!chapterUrl) {
-        if (isTest) {
-          logger.info(`尝试从书籍详情页获取章节列表URL`);
-        }
-        
-        // 只请求一次书籍详情页
-        const response = await this._request(book.bookUrl, { isTest });
-        
-        if (!response || !response.content) {
-          if (isTest) {
-            logger.warn('获取书籍详情页失败，将使用书籍URL作为章节URL');
-          }
-          return book.bookUrl;
-        }
-        
-        // 尝试从页面中提取章节列表链接
-        if (this.bookSource.chapters && this.bookSource.chapters.list) {
-          // 如果配置了章节列表选择器，可能本页就是章节页
-          return book.bookUrl;
-        }
-        
-        // 尝试找到章节列表链接
-        const chapterLinkSelectors = [
-          'a:contains(章节目录)',
-          'a:contains(目录)',
-          'a:contains(查看全部章节)',
-          'a:contains(全部章节)',
-          'a[href*=catalog]',
-          'a[href*=chapter]',
-          'a[href*=list]'
-        ];
-        
-        for (const selector of chapterLinkSelectors) {
-          try {
-            const link = response.$(selector).first();
-            if (link && link.length) {
-              const href = link.attr('href');
-              if (href) {
-                chapterUrl = this._resolveUrl(href, book.bookUrl);
-                
-                if (isTest) {
-                  logger.info(`从详情页找到章节链接: ${chapterUrl}`);
-                }
-                
-                return chapterUrl;
-              }
-            }
-          } catch (error) {
-            // 继续尝试下一个选择器
-            continue;
-          }
-        }
-        
-        // 如果没有找到明确的章节链接，但有章节列表选择器，可能当前页面就是章节页
-        if (this.bookSource.chapters && this.bookSource.chapters.name) {
-          // 尝试检查页面中是否有符合章节名选择器的元素
-          const testElement = response.$(this.bookSource.chapters.name).first();
-          if (testElement && testElement.length) {
-            if (isTest) {
-              logger.info(`当前页面可能是章节页，已找到章节名元素`);
-            }
-            return book.bookUrl;
-          }
-        }
-        
-        // 如果所有尝试都失败，使用书籍URL作为章节URL
-        if (isTest) {
-          logger.warn(`未找到章节列表链接，将使用书籍URL作为章节URL`);
-        }
-      }
-      
-      // 3. 如果仍然没有找到，使用书籍URL作为章节URL
-      if (!chapterUrl) {
-        if (isTest) {
-          logger.warn(`无法确定章节URL，将使用书籍URL: ${book.bookUrl}`);
-        }
-        return book.bookUrl;
-      }
-      
-      return chapterUrl;
-    } catch (error) {
-      if (isTest) {
-        logger.error(`获取章节URL失败: ${error.message}`);
-      }
-      // 回退到使用书籍URL
-      return book.bookUrl;
-    }
   }
 
   /**
@@ -1794,7 +1953,7 @@ class BookSourceParser {
       
       if (this.bookSource.ruleSearchName && !this.bookSource.search.name) {
         this.bookSource.search.name = this.bookSource.ruleSearchName;
-        if (isTest) {
+          if (isTest) {
           logger.info(`[已知问题修复] 映射ruleSearchName -> search.name: ${this.bookSource.ruleSearchName}`);
         }
       }
@@ -2186,278 +2345,6 @@ class BookSourceParser {
       }
       throw error;
     }
-  }
-
-  /**
-   * 获取章节内容
-   * @param {string} url 章节内容页URL
-   * @param {boolean} isTest 是否为测试模式
-   * @returns {Promise<Object>} 章节内容
-   */
-  async getChapterContent(url, isTest = false) {
-    if (!url) {
-      throw new Error('章节内容页URL不能为空');
-    }
-    
-    try {
-      // 确保URL是完整的
-      const fullUrl = this._resolveUrl(url, this._getBaseUrl());
-      
-      if (!fullUrl) {
-        throw new Error(`无法解析URL: ${url}`);
-      }
-      
-      if (isTest) {
-        logger.info(`获取章节内容: ${fullUrl}`);
-      }
-      
-      // 获取内容选择器
-      let contentSelector = null;
-      let nextPageSelector = null;
-      
-      // 优先使用书源配置的内容选择器
-      if (this.bookSource.content && this.bookSource.content.content) {
-        contentSelector = this.bookSource.content.content;
-      } else if (this.bookSource.ruleBookContent) {
-        contentSelector = this.bookSource.ruleBookContent;
-      } else {
-        // 尝试常见的内容选择器
-        contentSelector = '#content, .content, .article-content, .chapter-content, .text-content, .article';
-      }
-      
-      // 获取下一页选择器
-      if (this.bookSource.content && this.bookSource.content.urlNext) {
-        nextPageSelector = this.bookSource.content.urlNext;
-      } else if (this.bookSource.ruleContentUrlNext) {
-        nextPageSelector = this.bookSource.ruleContentUrlNext;
-      }
-      
-      // 发送请求
-      const response = await this._request(fullUrl, { isTest });
-      
-      if (!response || !response.content) {
-        throw new Error('获取章节内容页失败');
-      }
-      
-      // 提取章节标题
-      let title = '';
-      try {
-        title = response.$('title').text().trim();
-        
-        // 尝试从标题中提取章节名
-        const titleParts = title.split(/[-_|]/);
-        if (titleParts.length > 1) {
-          title = titleParts[0].trim();
-        }
-        
-        // 如果标题太长或包含网站名，尝试寻找页面中的h1或h2
-        if (title.length > 50 || title.includes('小说') || title.includes('网')) {
-          const h1 = response.$('h1').first().text().trim();
-          if (h1) {
-            title = h1;
-          } else {
-            const h2 = response.$('h2').first().text().trim();
-            if (h2) {
-              title = h2;
-            }
-          }
-        }
-      } catch (error) {
-        if (isTest) {
-          logger.warn(`提取章节标题失败: ${error.message}`);
-        }
-        title = '未知章节';
-      }
-      
-      // 提取章节内容
-      let content = '';
-      try {
-        // 使用选择器提取内容
-        if (contentSelector.includes('##')) {
-          // 处理带正则替换的选择器
-          const [selector, ...regexParts] = contentSelector.split('##');
-          let extractedContent = this._extract(response.$, response.dom, selector.trim(), fullUrl);
-          
-          if (extractedContent) {
-            // 应用正则替换
-            for (let i = 0; i < regexParts.length; i += 2) {
-              try {
-                const pattern = regexParts[i];
-                const replacement = regexParts[i+1] || '';
-                const regex = new RegExp(pattern, 'g');
-                extractedContent = extractedContent.replace(regex, replacement);
-              } catch (err) {
-                logger.error(`正则替换失败: ${regexParts[i]} -> ${regexParts[i+1]}`, err);
-              }
-            }
-            
-            content = extractedContent;
-          }
-        } else {
-          content = this._extract(response.$, response.dom, contentSelector, fullUrl);
-        }
-        
-        // 如果内容是数组（多个匹配元素），将它们合并
-        if (Array.isArray(content)) {
-          content = content.join('\n\n');
-        }
-        
-        // 如果未找到内容，尝试常见的选择器
-        if (!content) {
-          const commonSelectors = [
-            '#content', '.content', '.article-content', '.chapter-content', '.text-content', '.article',
-            'article', 'main', '.main-content', '.entry-content', '#chapter-content'
-          ];
-          
-          for (const selector of commonSelectors) {
-            try {
-              const extractedContent = response.$(selector).html();
-              if (extractedContent && extractedContent.length > 200) {
-                content = extractedContent;
-                break;
-              }
-            } catch (error) {
-              // 忽略错误，继续尝试下一个选择器
-              continue;
-            }
-          }
-        }
-      } catch (error) {
-        if (isTest) {
-          logger.error(`提取章节内容失败: ${error.message}`);
-        }
-        throw new Error(`提取章节内容失败: ${error.message}`);
-      }
-      
-      if (!content) {
-        throw new Error('未找到章节内容');
-      }
-      
-      // 检查是否有下一页
-      let nextPageUrl = null;
-      if (nextPageSelector) {
-        try {
-          const nextUrl = this._extract(response.$, response.dom, nextPageSelector, fullUrl);
-          if (nextUrl && nextUrl !== fullUrl) {
-            nextPageUrl = this._resolveUrl(nextUrl, fullUrl);
-          }
-        } catch (error) {
-          if (isTest) {
-            logger.warn(`提取下一页URL失败: ${error.message}`);
-          }
-        }
-      }
-      
-      // 如果有下一页，递归获取下一页内容
-      if (nextPageUrl) {
-        if (isTest) {
-          logger.info(`发现下一页: ${nextPageUrl}`);
-        }
-        
-        try {
-          const nextPageResult = await this.getChapterContent(nextPageUrl, isTest);
-          
-          // 合并内容
-          content += '\n\n' + nextPageResult.content;
-          
-          if (isTest) {
-            logger.info('已合并下一页内容');
-          }
-        } catch (error) {
-          if (isTest) {
-            logger.warn(`获取下一页内容失败: ${error.message}`);
-          }
-        }
-      }
-      
-      // 清理内容
-      content = this._cleanContent(content);
-      
-      if (isTest) {
-        logger.info(`提取章节内容成功，长度: ${content.length}`);
-        if (content.length > 0) {
-          // 在测试模式下，输出内容的一小部分
-          const preview = content.substring(0, 200);
-          logger.info(`内容预览: ${preview}...`);
-        }
-      }
-      
-      return {
-        title,
-        content,
-        url: fullUrl,
-        nextPageUrl
-      };
-    } catch (error) {
-      if (isTest) {
-        logger.error(`获取章节内容失败: ${url}, 错误: ${error.message}`);
-      }
-      throw error;
-    }
-  }
-  
-  /**
-   * 清理章节内容
-   * @param {string} content 原始内容
-   * @returns {string} 清理后的内容
-   * @private
-   */
-  _cleanContent(content) {
-    if (!content) return '';
-    
-    // 替换HTML标签为换行符
-    content = content.replace(/<\/?(p|br|div)[^>]*>/gi, '\n');
-    
-    // 去除其他HTML标签
-    content = content.replace(/<[^>]+>/g, '');
-    
-    // 解码HTML实体
-    content = content.replace(/&nbsp;/g, ' ')
-                     .replace(/&lt;/g, '<')
-                     .replace(/&gt;/g, '>')
-                     .replace(/&amp;/g, '&')
-                     .replace(/&quot;/g, '"')
-                     .replace(/&#39;/g, "'");
-    
-    // 去除多余空行
-    content = content.replace(/\n{3,}/g, '\n\n');
-    
-    // 去除常见的广告文本
-    const adPatterns = [
-      /温馨提示：方便下次阅读，可以点击.*收藏/,
-      /[（(]?推荐地址：.*[）)]?/,
-      /[（(]?本文来自.*[）)]?/,
-      /喜欢.*请大家收藏/,
-      /更新最快的小说网站/,
-      /找本书的.*最新章节/,
-      /本章未完.*请翻页/,
-      /注册会员.*章节/,
-      /如果觉得好看.*收藏/,
-      /记住本站的网址.*/,
-      /请记住本书首发域名.*/,
-      /请使用访问本站/,
-      /如果您觉得网站好看.*/,
-      /如果被章节内容错误/,
-      /^http:\/\//,
-      /^在线阅读/,
-      /请记住本站域名/,
-      /本站网址：/,
-      /小说更新最快/,
-      /百度搜索.*最新章节/,
-      /【完结】/
-    ];
-    
-    for (const pattern of adPatterns) {
-      content = content.replace(pattern, '');
-    }
-    
-    // 去除段落前后空白
-    content = content.split('\n')
-                     .map(line => line.trim())
-                     .filter(line => line)
-                     .join('\n\n');
-    
-    return content;
   }
 }
 
