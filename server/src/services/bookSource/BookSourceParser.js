@@ -1745,6 +1745,10 @@ class BookSourceParser {
       if (this.bookSource.ruleSearchName && !this.bookSource.search.name) {
         this.bookSource.search.name = this.bookSource.ruleSearchName;
         if (isTest) {
+          logger.info(`[已知问题修复] 映射ruleSearchName -> search.name: ${this.bookSource.ruleSearchName}`);
+        }
+      }
+      
       // 确保必要的字段存在
       if (!this.bookSource.search) {
         this.bookSource.search = {};
@@ -2420,5 +2424,4 @@ class BookSourceParser {
   }
 }
 
-module.exports = BookSourceParser; 
 module.exports = BookSourceParser; 
