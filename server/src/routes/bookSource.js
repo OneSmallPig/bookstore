@@ -20,6 +20,7 @@ router.get('/sources/:name', bookSourceController.getSourceByName);
 router.post('/sources', bookSourceController.addOrUpdateSource);
 router.delete('/sources/:name', bookSourceController.deleteSource);
 router.put('/sources/:name/enabled', bookSourceController.setSourceEnabled);
+router.post('/toggle', bookSourceController.toggleSource);
 router.post('/sources/import', bookSourceController.importSources);
 router.post('/sources/batch-import', bookSourceController.batchImportSources);
 router.get('/sources/import-tasks/:taskId', bookSourceController.getImportTaskProgress);

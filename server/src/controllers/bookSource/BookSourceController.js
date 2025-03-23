@@ -253,6 +253,58 @@ class BookSourceController {
   }
 
   /**
+   * 切换书源状态（启用/禁用）
+   * @param {Object} req 请求对象
+   * @param {Object} res 响应对象
+   */
+  async toggleSource(req, res) {
+    try {
+      const { name, enabled } = req.body;
+      
+      if (!name) {
+        return res.status(400).json({
+          success: false,
+          message: '必须提供书源名称'
+        });
+      }
+      
+      if (typeof enabled !== 'boolean') {
+        return res.status(400).json({
+          success: false,
+          message: 'enabled必须是一个布尔值'
+        });
+      }
+      
+      // 确保书源管理器已初始化
+      if (!bookSourceManager.initialized) {
+        await bookSourceManager.initialize();
+      }
+      
+      const source = await bookSourceManager.setSourceEnabled(name, enabled);
+      
+      if (!source) {
+        return res.status(404).json({
+          success: false,
+          message: `未找到书源: ${name}`
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: `书源 ${name} 已${enabled ? '启用' : '禁用'}`,
+        data: source
+      });
+    } catch (error) {
+      logger.error(`切换书源状态失败`, error);
+      res.status(500).json({
+        success: false,
+        message: '切换书源状态失败',
+        error: error.message
+      });
+    }
+  }
+
+  /**
    * 导入书源
    * @param {Object} req 请求对象
    * @param {Object} res 响应对象

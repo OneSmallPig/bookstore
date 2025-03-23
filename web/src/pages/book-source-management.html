@@ -2092,22 +2092,31 @@
 
       // 循环添加每个书源
       sources.forEach(source => {
-        const isEnabled = source.enable !== false;
+        // 规范化书源数据以确保状态一致性
+        // 后端返回数据中使用enabled，但旧版数据可能使用enable
+        const sourceData = {...source};
+        
+        // 统一使用enabled属性
+        if ('enable' in sourceData && !('enabled' in sourceData)) {
+          sourceData.enabled = sourceData.enable;
+        }
+        
+        const isEnabled = sourceData.enabled !== false;
         const statusColor = isEnabled ? 'text-green-600' : 'text-gray-400';
         const statusText = isEnabled ? '启用' : '停用';
         
         const sourceElement = document.createElement('div');
         sourceElement.className = 'source-item grid grid-cols-12 gap-2 mb-2 px-3 py-2 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer transition-colors';
-        sourceElement.setAttribute('data-name', source.name);
+        sourceElement.setAttribute('data-name', sourceData.name);
         sourceElement.setAttribute('data-enabled', isEnabled.toString());
         
         sourceElement.innerHTML = `
           <div class="col-span-1 flex items-center">
             <input type="checkbox" class="source-checkbox w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
           </div>
-          <div class="col-span-3 truncate" title="${source.name}">${source.name}</div>
-          <div class="col-span-2 truncate" title="${source.group || '未分组'}">${source.group || '未分组'}</div>
-          <div class="col-span-4 truncate" title="${source.url || ''}">${source.url || ''}</div>
+          <div class="col-span-3 truncate" title="${sourceData.name}">${sourceData.name}</div>
+          <div class="col-span-2 truncate" title="${sourceData.group || '未分组'}">${sourceData.group || '未分组'}</div>
+          <div class="col-span-4 truncate" title="${sourceData.url || ''}">${sourceData.url || ''}</div>
           <div class="col-span-2 flex items-center space-x-2">
             <span class="${statusColor}">${statusText}</span>
             <div class="flex space-x-1 ml-auto">
@@ -2871,8 +2880,8 @@
         
         if (!confirmed) return;
         
-        // 显示加载提示
-        showToast('正在处理...', 'info', 0);
+        // 显示加载提示并保存toastId
+        const loadingToastId = showToast('正在处理...', 'info', 0);
         
         // 创建所有请求的Promise
         const promises = sourceNames.map(sourceName => 
@@ -2894,6 +2903,9 @@
         
         // 等待所有请求完成
         await Promise.all(promises);
+        
+        // 手动关闭加载提示
+        removeToast(loadingToastId);
         
         // 重新加载书源列表
         await loadBookSources();
@@ -2926,8 +2938,8 @@
         
         if (!confirmed) return;
         
-        // 显示加载提示
-        showToast('正在处理...', 'info', 0);
+        // 显示加载提示并保存toastId
+        const loadingToastId = showToast('正在处理...', 'info', 0);
         
         // 创建所有请求的Promise
         const promises = sourceNames.map(sourceName => 
@@ -2949,6 +2961,9 @@
         
         // 等待所有请求完成
         await Promise.all(promises);
+        
+        // 手动关闭加载提示
+        removeToast(loadingToastId);
         
         // 重新加载书源列表
         await loadBookSources();
@@ -3343,8 +3358,8 @@
           throw new Error('未找到认证令牌');
         }
         
-        // 显示加载提示
-        showToast(`正在${enabled ? '启用' : '禁用'}书源...`, 'info', 0);
+        // 显示加载提示并保存toastId以便后续关闭
+        const loadingToastId = showToast(`正在${enabled ? '启用' : '禁用'}书源...`, 'info', 0);
         
         // 发送请求
         const response = await fetch(`/api/booksource/toggle`, {
@@ -3367,6 +3382,9 @@
         if (!data.success) {
           throw new Error(data.message || `${enabled ? '启用' : '禁用'}书源失败`);
         }
+        
+        // 手动关闭加载提示
+        removeToast(loadingToastId);
         
         // 重新加载书源列表
         await loadBookSources();
