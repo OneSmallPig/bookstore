@@ -14,6 +14,15 @@ router.get('/sources/group/:group', BookSourceController.getSourcesByGroup);
 // 获取指定名称的书源
 router.get('/sources/:name', BookSourceController.getSourceByName);
 
+// 测试单个书源
+router.post('/test', BookSourceController.testBookSource);
+
+// 批量测试书源
+router.post('/batch-test', BookSourceController.batchTestBookSources);
+
+// 获取批量测试进度
+router.get('/batch-test/:taskId', BookSourceController.getBatchTestProgress);
+
 // 以下操作需要认证
 router.use(authenticate);
 

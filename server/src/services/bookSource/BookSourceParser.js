@@ -1690,6 +1690,56 @@ class BookSourceParser {
     if (!this.bookSource) return;
     
     try {
+      // 确保必要的字段存在
+      if (!this.bookSource.search) {
+        this.bookSource.search = {};
+      }
+      
+      if (!this.bookSource.chapters) {
+        this.bookSource.chapters = {};
+      }
+      
+      if (!this.bookSource.content) {
+        this.bookSource.content = {};
+      }
+      
+      // 修复旧格式的字段映射到新格式
+      // 搜索字段映射
+      if (this.bookSource.searchList && !this.bookSource.search.list) {
+        this.bookSource.search.list = this.bookSource.searchList;
+        if (isTest) {
+          logger.info(`[已知问题修复] 映射searchList -> search.list: ${this.bookSource.searchList}`);
+        }
+      }
+      
+      if (this.bookSource.searchName && !this.bookSource.search.name) {
+        this.bookSource.search.name = this.bookSource.searchName;
+        if (isTest) {
+          logger.info(`[已知问题修复] 映射searchName -> search.name: ${this.bookSource.searchName}`);
+        }
+      }
+      
+      if (this.bookSource.searchAuthor && !this.bookSource.search.author) {
+        this.bookSource.search.author = this.bookSource.searchAuthor;
+        if (isTest) {
+          logger.info(`[已知问题修复] 映射searchAuthor -> search.author: ${this.bookSource.searchAuthor}`);
+        }
+      }
+      
+      if (this.bookSource.searchDetail && !this.bookSource.search.detail) {
+        this.bookSource.search.detail = this.bookSource.searchDetail;
+        if (isTest) {
+          logger.info(`[已知问题修复] 映射searchDetail -> search.detail: ${this.bookSource.searchDetail}`);
+        }
+      }
+      
+      if (this.bookSource.searchUrl && !this.bookSource.search.url) {
+        this.bookSource.search.url = this.bookSource.searchUrl;
+        if (isTest) {
+          logger.info(`[已知问题修复] 映射searchUrl -> search.url: ${this.bookSource.searchUrl}`);
+        }
+      }
+      
       // 修复错误的URL
       if (this.bookSource.url && this.bookSource.url.includes('ixs5200.com')) {
         const oldUrl = this.bookSource.url;
@@ -1747,19 +1797,6 @@ class BookSourceParser {
         if (isTest) {
           logger.info(`[已知问题修复] 映射ruleSearchName -> search.name: ${this.bookSource.ruleSearchName}`);
         }
-      }
-      
-      // 确保必要的字段存在
-      if (!this.bookSource.search) {
-        this.bookSource.search = {};
-      }
-      
-      if (!this.bookSource.chapters) {
-        this.bookSource.chapters = {};
-      }
-      
-      if (!this.bookSource.content) {
-        this.bookSource.content = {};
       }
     } catch (error) {
       if (isTest) {
