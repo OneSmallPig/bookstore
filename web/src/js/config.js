@@ -32,6 +32,7 @@ const CACHE_KEYS = {
   AUTH_TOKEN: 'bookstore_auth',
   RECOMMENDED_BOOKS: 'bookstore_recommended_books',
   POPULAR_BOOKS: 'bookstore_popular_books',
+  POPULAR_SEARCHES: 'bookstore_popular_searches',
   CACHE_TIMESTAMP: 'bookstore_cache_timestamp',
   USER_PREFERENCES: 'bookstore_user_preferences'
 };

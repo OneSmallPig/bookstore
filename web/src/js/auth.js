@@ -93,8 +93,8 @@ export function isLoggedIn() {
 export function saveAuth(user, token, expiresIn = 86400) {
   try {
     // 计算过期时间
-    const expiry = new Date();
-    expiry.setSeconds(expiry.getSeconds() + expiresIn);
+    const now = new Date();
+    const expiry = new Date(now.getTime() + expiresIn * 1000);
     
     // 保存认证信息
     const authData = {
@@ -105,10 +105,30 @@ export function saveAuth(user, token, expiresIn = 86400) {
     
     localStorage.setItem(AUTH_KEY, JSON.stringify(authData));
     
+    // 清除缓存数据，以便获取新用户的个性化推荐
+    const cachesToClear = [
+      'bookstore_recommended_books',
+      'bookstore_popular_books',
+      'bookstore_popular_searches',
+      'bookstore_cache_timestamp'
+    ];
+    
+    cachesToClear.forEach(cacheKey => {
+      localStorage.removeItem(cacheKey);
+    });
+    
+    console.log('认证信息已保存，所有缓存已清除');
+    
+    // 更新UI
+    updateAuthUI();
+    
     // 触发登录事件
     window.dispatchEvent(new CustomEvent('auth:login', { detail: { user } }));
+    
+    return true;
   } catch (error) {
     console.error('保存认证信息失败:', error);
+    return false;
   }
 }
 
@@ -151,29 +171,44 @@ export async function register(username, email, password) {
 }
 
 /**
- * 用户登出
+ * 退出登录
  */
 export function logout() {
   try {
-    // 清除本地存储中的认证信息
+    // 清除认证信息
     localStorage.removeItem(AUTH_KEY);
     
-    // 触发登出事件
-    window.dispatchEvent(new CustomEvent('auth:logout'));
+    // 清除缓存数据
+    const cachesToClear = [
+      'bookstore_recommended_books',
+      'bookstore_popular_books',
+      'bookstore_popular_searches',
+      'bookstore_cache_timestamp'
+    ];
     
-    // 重定向到登录页面
-    // 检查当前路径，确定正确的登录页面路径
-    const currentPath = window.location.pathname;
+    cachesToClear.forEach(cacheKey => {
+      localStorage.removeItem(cacheKey);
+    });
     
-    if (currentPath.includes('/src/pages/')) {
-      // 如果当前在pages目录下，使用相对路径
-      window.location.href = 'login.html';
+    console.log('用户已退出登录，所有缓存已清除');
+    
+    // 更新UI
+    updateAuthUI();
+    
+    // 如果在需要登录的页面，重定向到首页
+    const privatePaths = [
+      '/profile.html',
+      '/bookshelf.html',
+    ];
+    
+    if (privatePaths.some(path => window.location.pathname.includes(path))) {
+      window.location.href = '/';
     } else {
-      // 如果不在pages目录下，使用带目录的路径
-      window.location.href = '/src/pages/login.html';
+      // 刷新当前页面以更新状态
+      window.location.reload();
     }
   } catch (error) {
-    console.error('登出失败:', error);
+    console.error('退出登录失败:', error);
   }
 }
 

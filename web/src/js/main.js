@@ -4,11 +4,19 @@ import '../css/styles.css';
 console.log('main.js 文件已加载');
 
 // 导入API服务
-import { userApi, bookApi, bookshelfApi, communityApi } from './api.js';
+import {
+  auth,
+  bookApi,
+  bookshelfApi,
+  communityApi,
+  aiApi
+} from './api.js';
 import { initAuthListeners, isLoggedIn, requireAuth } from './auth.js';
 import { showToast } from './utils.js';
 // 导入书籍卡片组件
 import BookCard from './components/BookCard.js';
+// 导入配置
+import config from './config.js';
 
 console.log('API服务已导入');
 
@@ -116,26 +124,459 @@ document.addEventListener('DOMContentLoaded', () => {
 // 智能搜索功能
 function initSearchPage() {
   const searchForm = document.querySelector('.search-form');
-  if (searchForm) {
-    searchForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const query = searchForm.querySelector('input').value.trim();
-      if (query) {
-        // 显示加载状态
-        showLoadingState();
+  if (!searchForm) return; // 不在搜索页面，直接返回
+  
+  console.log('初始化搜索页面...');
+  
+  // 测试API连接
+  testApiConnection();
+  
+  // 加载热门搜索
+  loadPopularSearches();
+  
+  // 初始化搜索示例按钮
+  initSearchExamples();
+  
+  // 添加搜索表单事件监听
+  searchForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const query = searchForm.querySelector('input').value.trim();
+    if (query) {
+      // 显示加载状态
+      showLoadingState();
+      
+      try {
+        // 调用API搜索书籍
+        const results = await bookApi.searchBooks(query);
+        displaySearchResults(results);
+      } catch (error) {
+        showErrorMessage('搜索失败，请稍后再试');
+      } finally {
+        hideLoadingState();
+      }
+    }
+  });
+  
+  // 初始时加载AI推荐书籍（直接进入页面时）
+  loadInitialAIRecommendations();
+}
+
+// 测试API连接
+async function testApiConnection() {
+  try {
+    console.log('测试API连接...');
+    const url = `${config.api.baseUrl}/ai/test?time=${Date.now()}`;
+    console.log('测试URL:', url);
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    console.log('API测试结果:', data);
+    return data;
+  } catch (error) {
+    console.error('API测试失败:', error);
+    return null;
+  }
+}
+
+// 加载热门搜索
+async function loadPopularSearches() {
+  try {
+    const initialResultsContainer = document.querySelector('.initial-results .grid');
+    if (!initialResultsContainer) return;
+    
+    console.log('开始加载热门搜索数据...');
+    
+    // 显示加载状态 - 使用统一的加载动画
+    showLoadingState(initialResultsContainer, 'AI正在为您推荐热门搜索...');
+    
+    // 检查缓存
+    const cachedData = checkPopularSearchesCache();
+    if (cachedData) {
+      console.log('从缓存中获取热门搜索数据');
+      renderBooks(cachedData, initialResultsContainer);
+      return;
+    }
+    
+    // 尝试从API获取数据
+    try {
+      console.log('尝试从API获取热门搜索数据');
+      const response = await aiApi.getPopularSearches({ limit: 3 });
+      
+      if (response && response.data && response.data.length > 0) {
+        // 缓存结果
+        savePopularSearchesToCache(response.data);
         
-        try {
-          // 调用API搜索书籍
-          const results = await bookApi.searchBooks(query);
-          displaySearchResults(results);
-        } catch (error) {
-          showErrorMessage('搜索失败，请稍后再试');
-        } finally {
-          hideLoadingState();
+        // 渲染结果
+        renderBooks(response.data, initialResultsContainer);
+        return;
+      }
+    } catch (apiError) {
+      console.error('API获取热门搜索失败:', apiError);
+    }
+    
+    // 如果API调用失败，使用本地默认数据
+    console.log('使用默认热门搜索数据');
+    const mockData = getDefaultPopularSearches();
+    renderBooks(mockData, initialResultsContainer);
+    
+  } catch (error) {
+    console.error('加载热门搜索失败:', error);
+    const initialResultsContainer = document.querySelector('.initial-results .grid');
+    if (initialResultsContainer) {
+      initialResultsContainer.innerHTML = '<div class="col-span-3 text-center py-8 text-red-500">加载热门搜索失败，请稍后再试</div>';
+    }
+  }
+}
+
+// 获取默认热门搜索数据
+function getDefaultPopularSearches() {
+  return [
+    {
+      id: 'default-book-1',
+      title: '深度学习',
+      author: '伊恩·古德费洛',
+      description: '全球知名人工智能专家联合创作，系统介绍深度学习基础理论和前沿进展。',
+      cover: 'https://img3.doubanio.com/view/subject/s/public/s29724111.jpg',
+      rating: 4.9,
+      categories: ['计算机科学', '人工智能', '机器学习'],
+      popularity: 98
+    },
+    {
+      id: 'default-book-2',
+      title: '人类简史',
+      author: '尤瓦尔·赫拉利',
+      description: '从认知革命、农业革命、科学革命到人工智能，重新审视人类发展历程。',
+      cover: 'https://img2.doubanio.com/view/subject/s/public/s27814883.jpg',
+      rating: 4.7,
+      categories: ['历史', '人类学', '哲学'],
+      popularity: 96
+    },
+    {
+      id: 'default-book-3',
+      title: '未来简史',
+      author: '尤瓦尔·赫拉利',
+      description: '《人类简史》作者新作，对人类未来的大胆预测与思考，探索科技与人类意识的边界。',
+      cover: 'https://img9.doubanio.com/view/subject/s/public/s29287103.jpg',
+      rating: 4.6,
+      categories: ['未来学', '科技', '哲学'],
+      popularity: 92
+    }
+  ];
+}
+
+// 检查热门搜索缓存
+function checkPopularSearchesCache() {
+  try {
+    // 获取缓存数据
+    const cachedData = localStorage.getItem(config.cache.keys.POPULAR_SEARCHES);
+    if (!cachedData) return null;
+    
+    const { timestamp, userId, data } = JSON.parse(cachedData);
+    
+    // 检查缓存是否过期（默认1小时）
+    const now = Date.now();
+    if (now - timestamp > config.cache.duration) {
+      console.log('热门搜索缓存已过期');
+      return null;
+    }
+    
+    // 检查用户ID是否匹配（如果已登录）
+    const token = getToken();
+    if (token) {
+      try {
+        const decoded = JSON.parse(atob(token.split('.')[1]));
+        const currentUserId = decoded.userId || decoded.id;
+        
+        if (userId && currentUserId && userId !== currentUserId) {
+          console.log('用户已更换，热门搜索缓存无效');
+          return null;
         }
+      } catch (e) {
+        console.error('解析token失败:', e);
+      }
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('检查热门搜索缓存失败:', error);
+    return null;
+  }
+}
+
+// 加载初始AI推荐书籍
+async function loadInitialAIRecommendations() {
+  try {
+    console.log('正在加载初始AI推荐书籍...');
+    
+    const initialResultsContainer = document.querySelector('.initial-results .grid');
+    if (!initialResultsContainer) {
+      console.error('找不到初始结果容器');
+      return;
+    }
+    
+    // 显示加载状态 - 已经在HTML中设置了加载动画，这里不需要重复设置
+    
+    try {
+      // 尝试从API获取AI推荐书籍
+      console.log('请求AI推荐书籍...');
+      const response = await aiApi.getRecommendations({ limit: 6 });
+      
+      if (response && response.data && response.data.length > 0) {
+        console.log('成功获取AI推荐书籍:', response.data);
+        // 渲染结果
+        renderBooks(response.data, initialResultsContainer);
+        return;
+      } else {
+        console.warn('API返回的推荐书籍数据为空');
+      }
+    } catch (apiError) {
+      console.error('获取AI推荐书籍失败:', apiError);
+    }
+    
+    // 如果API调用失败，尝试使用热门搜索数据
+    console.log('尝试加载热门搜索数据作为备用...');
+    loadPopularSearches();
+    
+  } catch (error) {
+    console.error('加载初始AI推荐书籍失败:', error);
+    // 出错时也尝试加载热门搜索
+    loadPopularSearches();
+  }
+}
+
+// 初始化搜索示例按钮
+function initSearchExamples() {
+  const searchExamples = document.querySelectorAll('.search-example');
+  const searchInput = document.querySelector('.search-input');
+  
+  if (!searchExamples.length || !searchInput) {
+    console.warn('搜索示例按钮或搜索输入框不存在');
+    return;
+  }
+  
+  console.log('初始化搜索示例按钮...');
+  
+  searchExamples.forEach(button => {
+    button.addEventListener('click', () => {
+      // 获取示例文本
+      const exampleText = button.textContent.trim();
+      
+      // 填充到搜索框
+      searchInput.value = exampleText;
+      
+      // 让搜索框获取焦点
+      searchInput.focus();
+      
+      // 自动触发搜索（可选）
+      // document.querySelector('.search-form button[type="submit"]').click();
+    });
+  });
+}
+
+// 保存热门搜索到缓存
+function savePopularSearchesToCache(data) {
+  try {
+    // 当前用户ID（如果已登录）
+    const currentUser = getToken() ? JSON.parse(localStorage.getItem(config.cache.keys.AUTH_TOKEN)).userId : null;
+    
+    // 缓存数据
+    const cacheData = {
+      timestamp: Date.now(),
+      userId: currentUser,
+      data: data
+    };
+    
+    // 保存到localStorage
+    localStorage.setItem(config.cache.keys.POPULAR_SEARCHES, JSON.stringify(cacheData));
+    
+    console.log('热门搜索数据已缓存');
+  } catch (error) {
+    console.error('保存热门搜索缓存失败:', error);
+  }
+}
+
+// 渲染书籍列表
+function renderBooks(books, container) {
+  console.log('渲染书籍列表:', books);
+  
+  if (!books || books.length === 0) {
+    container.innerHTML = '<div class="col-span-3 text-center py-8 text-gray-500">暂无热门搜索数据</div>';
+    return;
+  }
+  
+  // 清空容器
+  container.innerHTML = '';
+  
+  // 渲染每本书
+  books.forEach((book, index) => {
+    console.log('渲染书籍:', book.title);
+    
+    // 创建卡片容器
+    const bookCardWrapper = document.createElement('div');
+    bookCardWrapper.className = 'book-card-wrapper transform transition duration-500';
+    bookCardWrapper.style.opacity = '0';
+    bookCardWrapper.style.transform = 'translateY(20px)';
+    bookCardWrapper.dataset.id = book.id;
+    
+    // 为每本书设置不同的动画延迟
+    setTimeout(() => {
+      bookCardWrapper.style.opacity = '1';
+      bookCardWrapper.style.transform = 'translateY(0)';
+    }, 100 * index);
+    
+    // 处理rating可能为空的情况
+    const rating = book.rating || 0;
+    
+    // 处理标签/分类
+    const categories = book.tags || book.categories || [];
+    const categoryName = categories.length > 0 ? categories[0] : '未分类';
+    const categoryColor = getBgColorByCategory(categoryName);
+    
+    // 处理简介，增加字数限制
+    const description = book.description 
+      ? (book.description.length > 120 ? book.description.substring(0, 120) + '...' : book.description) 
+      : '暂无简介';
+    
+    // 获取封面图片URL，如果没有则使用默认图片
+    const coverImage = book.coverImage || book.cover || '../images/default-book-cover.svg';
+    
+    // 创建书籍卡片HTML
+    bookCardWrapper.innerHTML = `
+      <div class="book-card relative overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-all duration-300 bg-white">
+        <div class="book-cover-container relative pt-[140%] overflow-hidden">
+          <img 
+            src="${coverImage}" 
+            alt="${book.title}" 
+            class="book-cover absolute top-0 left-0 w-full h-full object-cover transition-transform duration-300"
+            onerror="this.onerror=null; this.src='../images/default-book-cover.svg';"
+          >
+          <div class="absolute top-2 right-2 z-10">
+            <span class="book-tag inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${categoryColor} text-white">
+              ${categoryName}
+            </span>
+          </div>
+        </div>
+        
+        <div class="book-info p-4">
+          <h3 class="info-title text-lg font-bold mb-1 truncate">${book.title}</h3>
+          <p class="info-author text-sm text-gray-600 mb-2">${book.author || '未知作者'}</p>
+          
+          <div class="info-rating flex items-center mb-2">
+            <div class="stars flex mr-1">
+              ${generateStarRating(rating)}
+            </div>
+            <span class="rating-value text-xs text-gray-500">${rating.toFixed(1)}</span>
+          </div>
+          
+          <div class="book-description relative">
+            <p class="text-sm text-gray-700 line-clamp-3">${description}</p>
+          </div>
+          
+          <div class="book-actions flex justify-between items-center mt-4">
+            <button class="read-btn px-4 py-1 rounded-full bg-blue-500 text-white text-sm hover:bg-blue-600 transition-colors">
+              阅读
+            </button>
+            <button class="add-btn px-3 py-1 rounded-full bg-gray-200 text-gray-700 text-sm hover:bg-gray-300 transition-colors" data-book-id="${book.id}">
+              加入书架
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // 添加到容器
+    container.appendChild(bookCardWrapper);
+  });
+  
+  // 添加点击事件
+  addBookCardListeners();
+  console.log('书籍列表渲染完成');
+}
+
+// 根据分类获取背景颜色
+function getBgColorByCategory(category) {
+  if (!category) return 'bg-blue-500';
+  
+  // 将category转为小写
+  const categoryLower = typeof category === 'string' ? category.toLowerCase() : '';
+  
+  // 根据类别返回不同的颜色
+  if (categoryLower.includes('小说') || categoryLower.includes('文学')) return 'bg-blue-500';
+  if (categoryLower.includes('历史') || categoryLower.includes('传记')) return 'bg-amber-500';
+  if (categoryLower.includes('科学') || categoryLower.includes('技术') || categoryLower.includes('计算机')) return 'bg-green-500';
+  if (categoryLower.includes('哲学') || categoryLower.includes('心理')) return 'bg-purple-500';
+  if (categoryLower.includes('艺术') || categoryLower.includes('设计')) return 'bg-pink-500';
+  if (categoryLower.includes('经济') || categoryLower.includes('管理')) return 'bg-cyan-500';
+  
+  // 默认颜色
+  return 'bg-blue-500';
+}
+
+// 添加书籍卡片事件监听
+function addBookCardListeners() {
+  // 为所有阅读按钮添加事件
+  document.querySelectorAll('.book-card .read-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const bookCard = btn.closest('.book-card-wrapper');
+      const bookId = bookCard ? bookCard.dataset.id : null;
+      
+      if (bookId) {
+        window.location.href = `book-detail.html?id=${bookId}`;
       }
     });
-  }
+  });
+  
+  // 为所有加入书架按钮添加事件
+  document.querySelectorAll('.book-card .add-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      
+      // 检查用户是否登录
+      if (!getAuthToken()) {
+        showLoginPrompt();
+        return;
+      }
+      
+      const bookCard = btn.closest('.book-card-wrapper');
+      const bookId = btn.dataset.bookId || (bookCard ? bookCard.dataset.id : null);
+      
+      if (!bookId) return;
+      
+      try {
+        // 设置按钮为加载状态
+        const originalText = btn.textContent;
+        btn.innerHTML = '<span class="loading-dots">...</span>';
+        btn.disabled = true;
+        
+        await bookshelfApi.addToBookshelf(bookId);
+        
+        // 更新按钮状态为成功
+        btn.textContent = '已在书架';
+        btn.disabled = true;
+        btn.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+        btn.classList.add('bg-green-500', 'text-white');
+        
+        showSuccessMessage('成功加入书架');
+      } catch (error) {
+        // 恢复按钮状态
+        btn.textContent = originalText;
+        btn.disabled = false;
+        showErrorMessage(error.message || '添加到书架失败');
+      }
+    });
+  });
+  
+  // 为整个卡片添加点击事件 - 跳转到详情页
+  document.querySelectorAll('.book-card-wrapper').forEach(card => {
+    card.addEventListener('click', () => {
+      const bookId = card.dataset.id;
+      if (bookId) {
+        window.location.href = `book-detail.html?id=${bookId}`;
+      }
+    });
+  });
 }
 
 // 初始化首页功能
@@ -1146,14 +1587,46 @@ function initCommunityPage() {
 }
 
 // 显示加载状态
-function showLoadingState() {
-  // 创建加载指示器
-  const loadingIndicator = document.createElement('div');
-  loadingIndicator.className = 'loading-indicator';
-  loadingIndicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 加载中...';
+function showLoadingState(container, message = '正在加载...') {
+  if (!container) return;
   
-  // 添加到页面
-  document.body.appendChild(loadingIndicator);
+  // 使用与首页完全一致的加载动画结构和样式
+  const isAI = message.includes('AI');
+  
+  container.innerHTML = `
+    <div class="loading-message">
+      <div class="loading-indicator${isAI ? ' ai' : ''}">
+        <svg class="loading-spinner" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+          <circle class="spinner-circle" cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3"></circle>
+        </svg>
+        <span>${message}</span>
+      </div>
+    </div>
+    <div class="book-card-skeleton">
+      <div class="skeleton-image"></div>
+      <div class="skeleton-title"></div>
+      <div class="skeleton-author"></div>
+      <div class="skeleton-tags"></div>
+    </div>
+    <div class="book-card-skeleton">
+      <div class="skeleton-image"></div>
+      <div class="skeleton-title"></div>
+      <div class="skeleton-author"></div>
+      <div class="skeleton-tags"></div>
+    </div>
+    <div class="book-card-skeleton">
+      <div class="skeleton-image"></div>
+      <div class="skeleton-title"></div>
+      <div class="skeleton-author"></div>
+      <div class="skeleton-tags"></div>
+    </div>
+    <div class="book-card-skeleton">
+      <div class="skeleton-image"></div>
+      <div class="skeleton-title"></div>
+      <div class="skeleton-author"></div>
+      <div class="skeleton-tags"></div>
+    </div>
+  `;
 }
 
 // 隐藏加载状态
@@ -1480,4 +1953,15 @@ window.applySorting = applySorting;
 // 确保在页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
   console.log('main.js DOMContentLoaded 事件触发');
-}); 
+});
+
+// 获取认证令牌
+function getToken() {
+  return localStorage.getItem(config.cache.keys.AUTH_TOKEN) ? 
+    JSON.parse(localStorage.getItem(config.cache.keys.AUTH_TOKEN)).token : null;
+}
+
+// 获取认证令牌（别名，与现有代码兼容）
+function getAuthToken() {
+  return getToken();
+} 

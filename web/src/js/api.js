@@ -15,6 +15,7 @@ function getToken() {
 // 通用请求函数
 async function request(endpoint, options = {}) {
   const url = `${config.api.baseUrl}${endpoint}`;
+  console.log(`开始请求: ${url}`, options);
   
   // 默认请求头
   const headers = {
@@ -28,11 +29,16 @@ async function request(endpoint, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
   
+  console.log(`请求头:`, headers);
+  
   try {
+    console.log(`执行fetch: ${url}`);
     const response = await fetch(url, {
       ...options,
       headers
     });
+    
+    console.log(`收到响应: ${url}, 状态:`, response.status);
     
     // 检查响应状态
     if (!response.ok) {
@@ -43,17 +49,21 @@ async function request(endpoint, options = {}) {
       }
       
       const errorData = await response.json();
+      console.error(`请求失败: ${url}`, errorData);
       throw new Error(errorData.message || '请求失败');
     }
     
     // 如果响应是204 No Content，直接返回true
     if (response.status === 204) {
+      console.log(`请求成功(无内容): ${url}`);
       return true;
     }
     
-    return await response.json();
+    const data = await response.json();
+    console.log(`请求成功: ${url}`, data);
+    return data;
   } catch (error) {
-    console.error('API请求错误:', error);
+    console.error('API请求错误:', url, error);
     throw error;
   }
 }
@@ -481,10 +491,35 @@ const communityApi = {
   }
 };
 
+// AI相关API
+const aiApi = {
+  // 获取推荐书籍
+  getRecommendations(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const queryString = queryParams ? `?${queryParams}` : '';
+    return request(`/ai/recommended${queryString}`);
+  },
+  
+  // 获取热门书籍
+  getPopularBooks(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const queryString = queryParams ? `?${queryParams}` : '';
+    return request(`/ai/popular${queryString}`);
+  },
+  
+  // 获取热门搜索
+  getPopularSearches(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const queryString = queryParams ? `?${queryParams}` : '';
+    return request(`/ai/popular-searches${queryString}`);
+  }
+};
+
 // 导出API
 export {
   userApi,
   bookApi,
   bookshelfApi,
-  communityApi
+  communityApi,
+  aiApi
 }; 
