@@ -236,7 +236,8 @@ a {
   width: 280px; /* 保留增加的卡片宽度 */
   margin: 0 auto;
   position: relative; /* 确保包装器有相对定位 */
-  overflow: hidden; /* 防止内容溢出 */
+  overflow: visible; /* 允许tooltip溢出 */
+  z-index: 10;
 }
 
 .book-card {
@@ -246,9 +247,9 @@ a {
   overflow: hidden;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   background-color: white;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.3s ease;
   cursor: pointer;
-  height: 400px;
+  height: 420px; /* 合适的高度 */
   position: relative;
   z-index: 1; /* 确保卡片在正常层级 */
   border: 1px solid #e5e7eb; /* 添加简单的边框 */
@@ -257,7 +258,7 @@ a {
 .book-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  /* 不添加边框变色效果 */
+  z-index: 20;
 }
 
 /* 书籍封面容器 */
@@ -266,56 +267,28 @@ a {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 1.25rem 0;
+  padding: 1.5rem 0;
   background-color: #f9f9f9;
+  min-height: 230px;
 }
 
 /* 书籍封面样式 */
 .book-cover {
-  width: 120px;
-  height: 160px;
+  width: 140px;
+  height: 180px;
   border-radius: 4px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: white;
-  overflow: hidden;
-  transition: transform 0.3s ease; /* 保留过渡效果 */
-}
-
-/* 悬停时封面放大效果 */
-.book-card:hover .book-cover {
-  transform: scale(1.05);
-}
-
-/* 封面图片 */
-.cover-image {
-  width: 100%;
-  height: 100%;
   object-fit: cover;
-}
-
-/* 标签样式 - 隐藏标签 */
-.book-tag {
-  display: none; /* 隐藏标签 */
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  background-color: #FF6B00;
-  color: white;
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  font-weight: 500;
-  z-index: 10;
+  transition: transform 0.3s ease;
 }
 
 /* 书籍信息区域 */
 .book-info {
-  padding: 0.5rem; /* 减小内边距，从0.75rem改为0.5rem */
-  border-bottom: 1px solid #f0f0f0;
+  padding: 0.75rem;
   text-align: center;
+  background-color: white;
+  z-index: 20;
+  position: relative;
 }
 
 .info-title {
@@ -325,18 +298,18 @@ a {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #1f2937; /* 保留加深标题颜色 */
-  transition: color 0.3s ease; /* 保留颜色过渡效果 */
+  color: #1f2937;
+  transition: color 0.3s ease;
 }
 
 .book-card:hover .info-title {
-  color: #3B82F6; /* 保留悬停时标题变为蓝色 */
+  color: #3B82F6;
 }
 
 .info-author {
   font-size: 0.875rem;
   color: #666;
-  margin-bottom: 0.25rem; /* 减小下边距，从0.5rem改为0.25rem */
+  margin-bottom: 0.25rem;
 }
 
 /* 评分容器 */
@@ -344,7 +317,7 @@ a {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 0.25rem; /* 减小下边距，从0.5rem改为0.25rem */
+  margin-bottom: 0.25rem;
 }
 
 /* 星星样式 */
@@ -371,8 +344,8 @@ a {
 
 /* 评分数值 */
 .rating-value {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 600;
   margin-left: 0.5rem;
   color: #333;
 }
@@ -393,47 +366,30 @@ a {
   border-radius: 9999px;
 }
 
-/* 书籍简介 */
-.book-description {
-  padding: 0.5rem; /* 减小内边距，从0.75rem改为0.5rem */
-  font-size: 0.875rem;
-  color: #666;
-  line-height: 1.5;
-  flex-grow: 1;
-  overflow-y: auto;
-  min-height: 120px; /* 增加最小高度，从80px改为120px */
-  max-height: 150px; /* 增加最大高度，从120px改为150px */
-  position: relative; /* 添加相对定位 */
-  margin-bottom: 50px; /* 为底部操作按钮留出空间 */
-}
-
-/* 书籍简介浮窗 - 完全重写 */
+/* 书籍简介浮窗 */
 .description-tooltip {
-  position: fixed; /* 使用固定定位而不是绝对定位 */
+  position: fixed;
   visibility: hidden;
   opacity: 0;
-  background-color: white;
-  width: 300px;
-  max-height: 300px;
+  background-color: #1f2937;
+  color: white;
+  width: 280px;
+  max-height: 200px;
   border-radius: 0.5rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
   padding: 1rem;
-  z-index: 9999; /* 确保在最上层 */
+  z-index: 9999;
   overflow-y: auto;
   font-size: 0.875rem;
-  color: #333;
   line-height: 1.6;
   text-align: left;
-  border: 1px solid #eaeaea;
   transition: opacity 0.3s, visibility 0.3s;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
-/* 显示浮窗的JS控制类 */
 .description-tooltip.show {
   visibility: visible;
   opacity: 1;
-  pointer-events: auto;
 }
 
 /* 操作按钮区域 */
@@ -441,19 +397,14 @@ a {
   display: flex;
   border-top: 1px solid #f0f0f0;
   margin-top: auto;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   background: white;
-  z-index: 2; /* 确保按钮在卡片内部，但高于其他内容 */
-  height: 50px; /* 固定高度 */
+  z-index: 20;
+  height: 48px;
 }
 
 /* 按钮样式 */
-.book-actions button,
-.book-actions .read-btn,
-.book-actions .add-btn {
+.book-actions button {
   flex: 1;
   padding: 0.75rem 0;
   background: transparent;
@@ -462,27 +413,22 @@ a {
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   display: block;
   text-align: center;
 }
 
-.book-actions .read-btn:hover,
-.book-actions .add-btn:hover,
 .book-actions button:hover {
   background-color: rgba(59, 130, 246, 0.1);
-  color: #2563eb; /* 保留悬停时颜色加深 */
-  font-weight: 600; /* 保留悬停时字体加粗 */
+  color: #2563eb;
 }
 
-.book-actions .add-btn.added,
-.book-actions button.added {
+.book-actions .add-btn.added {
   background-color: rgba(34, 197, 94, 0.1);
   color: #22C55E;
 }
 
-.book-actions .read-btn,
-.book-actions button:first-child {
+.book-actions .read-btn {
   border-right: 1px solid #f0f0f0;
 }
 
@@ -778,4 +724,429 @@ a {
   border-radius: 0.25rem;
   margin-left: 0.5rem;
   font-weight: 500;
+}
+
+/* 提高浮窗效果 */
+.book-description .group-hover\:block {
+  max-height: 300px;
+  overflow-y: auto;
+  width: 250px;
+  z-index: 50;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+.book-description:hover .group-hover\:block {
+  opacity: 1;
+  transform: translateY(0);
+  display: block !important; /* 确保悬停时显示 */
+}
+
+/* 滚动条样式 */
+.max-h-60::-webkit-scrollbar {
+  width: 4px;
+}
+
+.max-h-60::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.max-h-60::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.max-h-60::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* 确保书籍卡片内容居中 */
+.book-cover-container {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 动画效果 */
+.book-card {
+  transition: all 0.3s ease;
+}
+
+.book-card:hover {
+  transform: translateY(-5px);
+}
+
+/* 按钮样式 */
+.book-actions button {
+  transition: all 0.3s ease;
+}
+
+/* 加载指示器 */
+.loading-dots {
+  display: inline-block;
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+.loading-dots:after {
+  content: '...';
+  position: absolute;
+  animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+  0% { content: '.'; }
+  33% { content: '..'; }
+  66% { content: '...'; }
+}
+
+/* 黑色简介背景区域样式 */
+.bg-opacity-90 {
+  --tw-bg-opacity: 0.9;
+}
+
+.book-card .line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 修复卡片内部布局 */
+.book-card {
+  display: flex;
+  flex-direction: column;
+  height: 440px; /* 增加卡片高度以容纳简介区域 */
+  transition: all 0.3s ease;
+}
+
+.book-card:hover {
+  transform: translateY(-5px);
+}
+
+/* 确保信息区域在简介区域上方 */
+.book-card .book-info.relative.z-10 {
+  margin-top: auto; /* 自动计算边距，让信息区域位于底部 */
+  background-color: white;
+  border-radius: 0 0 0.5rem 0.5rem;
+  position: relative;
+  z-index: 20;
+}
+
+/* 按钮样式 */
+.book-actions button {
+  transition: all 0.3s ease;
+}
+
+/* 加载指示器 */
+.loading-dots {
+  display: inline-block;
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+.loading-dots:after {
+  content: '...';
+  position: absolute;
+  animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+  0% { content: '.'; }
+  33% { content: '..'; }
+  66% { content: '...'; }
+}
+
+/* 书籍卡片容器样式 */
+.book-results {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1.5rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .book-results {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .book-results {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* 书籍卡片样式 */
+.book-card {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  height: 420px; /* 增加高度容纳简介 */
+  width: 100%;
+  max-width: 240px; /* 设置固定最大宽度 */
+  margin: 0 auto; /* 居中显示 */
+  background-color: white;
+  color: #333;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.book-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+}
+
+.book-card-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 15px 0 0 0; /* 顶部保留内边距，左右和底部取消内边距 */
+  position: relative;
+}
+
+/* 书籍封面容器 */
+.book-cover-container {
+  height: 180px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px;
+  overflow: hidden;
+  position: relative;
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+/* 书籍封面图片 */
+.book-cover {
+  height: 180px;
+  width: 120px; /* 固定宽度 */
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); /* 增强阴影效果 */
+  background-color: #f3f4f6; /* 添加背景色，在图片加载过程中显示 */
+  display: block; /* 确保是块级元素 */
+  transition: transform 0.3s ease; /* 添加过渡效果 */
+}
+
+.book-card:hover .book-cover {
+  transform: scale(1.03); /* 悬停时略微放大封面 */
+}
+
+/* 书籍信息容器 */
+.book-info-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding-left: 15px;
+  padding-right: 15px;
+  flex: 1; /* 让信息容器占用可用空间 */
+}
+
+.book-title {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  max-height: 2.8em;
+  width: 100%;
+}
+
+.book-author {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #6b7280;
+  width: 100%;
+}
+
+/* 评分容器 */
+.book-rating-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.rating-stars {
+  color: #f59e0b;
+  font-size: 14px;
+  margin-right: 5px;
+}
+
+.rating-score {
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+/* 书籍简介 */
+.book-introduction {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  position: relative;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* 简介悬浮提示 */
+.tooltip {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+.tooltip .tooltip-text {
+  visibility: hidden;
+  width: 220px;
+  background-color: #333;
+  color: #fff;
+  text-align: left;
+  border-radius: 6px;
+  padding: 10px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -110px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.tooltip .tooltip-text::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #333 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* 操作按钮区域 */
+.book-actions {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0; /* 移除所有外边距 */
+  padding: 0; /* 移除内边距 */
+  margin-top: auto; /* 将按钮区域推到底部 */
+  border-top: 1px solid #eaeaea; /* 增加一个顶部边框分隔线 */
+}
+
+.btn {
+  flex: 1; /* 让按钮平均分配宽度 */
+  padding: 12px 0; /* 增加按钮高度 */
+  height: 48px; /* 确保足够高度 */
+  border-radius: 0; /* 移除圆角 */
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease; /* 平滑过渡效果 */
+  border: none;
+  text-decoration: none;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 阅读按钮 - 左侧 */
+.btn-read {
+  background-color: #2563eb;
+  color: white;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+  border-bottom-left-radius: 8px; /* 左下角圆角与卡片一致 */
+}
+
+.btn-read::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: 0.5s;
+  z-index: -1;
+}
+
+.btn-read:hover {
+  background-color: #1d4ed8; /* 稍微暗一点的蓝色 */
+  transform: translateY(-1px); /* 减少上移量 */
+  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.25);
+  color: #ffffff;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.btn-read:hover::before {
+  left: 100%;
+}
+
+.btn-read:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 3px rgba(37, 99, 235, 0.2);
+}
+
+/* 加入书架按钮 - 右侧 */
+.btn-add-shelf {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border-left: 1px solid #eaeaea; /* 添加左侧分隔线 */
+  transition: all 0.3s ease;
+  border-bottom-right-radius: 8px; /* 右下角圆角与卡片一致 */
+}
+
+.btn-add-shelf:hover {
+  background-color: #e5e7eb;
+  color: #1f2937;
+  transform: translateY(-1px); /* 悬停时轻微上移 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* 添加轻微阴影 */
+}
+
+.btn-add-shelf.added {
+  background-color: #dcfce7;
+  color: #15803d;
 } 
