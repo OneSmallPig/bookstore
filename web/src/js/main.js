@@ -2029,12 +2029,6 @@ function showLoadingState(container, message = '正在加载...') {
       <div class="skeleton-author"></div>
       <div class="skeleton-tags"></div>
     </div>
-    <div class="book-card-skeleton">
-      <div class="skeleton-image"></div>
-      <div class="skeleton-title"></div>
-      <div class="skeleton-author"></div>
-      <div class="skeleton-tags"></div>
-    </div>
   `;
 }
 
