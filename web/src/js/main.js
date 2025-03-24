@@ -5,7 +5,7 @@ console.log('main.js 文件已加载');
 
 // 导入API服务
 import {
-  auth,
+  userApi,
   bookApi,
   bookshelfApi,
   communityApi,
@@ -830,6 +830,19 @@ function initBookshelfPage() {
   
   console.log('初始化书架页面');
   
+  // 检查用户是否登录
+  const token = localStorage.getItem('bookstore_auth') ? 
+    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+  
+  if (!token) {
+    console.log('用户未登录，显示登录提示');
+    // 清空书架内容，防止显示默认内容
+    bookshelfContainer.innerHTML = '';
+    // 显示登录提示
+    showLoginPrompt();
+    return; // 终止函数执行
+  }
+  
   // 检查是否有bookshelf.js中的函数
   if (window.updateBookshelfDisplay) {
     console.log('使用bookshelf.js中的函数');
@@ -864,6 +877,15 @@ function initBookshelfSearch() {
   
   if (!searchInput || !searchButton) return;
   
+  // 检查用户是否登录 - 虽然此时页面应该已经重定向，但为了安全起见仍进行检查
+  const token = localStorage.getItem('bookstore_auth') ? 
+    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+  
+  if (!token) {
+    console.log('用户未登录，禁用书架搜索功能');
+    return; // 不添加搜索事件监听器
+  }
+  
   // 搜索按钮点击事件
   searchButton.addEventListener('click', () => {
     performBookshelfSearch(searchInput.value.trim());
@@ -879,6 +901,16 @@ function initBookshelfSearch() {
 
 // 执行书架搜索
 async function performBookshelfSearch(query) {
+  // 检查用户是否登录
+  const token = localStorage.getItem('bookstore_auth') ? 
+    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+  
+  if (!token) {
+    console.log('用户未登录，无法执行书架搜索');
+    showLoginPrompt();
+    return;
+  }
+  
   if (!query) {
     // 如果搜索词为空，显示所有书籍
     loadUserBookshelf();
@@ -889,7 +921,7 @@ async function performBookshelfSearch(query) {
     // 显示加载状态
     showLoadingState();
     
-    // 获取用户书架
+    // 调用API获取用户书架
     const bookshelfData = await bookshelfApi.getBookshelf();
     console.log('搜索获取到的书架数据:', JSON.stringify(bookshelfData, null, 2));
     
@@ -918,7 +950,7 @@ async function performBookshelfSearch(query) {
     updateBookshelfDisplay(filteredBooks, query);
   } catch (error) {
     console.error('搜索书架失败:', error);
-    showToast('搜索失败，请稍后再试', 'error');
+    showErrorMessage('搜索失败，请稍后再试');
   } finally {
     hideLoadingState();
   }
@@ -1782,6 +1814,15 @@ function initProfileButton() {
 
 // 初始化筛选和排序功能
 function initFilterAndSort() {
+  // 检查用户是否登录
+  const token = localStorage.getItem('bookstore_auth') ? 
+    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+  
+  if (!token) {
+    console.log('用户未登录，禁用筛选和排序功能');
+    return; // 不添加筛选和排序事件监听器
+  }
+  
   // 筛选按钮
   const filterButtons = document.querySelectorAll('.filter-btn');
   if (filterButtons.length > 0) {
@@ -1964,4 +2005,10 @@ function getToken() {
 // 获取认证令牌（别名，与现有代码兼容）
 function getAuthToken() {
   return getToken();
-} 
+}
+
+// 导出必要的函数给其他模块使用
+export {
+  loadUserBookshelf,
+  updateBookshelfStats
+};

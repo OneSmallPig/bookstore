@@ -8,7 +8,6 @@ import { showToast } from './utils.js';
 import { isLoggedIn } from './auth.js';
 import { 
   loadUserBookshelf, 
-  displayBookshelf, 
   updateBookshelfStats
 } from './main.js';
 
@@ -99,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   try {
     // 加载用户书架数据
-    const bookshelfData = await loadUserBookshelf();
+    const bookshelfData = await loadUserBookshelfData();
     if (bookshelfData) {
       currentBookshelfData = bookshelfData;
       
@@ -422,7 +421,7 @@ function showAddBookDialog() {
             button.disabled = true;
             
             // 重新加载书架数据
-            const newBookshelfData = await loadUserBookshelf();
+            const newBookshelfData = await loadUserBookshelfData();
             if (newBookshelfData) {
               currentBookshelfData = newBookshelfData;
               // 应用当前的过滤和排序
@@ -632,7 +631,7 @@ async function performBookshelfSearch(query) {
   if (!query) {
     // 如果搜索内容为空，重新加载书架数据并刷新页面
     try {
-      const bookshelfData = await loadUserBookshelf();
+      const bookshelfData = await loadUserBookshelfData();
       if (bookshelfData) {
         currentBookshelfData = bookshelfData;
         updateBookshelfDisplay(currentBookshelfData);
@@ -756,7 +755,7 @@ async function applySorting(sortValue) {
 }
 
 // 加载用户书架数据
-async function loadUserBookshelf() {
+async function loadUserBookshelfData() {
   try {
     // 首先尝试从API获取数据
     if (isLoggedIn()) {
@@ -932,7 +931,7 @@ function updateBookshelfDisplay(books, searchQuery = '') {
         if (searchInput) {
           searchInput.value = '';
           // 重新加载书架
-          loadUserBookshelf().then(data => {
+          loadUserBookshelfData().then(data => {
             if (data) {
               currentBookshelfData = data;
               updateBookshelfDisplay(currentBookshelfData);
@@ -1064,7 +1063,7 @@ function attachBookCardEventListeners() {
               bookCard.remove();
               
               // 重新加载书架
-              loadUserBookshelf().then(bookshelfData => {
+              loadUserBookshelfData().then(bookshelfData => {
                 if (bookshelfData) {
                   currentBookshelfData = bookshelfData;
                   // 更新统计数据
@@ -1172,15 +1171,6 @@ function checkEmptyState() {
   }
 }
 
-// 显示用户书架
-function displayBookshelf(bookshelfData) {
-  // 确保我们正确处理bookshelf数据
-  const books = bookshelfData.bookshelf || bookshelfData || [];
-  
-  // 使用updateBookshelfDisplay函数来保持一致的布局
-  updateBookshelfDisplay(books);
-}
-
 // 导出函数
 export {
   initFilterDropdown,
@@ -1193,11 +1183,10 @@ export {
   applySorting,
   showAddBookDialog,
   performBookshelfSearch,
-  loadUserBookshelf,
+  loadUserBookshelfData,
   updateBookshelfDisplay,
   generateBookshelfCard,
-  attachBookCardEventListeners,
-  displayBookshelf
+  attachBookCardEventListeners
 }; 
 
 // 立即执行的代码，确保关键函数在模块加载后立即导出到window对象
