@@ -1149,4 +1149,47 @@ a {
 .btn-add-shelf.added {
   background-color: #dcfce7;
   color: #15803d;
+}
+
+/* 搜索频率指示器样式 */
+.search-frequency-indicator {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.search-frequency-indicator i.fa-fire {
+  margin-right: 2px;
+  font-size: 0.9rem;
+  color: #f43f5e;
+}
+
+.search-frequency-indicator i.fa-circle {
+  margin-right: 2px;
+  font-size: 0.75rem;
+  color: #d1d5db;
+}
+
+.search-frequency-indicator .frequency-text {
+  margin-left: 5px;
+  font-size: 0.85rem;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+/* 热门指示器的渐变效果 */
+.search-frequency-indicator i.fa-fire:nth-child(1) {
+  color: #f43f5e;
+}
+.search-frequency-indicator i.fa-fire:nth-child(2) {
+  color: #f97316;
+}
+.search-frequency-indicator i.fa-fire:nth-child(3) {
+  color: #fb923c;
+}
+.search-frequency-indicator i.fa-fire:nth-child(4) {
+  color: #f97316;
+}
+.search-frequency-indicator i.fa-fire:nth-child(5) {
+  color: #f43f5e;
 } 

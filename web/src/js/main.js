@@ -55,6 +55,46 @@ function generateStarRating(rating) {
   return starsHtml;
 }
 
+// 生成搜索频率指示器HTML
+function generateSearchFrequencyIndicator(searchFreq) {
+  if (!searchFreq && searchFreq !== 0) return '';
+  
+  // 搜索频率按照0-100的数值来处理
+  const frequency = Math.min(100, Math.max(0, searchFreq));
+  
+  // 计算有多少个"火焰"图标显示（最多5个）
+  const fullFireIcons = Math.floor(frequency / 20); // 每20点一个图标
+  
+  let fireHtml = '<div class="search-frequency-indicator">';
+  
+  // 添加火焰图标
+  for (let i = 0; i < 5; i++) {
+    if (i < fullFireIcons) {
+      fireHtml += '<i class="fas fa-fire"></i>'; // 热门图标
+    } else {
+      fireHtml += '<i class="far fa-circle"></i>'; // 未达热门的占位图标
+    }
+  }
+  
+  // 添加文字提示
+  let heatText = '';
+  if (frequency >= 80) {
+    heatText = '非常热门';
+  } else if (frequency >= 60) {
+    heatText = '热门搜索';
+  } else if (frequency >= 40) {
+    heatText = '较多搜索';
+  } else if (frequency >= 20) {
+    heatText = '一般搜索';
+  } else {
+    heatText = '少量搜索';
+  }
+  
+  fireHtml += `<span class="frequency-text">${heatText}</span></div>`;
+  
+  return fireHtml;
+}
+
 // 导航栏活跃链接处理
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded 事件触发');
@@ -610,6 +650,7 @@ function renderBooks(books, container) {
       introduction: book.description || book.introduction || '暂无简介',
       popularity: book.popularity || book.heat || 0,
       rating: book.rating || 0,
+      searchFrequency: book.searchFrequency || book.frequency || 0
     };
     
     // 确保标签始终是数组格式
@@ -632,24 +673,36 @@ function renderBooks(books, container) {
     
     console.log(`书籍 "${bookData.title}" ${isInBookshelf ? '已在' : '不在'}书架中`);
     
-    // 生成评分星星
-    const fullStars = Math.floor(bookData.rating);
-    const hasHalfStar = bookData.rating - fullStars >= 0.5;
-    let starsHtml = '';
-
-    for (let i = 0; i < 5; i++) {
-      if (i < fullStars) {
-        starsHtml += '<i class="fas fa-star"></i>'; // 实心星星
-      } else if (i === fullStars && hasHalfStar) {
-        starsHtml += '<i class="fas fa-star-half-alt"></i>'; // 半星
-      } else {
-        starsHtml += '<i class="far fa-star"></i>'; // 空心星星
+    // 检查是否有搜索频率数据，如果有则使用搜索频率展示，否则使用评分展示
+    let ratingOrFrequencyHtml = '';
+    if (bookData.searchFrequency || bookData.searchFrequency === 0) {
+      // 使用搜索频率
+      ratingOrFrequencyHtml = generateSearchFrequencyIndicator(bookData.searchFrequency);
+      console.log(`书籍 "${bookData.title}" 使用搜索频率展示: ${bookData.searchFrequency}`);
+    } else {
+      // 使用评分
+      const fullStars = Math.floor(bookData.rating);
+      const hasHalfStar = bookData.rating - fullStars >= 0.5;
+      let starsHtml = '';
+  
+      for (let i = 0; i < 5; i++) {
+        if (i < fullStars) {
+          starsHtml += '<i class="fas fa-star"></i>'; // 实心星星
+        } else if (i === fullStars && hasHalfStar) {
+          starsHtml += '<i class="fas fa-star-half-alt"></i>'; // 半星
+        } else {
+          starsHtml += '<i class="far fa-star"></i>'; // 空心星星
+        }
       }
+      ratingOrFrequencyHtml = `<div class="flex items-center">
+                                ${starsHtml}
+                                <span class="text-gray-600 text-sm ml-1">${bookData.rating.toFixed(1)}</span>
+                              </div>`;
     }
     
     // 准备简介内容，处理过长的情况
-    const shortIntro = bookData.introduction.length > 120 
-      ? bookData.introduction.substring(0, 120) + '...' 
+    const shortIntro = bookData.introduction.length > 60 
+      ? bookData.introduction.substring(0, 60) + '...' 
       : bookData.introduction;
     
     // 使用与首页相同的卡片结构
@@ -666,10 +719,9 @@ function renderBooks(books, container) {
             <h3 class="book-title">${bookData.title}</h3>
             <p class="book-author">${bookData.author}</p>
             
-            <!-- 评分区域 -->
+            <!-- 评分或搜索频率区域 -->
             <div class="book-rating-container">
-              <div class="rating-stars">${starsHtml}</div>
-              <span class="rating-score">${bookData.rating.toFixed(1)}</span>
+              ${ratingOrFrequencyHtml}
             </div>
 
             <!-- 简介区域 -->
@@ -1087,17 +1139,36 @@ function generateBookCard(book, isInBookshelf = false) {
   // 处理rating可能为空的情况
   const rating = book.rating || 0;
   
+  // 处理searchFrequency可能存在的情况
+  const searchFrequency = book.searchFrequency || book.frequency || 0;
+  const hasSearchFrequency = book.searchFrequency !== undefined || book.frequency !== undefined;
+  
   // 处理简介，增加字数限制
   const description = book.description ? 
     (book.description.length > 100 ? book.description.substring(0, 100) + '...' : book.description) : 
     '暂无简介';
   
   // 获取封面图片URL，如果没有则使用默认图片
-  const coverImage = book.coverImage || book.cover_image || 'src/images/default-book-cover.svg';
+  const coverImage = book.coverImage || book.cover_image || book.cover || 'src/images/default-book-cover.svg';
   
   // 根据是否已在书架中设置按钮文本和样式
   const addBtnClass = isInBookshelf ? 'add-to-bookshelf in-bookshelf' : 'add-to-bookshelf';
   const addBtnIcon = isInBookshelf ? '<i class="fas fa-check"></i>' : '<i class="fas fa-plus"></i>';
+  
+  // 根据是否有搜索频率数据决定显示评分还是搜索频率
+  let ratingOrFrequencyHTML = '';
+  if (hasSearchFrequency) {
+    // 使用搜索频率指示器
+    ratingOrFrequencyHTML = generateSearchFrequencyIndicator(searchFrequency);
+  } else {
+    // 使用评分星星
+    ratingOrFrequencyHTML = `
+      <div class="flex items-center mb-2">
+        ${generateStarRating(rating)}
+        <span class="text-gray-600 text-sm ml-1">${rating.toFixed(1)}</span>
+      </div>
+    `;
+  }
   
   return `
     <div class="book-card" data-book-id="${book.id}">
@@ -1112,10 +1183,7 @@ function generateBookCard(book, isInBookshelf = false) {
       <div class="p-4">
         <h3 class="font-bold text-lg mb-1">${book.title}</h3>
         <p class="text-gray-600 text-sm mb-2">${book.author || '未知作者'}</p>
-        <div class="flex items-center mb-2">
-          ${generateStarRating(rating)}
-          <span class="text-gray-600 text-sm ml-1">${rating.toFixed(1)}</span>
-        </div>
+        ${ratingOrFrequencyHTML}
         <p class="text-gray-700 text-sm line-clamp-3">${description}</p>
       </div>
     </div>
