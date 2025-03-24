@@ -34,7 +34,8 @@ const CACHE_KEYS = {
   POPULAR_BOOKS: 'bookstore_popular_books',
   POPULAR_SEARCHES: 'bookstore_popular_searches',
   CACHE_TIMESTAMP: 'bookstore_cache_timestamp',
-  USER_PREFERENCES: 'bookstore_user_preferences'
+  USER_PREFERENCES: 'bookstore_user_preferences',
+  SEARCH_HISTORY: 'bookstore_search_history'
 };
 
 // 导出配置对象

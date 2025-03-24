@@ -63,6 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initAuthListeners();
   console.log('认证监听器已初始化');
   
+  // 加载ImageProxy模块，确保图片代理可用
+  loadImageProxyModule();
+  
   // 获取当前页面路径
   const currentPath = window.location.pathname;
   console.log('当前页面路径:', currentPath);
@@ -123,13 +126,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 智能搜索功能
 function initSearchPage() {
+  console.log('初始化搜索页面');
+  
+  // 如果当前不在搜索页面，则返回
+  if (!window.location.pathname.includes('/search')) {
+    return;
+  }
+  
+  // 初始化搜索表单
   const searchForm = document.querySelector('.search-form');
-  if (!searchForm) return; // 不在搜索页面，直接返回
   
-  console.log('初始化搜索页面...');
-  
-  // 确保加载ImageProxy模块
-  loadImageProxyModule();
+  if (searchForm) {
+    searchForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const searchInput = document.querySelector('.search-input');
+      const query = searchInput ? searchInput.value.trim() : '';
+      
+      if (!query) {
+        showToast('请输入搜索内容', 'warning');
+        return;
+      }
+      
+      // 显示加载状态
+      const searchResults = document.querySelector('.search-results');
+      if (searchResults) {
+        searchResults.innerHTML = `
+          <div class="py-8 flex justify-center">
+            <div class="loader"></div>
+          </div>
+        `;
+      }
+      
+      try {
+        const response = await bookApi.searchBooks(query);
+        displaySearchResults(response);
+      } catch (error) {
+        console.error('搜索错误:', error);
+        
+        if (searchResults) {
+          searchResults.innerHTML = `
+            <div class="bg-red-50 text-red-500 p-4 rounded-lg">
+              搜索时出错: ${error.message || '未知错误'}
+            </div>
+          `;
+        }
+      }
+    });
+  }
   
   // 测试API连接
   testApiConnection();
@@ -137,31 +181,11 @@ function initSearchPage() {
   // 加载热门搜索
   loadPopularSearches();
   
-  // 初始化搜索示例按钮
+  // 初始化搜索历史
+  initSearchHistory();
+  
+  // 初始化搜索示例
   initSearchExamples();
-  
-  // 添加搜索表单事件监听
-  searchForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const query = searchForm.querySelector('input').value.trim();
-    if (query) {
-      // 显示加载状态
-      showLoadingState();
-      
-      try {
-        // 调用API搜索书籍
-        const results = await bookApi.searchBooks(query);
-        displaySearchResults(results);
-      } catch (error) {
-        showErrorMessage('搜索失败，请稍后再试');
-      } finally {
-        hideLoadingState();
-      }
-    }
-  });
-  
-  // 初始时加载AI推荐书籍（直接进入页面时）
-  loadInitialAIRecommendations();
 }
 
 // 加载ImageProxy模块
@@ -218,7 +242,7 @@ function createBookCoverElement(bookData) {
       if (isDoubanImage) {
         console.log('检测到豆瓣图片，添加代理处理标记');
         
-        // 返回带有代理处理标记的图片元素
+        // 返回带有代理处理标记的图片元素，添加备用图像
         return `<img src="${coverUrl}" alt="${bookData.title}" class="book-cover" 
                 data-original-src="${coverUrl}" 
                 data-use-proxy="true"
@@ -248,6 +272,18 @@ function handleBookCoverError(img) {
   
   // 检查是否为豆瓣图片
   const isDoubanImage = originalUrl.includes('douban') || originalUrl.includes('doubanio');
+  
+  // 如果ImageProxy模块不可用，则先加载它
+  if (!window.ImageProxy) {
+    console.log('ImageProxy模块未加载，正在加载...');
+    loadImageProxyModule();
+    // 设置一个短暂的延迟，等待模块加载
+    setTimeout(() => {
+      // 递归调用自己，此时ImageProxy可能已加载
+      handleBookCoverError(img);
+    }, 300);
+    return;
+  }
   
   // 检查ImageProxy模块是否可用
   if (window.ImageProxy && (isDoubanImage || img.dataset.useProxy === 'true')) {
@@ -528,6 +564,9 @@ function renderBooks(books, container) {
     container.innerHTML = '<div class="col-span-3 text-center py-8 text-gray-500">暂无热门搜索数据</div>';
     return;
   }
+  
+  // 确保ImageProxy模块已加载，用于处理豆瓣图片
+  loadImageProxyModule();
   
   // 清空容器
   container.innerHTML = '';
@@ -849,6 +888,9 @@ function initHomePage() {
   }
   
   console.log('初始化首页功能');
+  
+  // 加载ImageProxy模块，确保图片代理可用
+  loadImageProxyModule();
   
   // 初始化搜索框
   const searchForm = document.querySelector('.hero-search-form');
@@ -1620,10 +1662,17 @@ function updateBookshelfStats(books) {
 
 // 初始化书籍详情页面
 function initBookDetailPage() {
-  const bookDetailContainer = document.querySelector('.book-detail-container');
-  if (!bookDetailContainer) return;
+  // 检查是否在书籍详情页
+  if (!window.location.pathname.includes('/book.html')) {
+    return;
+  }
   
-  // 获取URL参数中的书籍ID
+  console.log('初始化书籍详情页面');
+  
+  // 加载ImageProxy模块，确保图片代理可用
+  loadImageProxyModule();
+  
+  // 获取书籍ID
   const urlParams = new URLSearchParams(window.location.search);
   const bookId = urlParams.get('id');
   
@@ -2272,3 +2321,369 @@ export {
   loadUserBookshelf,
   updateBookshelfStats
 };
+
+// 显示搜索结果
+function displaySearchResults(results) {
+  // 获取搜索结果容器
+  const searchResultsSection = document.querySelector('.search-results');
+  if (!searchResultsSection) return;
+  
+  // 隐藏初始结果（如果存在）
+  const initialResults = document.querySelector('.initial-results');
+  if (initialResults) {
+    initialResults.style.display = 'none';
+  }
+  
+  // 检查搜索结果是否有效
+  if (!results || !results.books || results.books.length === 0) {
+    // 显示无结果的消息
+    searchResultsSection.innerHTML = `
+      <div class="text-center py-12">
+        <img src="../images/no-results.svg" alt="无结果" class="w-40 h-40 mx-auto mb-4">
+        <h3 class="text-lg font-semibold mb-2">未找到相关书籍</h3>
+        <p class="text-gray-500">尝试使用不同的关键词或更广泛的描述。</p>
+      </div>
+    `;
+    
+    // 保存搜索查询到历史
+    if (results.query) {
+      saveSearchHistory(results.query);
+    }
+    
+    return;
+  }
+  
+  // 提取书籍数据
+  const books = results.books;
+  
+  // 保存搜索查询到历史
+  if (results.query) {
+    saveSearchHistory(results.query);
+  }
+  
+  // 更新界面以显示搜索结果
+  let resultsHTML = `
+    <h2 class="text-xl font-bold mb-4">搜索结果 (${books.length})</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+  `;
+  
+  // 渲染书籍列表
+  books.forEach(book => {
+    resultsHTML += generateBookCard(book);
+  });
+  
+  resultsHTML += '</div>';
+  searchResultsSection.innerHTML = resultsHTML;
+  
+  // 确保ImageProxy模块已加载，用于处理豆瓣图片
+  loadImageProxyModule();
+  
+  // 添加书籍卡片的事件监听器
+  addBookCardListeners();
+  
+  // 更新搜索历史显示
+  updateSearchHistoryDisplay();
+}
+
+// 保存搜索历史
+function saveSearchHistory(query) {
+  if (!query || query.trim() === '') return;
+  
+  // 创建搜索历史项
+  const searchItem = {
+    query: query.trim(),
+    timestamp: Date.now()
+  };
+  
+  // 检查用户是否登录
+  if (isLoggedIn()) {
+    // 已登录：调用API保存搜索历史到服务器
+    try {
+      userApi.saveSearchHistory({
+        query: searchItem.query,
+        timestamp: searchItem.timestamp
+      }).then(() => {
+        console.log('搜索历史已保存到服务器');
+      }).catch(error => {
+        console.error('保存搜索历史到服务器失败:', error);
+        // 如果API调用失败，保存到本地存储作为备份
+        saveSearchHistoryToLocalStorage(searchItem);
+      });
+    } catch (error) {
+      console.error('保存搜索历史到服务器失败:', error);
+      // 如果API调用失败，保存到本地存储作为备份
+      saveSearchHistoryToLocalStorage(searchItem);
+    }
+  } else {
+    // 未登录：保存到本地存储
+    saveSearchHistoryToLocalStorage(searchItem);
+  }
+}
+
+// 保存搜索历史到本地存储
+function saveSearchHistoryToLocalStorage(searchItem) {
+  // 读取现有历史记录
+  const existingHistory = getSearchHistoryFromLocalStorage();
+  
+  // 检查是否已存在相同查询
+  const existingIndex = existingHistory.findIndex(item => item.query === searchItem.query);
+  
+  if (existingIndex !== -1) {
+    // 如果查询已存在，更新时间戳并移到顶部
+    existingHistory.splice(existingIndex, 1);
+  }
+  
+  // 添加到历史记录顶部
+  existingHistory.unshift(searchItem);
+  
+  // 如果历史记录超过10条，删除最旧的记录
+  if (existingHistory.length > 10) {
+    existingHistory.pop();
+  }
+  
+  // 保存到本地存储
+  localStorage.setItem(config.cache.keys.SEARCH_HISTORY, JSON.stringify(existingHistory));
+  
+  // 如果这是第一条记录，显示清除按钮
+  if (existingHistory.length === 1) {
+    const clearAllButton = document.getElementById('clearAllHistory');
+    if (clearAllButton) {
+      clearAllButton.classList.remove('hidden');
+    }
+  }
+  
+  // 更新UI
+  updateSearchHistoryDisplay();
+}
+
+// 从本地存储获取搜索历史
+function getSearchHistoryFromLocalStorage() {
+  try {
+    const history = localStorage.getItem(config.cache.keys.SEARCH_HISTORY);
+    return history ? JSON.parse(history) : [];
+  } catch (error) {
+    console.error('读取搜索历史失败:', error);
+    return [];
+  }
+}
+
+// 格式化日期显示
+function formatDateForDisplay(timestamp) {
+  // 检查输入是否为ISO字符串或时间戳数字
+  const date = typeof timestamp === 'number' ? new Date(timestamp) : new Date(timestamp);
+  
+  // 检查日期是否有效
+  if (isNaN(date.getTime())) {
+    return '未知时间';
+  }
+  
+  // 格式化日期
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+// 更新搜索历史显示
+function updateSearchHistoryDisplay() {
+  const searchHistoryContainer = document.querySelector('.search-history .bg-white');
+  const clearAllButton = document.getElementById('clearAllHistory');
+  
+  if (!searchHistoryContainer) return;
+  
+  // 获取搜索历史
+  const searchHistory = getSearchHistoryFromLocalStorage();
+  
+  // 处理清除所有按钮的显示逻辑
+  if (clearAllButton) {
+    if (searchHistory.length > 0) {
+      clearAllButton.classList.remove('hidden');
+    } else {
+      clearAllButton.classList.add('hidden');
+    }
+  }
+  
+  // 如果没有搜索历史记录，显示默认内容
+  if (!searchHistory.length) {
+    searchHistoryContainer.innerHTML = `
+      <div class="flex flex-col items-center justify-center py-6">
+        <img src="../images/no-results.svg" alt="无搜索历史" class="w-24 h-24 mb-4">
+        <p class="text-gray-500 text-center">您还没有搜索记录</p>
+        <p class="text-gray-400 text-sm text-center mt-2">尝试搜索一些内容，您的搜索记录将显示在这里</p>
+      </div>
+    `;
+    return;
+  }
+  
+  // 有搜索记录时，显示搜索历史列表
+  let historyHTML = '<div class="space-y-4">';
+  
+  searchHistory.forEach((item, index) => {
+    const isLast = index === searchHistory.length - 1;
+    historyHTML += `
+      <div class="flex justify-between items-center ${!isLast ? 'pb-3 border-b border-gray-100' : ''}">
+        <div>
+          <p class="font-medium">${item.query}</p>
+          <p class="text-gray-500 text-sm mt-1">${formatDateForDisplay(item.timestamp)}</p>
+        </div>
+        <div class="flex space-x-2">
+          <button class="text-blue-500 hover:text-blue-600 search-again" data-query="${item.query}">
+            <i class="fas fa-search"></i>
+          </button>
+          <button class="text-gray-400 hover:text-gray-500 delete-history" data-index="${index}">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  });
+  
+  historyHTML += '</div>';
+  searchHistoryContainer.innerHTML = historyHTML;
+  
+  // 添加重新搜索事件监听器
+  document.querySelectorAll('.search-again').forEach(button => {
+    button.addEventListener('click', () => {
+      const query = button.getAttribute('data-query');
+      if (query) {
+        // 填充搜索框
+        const searchInput = document.querySelector('.search-input');
+        if (searchInput) {
+          searchInput.value = query;
+          // 触发搜索
+          const searchForm = document.querySelector('.search-form');
+          if (searchForm) {
+            searchForm.dispatchEvent(new Event('submit'));
+          }
+        }
+      }
+    });
+  });
+  
+  // 添加删除历史记录事件监听器
+  document.querySelectorAll('.delete-history').forEach(button => {
+    button.addEventListener('click', () => {
+      const index = parseInt(button.getAttribute('data-index'), 10);
+      if (!isNaN(index)) {
+        deleteSearchHistoryItem(index);
+      }
+    });
+  });
+}
+
+// 删除搜索历史项
+function deleteSearchHistoryItem(index) {
+  // 获取搜索历史
+  const searchHistory = getSearchHistoryFromLocalStorage();
+  
+  // 检查索引是否有效
+  if (index < 0 || index >= searchHistory.length) return;
+  
+  // 获取要删除的项目
+  const itemToDelete = searchHistory[index];
+  
+  if (isLoggedIn() && itemToDelete.id) {
+    // 已登录且有服务器ID：从服务器删除
+    try {
+      userApi.deleteSearchHistory(itemToDelete.id).then(() => {
+        console.log('已从服务器删除搜索历史');
+        // 从本地存储中删除
+        searchHistory.splice(index, 1);
+        localStorage.setItem(config.cache.keys.SEARCH_HISTORY, JSON.stringify(searchHistory));
+        // 更新UI
+        updateSearchHistoryDisplay();
+        // 显示提示
+        showToast('已删除该搜索记录', 'success');
+      }).catch(error => {
+        console.error('从服务器删除搜索历史失败:', error);
+        // 如果API调用失败，仅本地删除
+        searchHistory.splice(index, 1);
+        localStorage.setItem(config.cache.keys.SEARCH_HISTORY, JSON.stringify(searchHistory));
+        // 更新UI
+        updateSearchHistoryDisplay();
+        // 显示提示
+        showToast('已删除该搜索记录', 'success');
+      });
+    } catch (error) {
+      console.error('从服务器删除搜索历史失败:', error);
+      // 如果API调用失败，仅本地删除
+      searchHistory.splice(index, 1);
+      localStorage.setItem(config.cache.keys.SEARCH_HISTORY, JSON.stringify(searchHistory));
+      // 更新UI
+      updateSearchHistoryDisplay();
+      // 显示提示
+      showToast('已删除该搜索记录', 'success');
+    }
+  } else {
+    // 未登录或无服务器ID：仅从本地删除
+    searchHistory.splice(index, 1);
+    localStorage.setItem(config.cache.keys.SEARCH_HISTORY, JSON.stringify(searchHistory));
+    // 更新UI
+    updateSearchHistoryDisplay();
+    // 显示提示
+    showToast('已删除该搜索记录', 'success');
+  }
+  
+  // 如果删除后没有历史记录了，隐藏清除所有按钮
+  if (searchHistory.length === 0) {
+    const clearAllButton = document.getElementById('clearAllHistory');
+    if (clearAllButton) {
+      clearAllButton.classList.add('hidden');
+    }
+  }
+}
+
+// 初始化搜索历史
+function initSearchHistory() {
+  const searchHistorySection = document.querySelector('.search-history');
+  if (!searchHistorySection) return;
+  
+  // 更新搜索历史显示
+  updateSearchHistoryDisplay();
+  
+  // 添加清除所有历史记录按钮事件
+  const clearAllButton = document.getElementById('clearAllHistory');
+  if (clearAllButton) {
+    clearAllButton.addEventListener('click', () => {
+      if (isLoggedIn()) {
+        // 已登录：从服务器清除所有历史记录
+        try {
+          userApi.clearSearchHistory().then(() => {
+            console.log('已从服务器清除所有搜索历史');
+            // 更新UI
+            updateSearchHistoryDisplay();
+            // 显示成功消息
+            showToast('已清除所有搜索历史', 'success');
+          }).catch(error => {
+            console.error('从服务器清除搜索历史失败:', error);
+            // 如果API调用失败，仅清除本地存储
+            localStorage.removeItem(config.cache.keys.SEARCH_HISTORY);
+            // 更新UI
+            updateSearchHistoryDisplay();
+            // 显示成功消息
+            showToast('已清除所有搜索历史', 'success');
+          });
+        } catch (error) {
+          console.error('从服务器清除搜索历史失败:', error);
+          // 如果API调用失败，仅清除本地存储
+          localStorage.removeItem(config.cache.keys.SEARCH_HISTORY);
+          // 更新UI
+          updateSearchHistoryDisplay();
+          // 显示成功消息
+          showToast('已清除所有搜索历史', 'success');
+        }
+      } else {
+        // 未登录：清空本地存储中的搜索历史
+        localStorage.removeItem(config.cache.keys.SEARCH_HISTORY);
+        // 更新UI
+        updateSearchHistoryDisplay();
+        // 显示成功消息
+        showToast('已清除所有搜索历史', 'success');
+      }
+    });
+  }
+}
+

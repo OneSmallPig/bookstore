@@ -99,6 +99,33 @@ const userApi = {
     });
   },
   
+  // 保存搜索历史
+  saveSearchHistory: (searchData) => {
+    return request('/users/search-history', {
+      method: 'POST',
+      body: JSON.stringify(searchData)
+    });
+  },
+  
+  // 获取搜索历史
+  getSearchHistory: () => {
+    return request('/users/search-history');
+  },
+  
+  // 删除搜索历史
+  deleteSearchHistory: (searchId) => {
+    return request(`/users/search-history/${searchId}`, {
+      method: 'DELETE'
+    });
+  },
+  
+  // 清空所有搜索历史
+  clearSearchHistory: () => {
+    return request('/users/search-history', {
+      method: 'DELETE'
+    });
+  },
+  
   // 修改密码
   changePassword: (passwordData) => {
     return request('/users/change-password', {
