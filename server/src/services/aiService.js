@@ -563,7 +563,29 @@ class AIService {
       
       try {
         // 尝试解析JSON响应
-        let books = JSON.parse(result);
+        let books;
+        
+        // 检查result是否已经是对象，包含choices属性
+        if (result && typeof result === 'object' && result.choices && result.choices[0]) {
+          // 提取content内容
+          const content = result.choices[0].message.content;
+          try {
+            // 尝试解析content中的JSON
+            books = this._extractJsonFromContent(content);
+          } catch (contentError) {
+            logger.warn('无法从content中提取书籍数据:', contentError);
+            books = this._getMockPopularBooks(category).slice(0, limit);
+          }
+        } else if (typeof result === 'string') {
+          // 如果是字符串，尝试解析JSON
+          books = JSON.parse(result);
+        } else if (result && typeof result === 'object') {
+          // 如果已经是对象但不是标准AI响应格式，可能是模拟数据
+          books = Array.isArray(result) ? result : this._getMockPopularBooks(category).slice(0, limit);
+        } else {
+          logger.warn('AI返回的热门书籍格式无效，使用模拟数据');
+          books = this._getMockPopularBooks(category).slice(0, limit);
+        }
         
         // 确保结果是数组
         if (!Array.isArray(books)) {

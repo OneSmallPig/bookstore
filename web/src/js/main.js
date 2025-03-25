@@ -3086,8 +3086,10 @@ function displayAISearchResults(books, query, container, aiAnalysis = '') {
     booksToShow.forEach((book, index) => {
       const delay = index * 100; // 100ms的延迟增量
       
+      // 创建书籍卡片包装元素
       const bookCard = document.createElement('div');
       bookCard.className = 'book-card-wrapper opacity-0';
+      bookCard.setAttribute('data-id', book.id || `search-${Date.now()}-${index}`);
       bookCard.style.animationDelay = `${delay}ms`;
       
       // 清理和验证数据
@@ -3103,42 +3105,49 @@ function displayAISearchResults(books, query, container, aiAnalysis = '') {
         reasons: book.reasons || ''
       };
       
-      // 生成星级评分
+      // 生成星级评分HTML
       const starRating = generateStarRating(cleanedBook.rating);
       
-      // 获取类别标签的颜色
-      const categoryTags = cleanedBook.categories.map(category => {
+      // 获取类别标签
+      const categories = cleanedBook.categories.map(category => {
         const bgColor = getBgColorByCategory(category);
-        return `<span class="category-tag ${bgColor} text-white">${category}</span>`;
+        return `<span class="category-tag ${bgColor} text-white px-2 py-1 rounded text-xs mr-1">${category}</span>`;
       }).join('');
       
-      // 构建书籍卡片
+      // 使用与热门搜索一致的卡片HTML结构
       bookCard.innerHTML = `
-        <div class="book-card h-full flex flex-col" data-book-id="${cleanedBook.id}">
-          <div class="book-cover">
-            <img src="${cleanedBook.coverUrl}" alt="${cleanedBook.title}" loading="lazy" onerror="handleBookCoverError(this)">
+        <div class="book-card h-full bg-white rounded-lg shadow-md overflow-hidden flex flex-col transition-all duration-300 hover:shadow-xl">
+          <div class="book-cover-container relative h-48 overflow-hidden">
+            <img src="${cleanedBook.coverUrl}" alt="${cleanedBook.title}" class="book-cover w-full h-full object-cover transition-transform duration-300" loading="lazy" onerror="handleBookCoverError(this)">
+            <div class="absolute top-0 right-0 p-2">
+              <button class="add-to-bookshelf bg-white text-blue-500 hover:text-blue-700 rounded-full p-2 shadow-md transition-colors duration-200" data-book-id="${cleanedBook.id}">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
           </div>
-          <div class="book-info flex-1 flex flex-col">
-            <h3 class="book-title">${cleanedBook.title}</h3>
-            <p class="book-author">${cleanedBook.author}</p>
-            <div class="book-rating">
-              <div class="rating-stars">${starRating}</div>
-              <span class="text-sm text-gray-500">${cleanedBook.rating.toFixed(1)}</span>
+          <div class="book-info-container p-4 flex-1 flex flex-col">
+            <h3 class="book-title text-lg font-bold mb-1 line-clamp-2">${cleanedBook.title}</h3>
+            <p class="book-author text-sm text-gray-600 mb-2">${cleanedBook.author}</p>
+            <div class="book-rating-container flex items-center mb-2">
+              <div class="rating-stars text-yellow-400 mr-1">
+                ${starRating}
+              </div>
+              <span class="rating-score text-sm text-gray-500">${cleanedBook.rating.toFixed(1)}</span>
             </div>
-            <div class="book-categories">
-              ${categoryTags}
+            <div class="book-categories mb-2">
+              ${categories}
             </div>
-            <p class="book-description flex-grow">${cleanedBook.description}</p>
+            <p class="book-introduction text-sm text-gray-700 line-clamp-3 mb-3">${cleanedBook.description}</p>
             ${cleanedBook.reasons ? `
               <div class="book-reason text-sm text-green-700 bg-green-50 p-2 rounded mb-2">
                 <span class="font-medium">推荐理由:</span> ${cleanedBook.reasons}
               </div>
             ` : ''}
-            <div class="book-actions mt-auto">
-              <button class="read-btn flex items-center justify-center">
+            <div class="book-actions mt-auto flex justify-between">
+              <button class="btn btn-read bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors duration-200 flex items-center justify-center flex-1 mr-2">
                 <i class="fas fa-book mr-1"></i> 阅读
               </button>
-              <button class="add-btn flex items-center justify-center">
+              <button class="btn btn-add-shelf bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md transition-colors duration-200 flex items-center justify-center flex-1" data-book-id="${cleanedBook.id}">
                 <i class="fas fa-plus mr-1"></i> 收藏
               </button>
             </div>
