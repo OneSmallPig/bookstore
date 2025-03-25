@@ -191,26 +191,14 @@ function initSearchPage() {
       // 显示加载状态
       const searchResults = document.querySelector('.search-results');
       if (searchResults) {
-        searchResults.innerHTML = `
-          <div class="py-8 flex justify-center">
-            <div class="loader"></div>
-          </div>
-        `;
-      }
-      
-      try {
-        const response = await bookApi.searchBooks(query);
-        displaySearchResults(response);
-      } catch (error) {
-        console.error('搜索错误:', error);
-        
-        if (searchResults) {
-          searchResults.innerHTML = `
-            <div class="bg-red-50 text-red-500 p-4 rounded-lg">
-              搜索时出错: ${error.message || '未知错误'}
-            </div>
-          `;
+        // 隐藏初始结果（如果存在）
+        const initialResults = document.querySelector('.initial-results');
+        if (initialResults) {
+          initialResults.style.display = 'none';
         }
+        
+        // 开始AI搜索流程
+        performAISearch(query, searchResults);
       }
     });
   }
@@ -548,28 +536,27 @@ async function loadInitialAIRecommendations() {
 // 初始化搜索示例按钮
 function initSearchExamples() {
   const searchExamples = document.querySelectorAll('.search-example');
-  const searchInput = document.querySelector('.search-input');
   
-  if (!searchExamples.length || !searchInput) {
-    console.warn('搜索示例按钮或搜索输入框不存在');
-    return;
-  }
-  
-  console.log('初始化搜索示例按钮...');
-  
-  searchExamples.forEach(button => {
-    button.addEventListener('click', () => {
-      // 获取示例文本
-      const exampleText = button.textContent.trim();
-      
-      // 填充到搜索框
-      searchInput.value = exampleText;
-      
-      // 让搜索框获取焦点
-      searchInput.focus();
-      
-      // 自动触发搜索（可选）
-      // document.querySelector('.search-form button[type="submit"]').click();
+  searchExamples.forEach(example => {
+    example.addEventListener('click', () => {
+      const query = example.textContent.trim();
+      // 将示例内容填入搜索框
+      const searchInput = document.querySelector('.search-input');
+      if (searchInput) {
+        searchInput.value = query;
+        
+        // 自动执行搜索
+        const searchResults = document.querySelector('.search-results');
+        const initialResults = document.querySelector('.initial-results');
+        
+        if (searchResults) {
+          if (initialResults) {
+            initialResults.style.display = 'none';
+          }
+          
+          performAISearch(query, searchResults);
+        }
+      }
     });
   });
 }
@@ -2747,5 +2734,338 @@ function initSearchHistory() {
       }
     });
   }
+}
+
+/**
+ * 执行AI智能搜索
+ * @param {string} query 搜索查询
+ * @param {HTMLElement} container 结果容器
+ */
+async function performAISearch(query, container) {
+  try {
+    // 显示AI搜索进行中的界面
+    showAISearchProgress(container, query);
+    
+    // 调用AI搜索API
+    const response = await aiApi.searchBooks(query);
+    console.log('AI搜索请求提交成功:', response);
+    
+    if (!response.success || !response.sessionId) {
+      throw new Error(response.message || '搜索请求提交失败');
+    }
+    
+    // 保存搜索历史
+    saveSearchHistory(query);
+    
+    // 开始轮询搜索进度
+    pollSearchProgress(response.sessionId, container, query);
+    
+  } catch (error) {
+    console.error('搜索错误:', error);
+    
+    container.innerHTML = `
+      <div class="bg-red-50 text-red-500 p-4 rounded-lg">
+        搜索时出错: ${error.message || '未知错误'}
+      </div>
+    `;
+  }
+}
+
+/**
+ * 显示AI搜索进行中的界面
+ * @param {HTMLElement} container 容器元素
+ * @param {string} query 搜索查询
+ */
+function showAISearchProgress(container, query) {
+  container.innerHTML = `
+    <h2 class="text-xl font-bold mb-4">AI智能搜索: "${query}"</h2>
+    
+    <div class="ai-search-progress mb-8">
+      <!-- 进度条 -->
+      <div class="relative pt-1">
+        <div class="flex mb-2 items-center justify-between">
+          <div>
+            <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">
+              搜索进行中
+            </span>
+          </div>
+          <div class="text-right">
+            <span id="search-progress-percentage" class="text-xs font-semibold inline-block text-blue-600">
+              0%
+            </span>
+          </div>
+        </div>
+        <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200">
+          <div id="search-progress-bar" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500" style="width: 0%"></div>
+        </div>
+      </div>
+      
+      <!-- AI思考过程 -->
+      <div class="bg-gray-50 rounded-lg p-4 mb-4">
+        <h3 class="font-semibold text-gray-700 mb-2">AI思考过程:</h3>
+        <ul id="ai-thinking-list" class="list-disc pl-5 space-y-1 text-sm text-gray-600">
+          <li>正在分析您的搜索需求...</li>
+        </ul>
+      </div>
+    </div>
+    
+    <div id="ai-search-results" class="mt-8">
+      <!-- 搜索结果将在这里显示 -->
+    </div>
+  `;
+}
+
+/**
+ * 轮询搜索进度
+ * @param {string} sessionId 会话ID
+ * @param {HTMLElement} container 容器元素
+ * @param {string} query 搜索查询
+ */
+async function pollSearchProgress(sessionId, container, query) {
+  let completed = false;
+  let retryCount = 0;
+  
+  // 使用时间控制而不是固定次数
+  const maxWaitTime = 60000; // 最大等待时间为60秒
+  const startTime = Date.now();
+  
+  const initialInterval = 1000; // 初始轮询间隔为1秒
+  let interval = initialInterval;
+  
+  const updateProgress = async () => {
+    try {
+      // 基于时间判断是否超时，而不是固定次数
+      const elapsedTime = Date.now() - startTime;
+      if (completed || elapsedTime > maxWaitTime) {
+        if (elapsedTime > maxWaitTime && !completed) {
+          console.error(`搜索请求超时，已等待${elapsedTime / 1000}秒`);
+          const aiSearchResults = document.getElementById('ai-search-results');
+          if (aiSearchResults) {
+            aiSearchResults.innerHTML = `
+              <div class="bg-red-50 text-red-500 p-4 rounded-lg">
+                搜索处理超时，请重试。
+              </div>
+            `;
+          }
+        }
+        return;
+      }
+      
+      retryCount++;
+      console.log(`轮询搜索进度 [${retryCount}], 已等待${elapsedTime / 1000}秒`);
+      
+      const response = await aiApi.getSearchProgress(sessionId);
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.message || '获取搜索进度失败');
+      }
+      
+      const progressData = response.data;
+      console.log('获取到搜索进度数据:', progressData.status, progressData.progress, '结果数量:', progressData.results ? progressData.results.length : 0);
+      
+      // 更新进度条
+      const progressBar = document.getElementById('search-progress-bar');
+      const progressPercentage = document.getElementById('search-progress-percentage');
+      
+      if (progressBar && progressPercentage) {
+        progressBar.style.width = `${progressData.progress}%`;
+        progressPercentage.textContent = `${progressData.progress}%`;
+      }
+      
+      // 更新思考过程
+      const thinkingList = document.getElementById('ai-thinking-list');
+      if (thinkingList && progressData.thinking) {
+        thinkingList.innerHTML = progressData.thinking.map(thought => 
+          `<li>${thought}</li>`
+        ).join('');
+      }
+      
+      // 检查是否完成
+      if (progressData.status === 'completed') {
+        console.log('搜索完成，状态:', progressData.status);
+        completed = true;
+        
+        // 检查是否有有效结果
+        if (progressData.results && progressData.results.length > 0) {
+          console.log('搜索完成，找到结果:', progressData.results.length);
+          // 立即显示结果，不再延迟
+          displayAISearchResults(progressData.results, query, container);
+        } else {
+          console.warn('搜索完成，但没有找到结果');
+          container.innerHTML = `
+            <div class="text-center py-12">
+              <img src="../images/no-results.svg" alt="无结果" class="w-40 h-40 mx-auto mb-4">
+              <h3 class="text-lg font-semibold mb-2">未找到相关书籍</h3>
+              <p class="text-gray-500">尝试使用不同的关键词或更广泛的描述。</p>
+            </div>
+          `;
+        }
+        return;
+      } else if (progressData.status === 'failed') {
+        console.error('搜索处理失败');
+        completed = true;
+        
+        const aiSearchResults = document.getElementById('ai-search-results');
+        if (aiSearchResults) {
+          aiSearchResults.innerHTML = `
+            <div class="bg-red-50 text-red-500 p-4 rounded-lg">
+              搜索处理失败，请重试。
+            </div>
+          `;
+        }
+        
+        return;
+      }
+      
+      // 结合进度和已用时间智能调整轮询间隔
+      if (progressData.progress >= 90) {
+        // 接近完成时，缩短轮询间隔
+        interval = 300;
+      } else if (progressData.progress >= 70) {
+        interval = 500;
+      } else if (progressData.progress >= 40) {
+        interval = 1000;
+      } else {
+        // 根据已经等待的时间逐渐缩短间隔，确保不会错过结果
+        const timeRatio = elapsedTime / maxWaitTime;
+        if (timeRatio > 0.7) {
+          interval = 800; // 等待时间超过70%，缩短间隔
+        } else if (timeRatio > 0.5) {
+          interval = 1000;
+        } else {
+          interval = 1500;
+        }
+      }
+      
+      // 如果没有完成，继续轮询
+      if (!completed) {
+        setTimeout(updateProgress, interval);
+      }
+      
+    } catch (error) {
+      console.error('轮询搜索进度失败:', error);
+      
+      // 基于时间判断是否应该继续尝试
+      const elapsedTime = Date.now() - startTime;
+      if (!completed && elapsedTime < maxWaitTime) {
+        interval = Math.min(interval * 1.5, 3000); // 最大间隔3秒
+        setTimeout(updateProgress, interval);
+      } else {
+        const aiSearchResults = document.getElementById('ai-search-results');
+        if (aiSearchResults) {
+          aiSearchResults.innerHTML = `
+            <div class="bg-red-50 text-red-500 p-4 rounded-lg">
+              搜索处理超时，请重试。
+            </div>
+          `;
+        }
+      }
+    }
+  };
+  
+  // 开始轮询
+  updateProgress();
+}
+
+/**
+ * 显示AI搜索结果
+ * @param {Array} books 书籍数据
+ * @param {string} query 搜索查询
+ * @param {HTMLElement} container 容器元素
+ */
+function displayAISearchResults(books, query, container) {
+  console.log('显示AI搜索结果:', books);
+  
+  // 确保有结果可显示
+  if (!books || !Array.isArray(books) || books.length === 0) {
+    console.warn('无有效的搜索结果');
+    container.innerHTML = `
+      <div class="text-center py-12">
+        <img src="../images/no-results.svg" alt="无结果" class="w-40 h-40 mx-auto mb-4">
+        <h3 class="text-lg font-semibold mb-2">未找到相关书籍</h3>
+        <p class="text-gray-500">尝试使用不同的关键词或更广泛的描述。</p>
+      </div>
+    `;
+    return;
+  }
+  
+  // 处理书籍数据，确保格式一致
+  const processedBooks = books.map(book => {
+    return {
+      id: book.id || book._id || book.title || Date.now().toString(),
+      title: book.title || '未知书名',
+      author: book.author || '未知作者',
+      tags: Array.isArray(book.tags) ? book.tags : (book.tags ? [book.tags] : []),
+      coverUrl: book.coverUrl || book.cover || book.coverImage || '../images/default-book-cover.svg',
+      introduction: book.introduction || book.description || '暂无简介',
+      rating: book.rating || 4.5,
+      category: book.category || '未分类'
+    };
+  });
+  
+  console.log('处理后的书籍数据:', processedBooks);
+  
+  // 创建结果展示的HTML
+  container.innerHTML = `
+    <h2 class="text-xl font-bold mb-2">AI智能搜索: "${query}"</h2>
+    <p class="text-gray-600 mb-4">AI已为您找到以下最匹配的书籍：</p>
+    
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      ${processedBooks.map(book => {
+        // 创建书籍卡片HTML
+        return `
+          <div class="book-card-wrapper">
+            <div class="book-card">
+              <div class="book-card-content">
+                <!-- 书籍封面区域 -->
+                <div class="book-cover-container">
+                  <img src="${book.coverUrl}" alt="${book.title}" class="book-cover" 
+                    onerror="this.onerror=null; this.src='../images/default-book-cover.svg';">
+                </div>
+                
+                <!-- 书籍信息区域 -->
+                <div class="book-info-container">
+                  <h3 class="book-title">${book.title}</h3>
+                  <p class="book-author">${book.author}</p>
+                  
+                  <!-- 评分区域 -->
+                  <div class="book-rating-container">
+                    <div class="flex items-center">
+                      ${generateStarRating(book.rating)}
+                      <span class="text-gray-600 text-sm ml-1">${book.rating.toFixed(1)}</span>
+                    </div>
+                  </div>
+    
+                  <!-- 简介区域 -->
+                  <div class="tooltip">
+                    <div class="book-introduction">${book.introduction.length > 60 ? 
+                      book.introduction.substring(0, 60) + '...' : book.introduction}</div>
+                    <div class="tooltip-text">${book.introduction}</div>
+                  </div>
+                </div>
+                
+                <!-- 操作按钮区域 -->
+                <div class="book-actions">
+                  <a href="#" class="btn btn-read">阅读</a>
+                  <button class="btn btn-add-shelf" data-book-id="${book.id}">
+                    加入书架
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+  
+  // 确保ImageProxy模块已加载，用于处理豆瓣图片
+  loadImageProxyModule();
+  
+  // 添加书籍卡片的事件监听器
+  addBookCardListeners();
+  
+  // 更新搜索历史显示
+  updateSearchHistoryDisplay();
 }
 

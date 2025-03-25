@@ -23,6 +23,9 @@ class AIService {
     logger.info(`调试模式: ${this.debugMode ? '开启' : '关闭'}`);
     logger.info(`环境变量: ${process.env.VOLC_API_KEY ? 'VOLC_API_KEY已设置' : 'VOLC_API_KEY未设置'}, ${process.env.DEEPSEEK_API_KEY ? 'DEEPSEEK_API_KEY已设置' : 'DEEPSEEK_API_KEY未设置'}`);
     logger.info(`模拟数据模式: ${this.useMockData ? '开启 (将始终使用模拟数据而不调用AI)' : '关闭'}`);
+    
+    // 添加搜索会话存储
+    this.searchSessions = new Map();
   }
 
   /**
@@ -303,16 +306,9 @@ class AIService {
       let books = [];
       
       try {
-        // 尝试解析JSON
-        logger.info('尝试解析AI响应中的JSON数据');
-        const jsonMatch = content.match(/\[\s*\{[\s\S]*\}\s*\]/);
-        if (jsonMatch) {
-          logger.info('找到JSON数组格式的响应');
-          books = JSON.parse(jsonMatch[0]);
-        } else {
-          logger.info('尝试直接解析整个响应内容');
-          books = JSON.parse(content);
-        }
+        // 使用辅助方法解析JSON
+        logger.info('尝试提取JSON数据');
+        books = this._extractJsonFromContent(content);
         
         // 验证书籍数据格式
         logger.info(`成功解析出${books.length}本书，开始验证和格式化`);
@@ -663,16 +659,9 @@ class AIService {
       let books = [];
       
       try {
-        // 尝试解析JSON
-        logger.info('尝试解析AI响应中的JSON数据');
-        const jsonMatch = content.match(/\[\s*\{[\s\S]*\}\s*\]/);
-        if (jsonMatch) {
-          logger.info('找到JSON数组格式的响应');
-          books = JSON.parse(jsonMatch[0]);
-        } else {
-          logger.info('尝试直接解析整个响应内容');
-          books = JSON.parse(content);
-        }
+        // 使用辅助方法解析JSON
+        logger.info('尝试提取JSON数据');
+        books = this._extractJsonFromContent(content);
         
         // 验证书籍数据格式
         logger.info(`成功解析出${books.length}本书，开始验证和格式化`);
@@ -737,6 +726,372 @@ class AIService {
     ];
     
     return books;
+  }
+
+  /**
+   * 创建搜索会话
+   * @param {string} query 搜索查询
+   * @returns {string} 会话ID
+   */
+  async createSearchSession(query) {
+    // 生成唯一会话ID
+    const sessionId = Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+    
+    // 初始化会话状态
+    this.searchSessions.set(sessionId, {
+      query,
+      status: 'pending',  // pending, processing, completed, failed
+      progress: 0,
+      thinking: ['正在分析您的搜索需求...'],
+      results: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
+    
+    logger.info(`创建搜索会话 [ID: ${sessionId}], 查询: "${query}"`);
+    
+    return sessionId;
+  }
+
+  /**
+   * 异步处理搜索查询
+   * @param {string} sessionId 会话ID
+   * @param {string} query 搜索查询
+   * @param {number} limit 结果数量限制
+   */
+  async processSearchQuery(sessionId, query, limit = 3) {
+    try {
+      // 获取会话状态
+      const session = this.searchSessions.get(sessionId);
+      if (!session) {
+        logger.error(`处理搜索查询失败: 会话不存在 [ID: ${sessionId}]`);
+        return;
+      }
+      
+      // 更新会话状态
+      session.status = 'processing';
+      session.thinking.push('分析您的兴趣偏好和阅读需求...');
+      session.progress = 10;
+      session.updatedAt = Date.now();
+      
+      // 准备AI请求
+      const messages = [
+        {
+          role: "system",
+          content: `你是一个专业的图书推荐助手，精通各类书籍和文学作品。
+          用户将描述他们的阅读需求、兴趣爱好或想了解的主题，你需要推荐最合适的书籍。
+          请分析用户需求的深层含义，考虑可能隐含的阅读偏好、知识背景和阅读目的。
+          
+          你的回复必须是一个JSON格式的数组，包含${limit}本最匹配的书籍，每本书包含以下字段：
+          - title: 书名
+          - author: 作者
+          - category: 分类
+          - tags: 标签数组
+          - coverUrl: 封面图片URL（尽量使用豆瓣图书的封面URL）
+          - introduction: 简短介绍
+          
+          确保您的回复可以直接被JSON.parse()解析，不包含额外的说明文字。`
+        },
+        {
+          role: "user",
+          content: query
+        }
+      ];
+      
+      // 更新思考过程
+      setTimeout(() => {
+        if (this.searchSessions.has(sessionId)) {
+          const session = this.searchSessions.get(sessionId);
+          session.thinking.push('搜索相关主题的优质书籍...');
+          session.progress = 30;
+          session.updatedAt = Date.now();
+        }
+      }, 1500);
+      
+      setTimeout(() => {
+        if (this.searchSessions.has(sessionId)) {
+          const session = this.searchSessions.get(sessionId);
+          session.thinking.push('根据您的需求定制个性化推荐...');
+          session.progress = 50;
+          session.updatedAt = Date.now();
+        }
+      }, 3000);
+      
+      // 调用AI模型或使用模拟数据
+      let aiResponse;
+      if (this.useMockData) {
+        // 模拟延迟
+        await new Promise(resolve => setTimeout(resolve, 4500));
+        aiResponse = this._getMockSearchResults(query, limit);
+        
+        // 更新思考过程
+        if (this.searchSessions.has(sessionId)) {
+          const session = this.searchSessions.get(sessionId);
+          session.thinking.push('筛选最符合您兴趣的书籍...');
+          session.progress = 70;
+          session.updatedAt = Date.now();
+        }
+        
+        // 再次模拟延迟
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      } else {
+        // 真实API调用
+        // 更新思考过程
+        if (this.searchSessions.has(sessionId)) {
+          const session = this.searchSessions.get(sessionId);
+          session.thinking.push('连接AI模型获取智能推荐...');
+          session.progress = 40;
+          session.updatedAt = Date.now();
+        }
+        
+        const response = await this.callAI(messages);
+        
+        if (this.searchSessions.has(sessionId)) {
+          const session = this.searchSessions.get(sessionId);
+          session.thinking.push('分析AI返回的推荐结果...');
+          session.progress = 70;
+          session.updatedAt = Date.now();
+        }
+        
+        // 解析AI响应
+        if (response && response.choices && response.choices.length > 0) {
+          const content = response.choices[0].message.content;
+          try {
+            // 使用辅助方法解析JSON
+            logger.info('尝试提取JSON数据');
+            aiResponse = this._extractJsonFromContent(content);
+            
+            // 成功解析后立即更新会话状态，不要延迟
+            if (this.searchSessions.has(sessionId)) {
+              const session = this.searchSessions.get(sessionId);
+              session.thinking.push('成功解析AI推荐结果...');
+              session.thinking.push('筛选最符合您兴趣的书籍...');
+              session.progress = 75;
+              session.updatedAt = Date.now();
+              
+              // 处理和格式化结果
+              const formattedResults = Array.isArray(aiResponse) 
+                ? aiResponse.map(book => this._validateAndFormatBook(book))
+                : [];
+              
+              // 立即更新结果
+              session.status = 'completed';
+              session.results = formattedResults;
+              session.progress = 100;
+              session.thinking.push('推荐完成！已为您找到最匹配的书籍。');
+              session.updatedAt = Date.now();
+              
+              // 设置会话过期时间（60分钟后自动清除）
+              setTimeout(() => {
+                this.searchSessions.delete(sessionId);
+                logger.info(`搜索会话已过期并清除 [ID: ${sessionId}]`);
+              }, 60 * 60 * 1000);
+              
+              logger.info(`搜索结果更新完成 [会话ID: ${sessionId}], 共找到${formattedResults.length}本书籍`);
+            }
+          } catch (error) {
+            logger.error(`解析AI响应失败 [会话ID: ${sessionId}]`, error);
+            logger.debug('AI响应内容:', content);
+            
+            if (this.searchSessions.has(sessionId)) {
+              const session = this.searchSessions.get(sessionId);
+              session.thinking.push('解析AI返回结果出错，尝试使用备用数据...');
+              session.progress = 80;
+              session.updatedAt = Date.now();
+              
+              // 使用模拟数据作为备份
+              aiResponse = this._getMockSearchResults(query, limit);
+              
+              // 处理和格式化结果
+              const formattedResults = Array.isArray(aiResponse) 
+                ? aiResponse.map(book => this._validateAndFormatBook(book))
+                : [];
+              
+              // 立即更新结果
+              session.status = 'completed';
+              session.results = formattedResults;
+              session.progress = 100;
+              session.thinking.push('推荐完成！已为您找到最匹配的书籍。');
+              session.updatedAt = Date.now();
+              
+              logger.info(`使用备用数据更新搜索结果 [会话ID: ${sessionId}], 共找到${formattedResults.length}本书籍`);
+            }
+          }
+        } else {
+          logger.error(`AI响应格式异常 [会话ID: ${sessionId}]`);
+          
+          if (this.searchSessions.has(sessionId)) {
+            const session = this.searchSessions.get(sessionId);
+            session.thinking.push('AI返回的数据格式异常，使用备用数据...');
+            session.progress = 80;
+            session.updatedAt = Date.now();
+            
+            // 使用模拟数据作为备份
+            aiResponse = this._getMockSearchResults(query, limit);
+            
+            // 处理和格式化结果
+            const formattedResults = Array.isArray(aiResponse) 
+              ? aiResponse.map(book => this._validateAndFormatBook(book))
+              : [];
+            
+            // 立即更新结果
+            session.status = 'completed';
+            session.results = formattedResults;
+            session.progress = 100;
+            session.thinking.push('推荐完成！已为您找到最匹配的书籍。');
+            session.updatedAt = Date.now();
+            
+            logger.info(`使用备用数据更新搜索结果 [会话ID: ${sessionId}], 共找到${formattedResults.length}本书籍`);
+          }
+        }
+      }
+    } catch (error) {
+      logger.error(`处理搜索查询失败 [会话ID: ${sessionId}]`, error);
+      
+      // 更新会话状态为失败
+      if (this.searchSessions.has(sessionId)) {
+        const session = this.searchSessions.get(sessionId);
+        session.status = 'failed';
+        session.thinking.push('搜索处理过程中发生错误，请重试。');
+        session.progress = 100;
+        session.updatedAt = Date.now();
+      }
+    }
+  }
+
+  /**
+   * 获取搜索进度
+   * @param {string} sessionId 会话ID
+   * @returns {Object|null} 会话状态
+   */
+  async getSearchProgress(sessionId) {
+    // 获取会话状态
+    const session = this.searchSessions.get(sessionId);
+    if (!session) {
+      return null;
+    }
+    
+    return {
+      query: session.query,
+      status: session.status,
+      progress: session.progress,
+      thinking: session.thinking,
+      results: session.results,
+      updatedAt: session.updatedAt
+    };
+  }
+
+  /**
+   * 生成模拟搜索结果
+   * @param {string} query 搜索查询
+   * @param {number} limit 结果数量限制
+   * @returns {Array} 模拟的搜索结果
+   * @private
+   */
+  _getMockSearchResults(query, limit = 3) {
+    // 基于查询内容生成相关的模拟结果
+    const mockBooks = [
+      {
+        title: "三体",
+        author: "刘慈欣",
+        category: "科幻",
+        tags: ["硬科幻", "宇宙文明", "哲学思考"],
+        coverUrl: "https://img2.doubanio.com/view/subject/l/public/s2768378.jpg",
+        introduction: "地球文明面临危机，一个神秘组织发起一个计划，将人类的命运与三体文明联系在一起。"
+      },
+      {
+        title: "活着",
+        author: "余华",
+        category: "文学",
+        tags: ["生活", "苦难", "中国现代"],
+        coverUrl: "https://img2.doubanio.com/view/subject/l/public/s29053580.jpg", 
+        introduction: "讲述了福贵一生的故事，展示了普通人在大时代背景下的生存状态。"
+      },
+      {
+        title: "白夜行",
+        author: "东野圭吾",
+        category: "推理",
+        tags: ["悬疑", "心理", "日本文学"],
+        coverUrl: "https://img9.doubanio.com/view/subject/l/public/s4610502.jpg",
+        introduction: "一对少年少女被命运捆绑，在黑暗中寻找光明的故事。"
+      },
+      {
+        title: "百年孤独",
+        author: "加西亚·马尔克斯",
+        category: "魔幻现实主义",
+        tags: ["家族史诗", "拉美文学", "魔幻"],
+        coverUrl: "https://img1.doubanio.com/view/subject/l/public/s6384944.jpg",
+        introduction: "布恩迪亚家族七代人的兴衰史，影响了整整一代文学的经典。"
+      },
+      {
+        title: "人类简史",
+        author: "尤瓦尔·赫拉利",
+        category: "历史",
+        tags: ["历史", "人类学", "文明"],
+        coverUrl: "https://img2.doubanio.com/view/subject/l/public/s27814883.jpg",
+        introduction: "从认知革命、农业革命、科学革命到人工智能，重新审视人类发展历程。"
+      },
+      {
+        title: "解忧杂货店",
+        author: "东野圭吾",
+        category: "小说",
+        tags: ["治愈", "温情", "日本文学"],
+        coverUrl: "https://img9.doubanio.com/view/subject/l/public/s27264181.jpg",
+        introduction: "一家可以解决人们烦恼的杂货店，通过跨越时空的信件传递温暖与希望。"
+      }
+    ];
+    
+    // 基于查询选择最相关的书籍
+    let relevantBooks = [...mockBooks];
+    
+    // 如果查询中包含特定关键词，尝试匹配相关书籍
+    const lowerQuery = query.toLowerCase();
+    
+    if (lowerQuery.includes('科幻') || lowerQuery.includes('太空') || lowerQuery.includes('宇宙')) {
+      relevantBooks = mockBooks.filter(book => 
+        book.category === '科幻' || 
+        book.tags.some(tag => ['科幻', '太空', '宇宙', '未来'].includes(tag))
+      );
+    } else if (lowerQuery.includes('悬疑') || lowerQuery.includes('推理') || lowerQuery.includes('犯罪')) {
+      relevantBooks = mockBooks.filter(book => 
+        book.category === '推理' || 
+        book.tags.some(tag => ['悬疑', '推理', '犯罪', '心理'].includes(tag))
+      );
+    } else if (lowerQuery.includes('历史') || lowerQuery.includes('文明')) {
+      relevantBooks = mockBooks.filter(book => 
+        book.category === '历史' || 
+        book.tags.some(tag => ['历史', '文明', '人类学'].includes(tag))
+      );
+    }
+    
+    // 如果没有匹配的，返回随机书籍
+    if (relevantBooks.length === 0) {
+      relevantBooks = mockBooks;
+    }
+    
+    // 混洗数组，随机选择书籍
+    relevantBooks.sort(() => 0.5 - Math.random());
+    
+    // 返回限制数量的结果
+    return relevantBooks.slice(0, limit);
+  }
+
+  // 添加一个辅助方法来处理可能包含Markdown的JSON内容
+  _extractJsonFromContent(content) {
+    try {
+      // 首先尝试从Markdown代码块中提取JSON
+      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (jsonMatch && jsonMatch[1]) {
+        logger.info('从Markdown代码块中提取JSON数据');
+        return JSON.parse(jsonMatch[1]);
+      }
+      
+      // 如果没有Markdown代码块，尝试直接解析
+      return JSON.parse(content);
+    } catch (error) {
+      logger.error('提取JSON数据失败', error);
+      throw error;
+    }
   }
 }
 

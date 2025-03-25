@@ -539,6 +539,25 @@ const aiApi = {
     const queryParams = new URLSearchParams(params).toString();
     const queryString = queryParams ? `?${queryParams}` : '';
     return request(`/ai/popular-searches${queryString}`);
+  },
+  
+  // AI智能搜索书籍
+  searchBooks(query, limit = 3) {
+    return request('/ai/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        query,
+        limit
+      })
+    });
+  },
+  
+  // 获取AI搜索进度
+  getSearchProgress(sessionId) {
+    return request(`/ai/search-progress/${sessionId}`);
   }
 };
 

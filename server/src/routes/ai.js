@@ -18,6 +18,10 @@ router.get('/test', (req, res) => {
 router.get('/recommended', aiController.getRecommendedBooks);
 router.get('/popular', aiController.getPopularBooks);
 router.get('/popular-searches', aiController.getPopularSearches);
+// 添加AI智能搜索接口
+router.post('/search', aiController.searchBooks);
+// 添加AI思考过程接口
+router.get('/search-progress/:sessionId', aiController.getSearchProgress);
 
 // 个性化推荐API - 需要登录
 router.get('/personal-recommendations', authenticate, aiController.getRecommendedBooks);
