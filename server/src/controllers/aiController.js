@@ -89,7 +89,7 @@ class AIController {
    */
   async searchBooks(req, res) {
     try {
-      const { query, limit = 3 } = req.body;
+      const { query } = req.body;
       
       if (!query || query.trim() === '') {
         return res.status(400).json({
@@ -102,7 +102,7 @@ class AIController {
       const sessionId = await aiService.createSearchSession(query);
       
       // 启动异步搜索处理
-      aiService.processSearchQuery(sessionId, query, parseInt(limit)).catch(error => {
+      aiService.processSearchQuery(sessionId, query).catch(error => {
         logger.error(`处理搜索查询失败 [会话ID: ${sessionId}]`, error);
       });
       

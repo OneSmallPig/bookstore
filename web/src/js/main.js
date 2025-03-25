@@ -2826,7 +2826,7 @@ async function pollSearchProgress(sessionId, container, query) {
   let retryCount = 0;
   
   // 使用时间控制而不是固定次数
-  const maxWaitTime = 60000; // 最大等待时间为60秒
+  const maxWaitTime = 180000; // 最大等待时间增加到180秒
   const startTime = Date.now();
   
   const initialInterval = 1000; // 初始轮询间隔为1秒
@@ -2843,7 +2843,18 @@ async function pollSearchProgress(sessionId, container, query) {
           if (aiSearchResults) {
             aiSearchResults.innerHTML = `
               <div class="bg-red-50 text-red-500 p-4 rounded-lg">
-                搜索处理超时，请重试。
+                <h3 class="font-bold mb-2">搜索处理超时</h3>
+                <p>很抱歉，智能搜索处理时间超过了预期。这可能是因为我们的AI服务当前负载过高或您的查询特别复杂。</p>
+                <p class="mt-2">您可以:</p>
+                <ul class="list-disc pl-5 mt-1">
+                  <li>稍后再试</li>
+                  <li>尝试简化您的搜索查询</li>
+                  <li>使用更具体的关键词</li>
+                </ul>
+                <button class="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded" 
+                  onclick="document.querySelector('.search-form').scrollIntoView({behavior: 'smooth'})">
+                  返回搜索
+                </button>
               </div>
             `;
           }
@@ -2878,6 +2889,12 @@ async function pollSearchProgress(sessionId, container, query) {
         thinkingList.innerHTML = progressData.thinking.map(thought => 
           `<li>${thought}</li>`
         ).join('');
+        
+        // 自动滚动到最新的思考过程
+        const thoughtItems = thinkingList.querySelectorAll('li');
+        if (thoughtItems.length > 0) {
+          thoughtItems[thoughtItems.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
       }
       
       // 检查是否完成
@@ -2889,14 +2906,18 @@ async function pollSearchProgress(sessionId, container, query) {
         if (progressData.results && progressData.results.length > 0) {
           console.log('搜索完成，找到结果:', progressData.results.length);
           // 立即显示结果，不再延迟
-          displayAISearchResults(progressData.results, query, container);
+          displayAISearchResults(progressData.results, query, container, progressData.aiAnalysis);
         } else {
           console.warn('搜索完成，但没有找到结果');
           container.innerHTML = `
             <div class="text-center py-12">
               <img src="../images/no-results.svg" alt="无结果" class="w-40 h-40 mx-auto mb-4">
               <h3 class="text-lg font-semibold mb-2">未找到相关书籍</h3>
-              <p class="text-gray-500">尝试使用不同的关键词或更广泛的描述。</p>
+              <p class="text-gray-500 mb-4">尝试使用不同的关键词或更广泛的描述。</p>
+              <button class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded" 
+                onclick="document.querySelector('.search-form').scrollIntoView({behavior: 'smooth'})">
+                返回搜索
+              </button>
             </div>
           `;
         }
@@ -2909,7 +2930,17 @@ async function pollSearchProgress(sessionId, container, query) {
         if (aiSearchResults) {
           aiSearchResults.innerHTML = `
             <div class="bg-red-50 text-red-500 p-4 rounded-lg">
-              搜索处理失败，请重试。
+              <h3 class="font-bold mb-2">搜索处理失败</h3>
+              <p>很抱歉，处理您的请求时出现了问题。这可能是因为我们的AI服务当前负载过高。</p>
+              <p class="mt-2">建议：</p>
+              <ul class="list-disc pl-5 mt-1">
+                <li>稍后再试</li>
+                <li>尝试更简短或更具体的搜索查询</li>
+              </ul>
+              <button class="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded" 
+                onclick="document.querySelector('.search-form').scrollIntoView({behavior: 'smooth'})">
+                返回搜索
+              </button>
             </div>
           `;
         }
@@ -2948,14 +2979,28 @@ async function pollSearchProgress(sessionId, container, query) {
       // 基于时间判断是否应该继续尝试
       const elapsedTime = Date.now() - startTime;
       if (!completed && elapsedTime < maxWaitTime) {
-        interval = Math.min(interval * 1.5, 3000); // 最大间隔3秒
+        // 使用指数退避策略，增加重试间隔，避免频繁失败的请求
+        const backoffFactor = Math.min(Math.pow(1.5, retryCount), 5);
+        interval = Math.min(interval * backoffFactor, 5000); // 最大间隔5秒
+        console.log(`使用退避策略，下次轮询间隔: ${interval}ms`);
         setTimeout(updateProgress, interval);
       } else {
         const aiSearchResults = document.getElementById('ai-search-results');
         if (aiSearchResults) {
           aiSearchResults.innerHTML = `
             <div class="bg-red-50 text-red-500 p-4 rounded-lg">
-              搜索处理超时，请重试。
+              <h3 class="font-bold mb-2">连接问题</h3>
+              <p>很抱歉，我们无法与搜索服务保持连接。这可能是因为网络问题或服务器负载过高。</p>
+              <p class="mt-2">您可以:</p>
+              <ul class="list-disc pl-5 mt-1">
+                <li>检查您的网络连接</li>
+                <li>刷新页面后重试</li>
+                <li>稍后再尝试搜索</li>
+              </ul>
+              <button class="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded" 
+                onclick="document.querySelector('.search-form').scrollIntoView({behavior: 'smooth'})">
+                返回搜索
+              </button>
             </div>
           `;
         }
@@ -2972,13 +3017,13 @@ async function pollSearchProgress(sessionId, container, query) {
  * @param {Array} books 书籍数据
  * @param {string} query 搜索查询
  * @param {HTMLElement} container 容器元素
+ * @param {string} aiAnalysis AI分析内容
  */
-function displayAISearchResults(books, query, container) {
+function displayAISearchResults(books, query, container, aiAnalysis = '') {
   console.log('显示AI搜索结果:', books);
   
   // 确保有结果可显示
-  if (!books || !Array.isArray(books) || books.length === 0) {
-    console.warn('无有效的搜索结果');
+  if (!Array.isArray(books) || books.length === 0) {
     container.innerHTML = `
       <div class="text-center py-12">
         <img src="../images/no-results.svg" alt="无结果" class="w-40 h-40 mx-auto mb-4">
@@ -2989,92 +3034,183 @@ function displayAISearchResults(books, query, container) {
     return;
   }
   
-  // 处理书籍数据，确保格式一致
-  const processedBooks = books.map(book => {
-    return {
-      id: book.id || book._id || book.title || Date.now().toString(),
-      title: book.title || '未知书名',
-      author: book.author || '未知作者',
-      tags: Array.isArray(book.tags) ? book.tags : (book.tags ? [book.tags] : []),
-      coverUrl: book.coverUrl || book.cover || book.coverImage || '../images/default-book-cover.svg',
-      introduction: book.introduction || book.description || '暂无简介',
-      rating: book.rating || 4.5,
-      category: book.category || '未分类'
-    };
-  });
-  
-  console.log('处理后的书籍数据:', processedBooks);
-  
-  // 确保ImageProxy模块已加载，用于处理豆瓣图片
-  loadImageProxyModule();
-  
-  // 创建结果展示的HTML
-  container.innerHTML = `
+  // 创建头部展示内容
+  const headerHtml = `
     <h2 class="text-xl font-bold mb-2">AI智能搜索: "${query}"</h2>
-    <p class="text-gray-600 mb-4">AI已为您找到以下最匹配的书籍：</p>
-    
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      ${processedBooks.map(book => {
-        // 创建书籍卡片HTML
-        return `
-          <div class="book-card-wrapper">
-            <div class="book-card">
-              <div class="book-card-content">
-                <!-- 书籍封面区域 -->
-                <div class="book-cover-container">
-                  ${createBookCoverElement(book)}
-                </div>
-                
-                <!-- 书籍信息区域 -->
-                <div class="book-info-container">
-                  <h3 class="book-title">${book.title}</h3>
-                  <p class="book-author">${book.author}</p>
-                  
-                  <!-- 评分区域 -->
-                  <div class="book-rating-container">
-                    <div class="flex items-center">
-                      ${generateStarRating(book.rating)}
-                      <span class="text-gray-600 text-sm ml-1">${book.rating.toFixed(1)}</span>
-                    </div>
-                  </div>
-    
-                  <!-- 简介区域 -->
-                  <div class="tooltip">
-                    <div class="book-introduction">${book.introduction.length > 60 ? 
-                      book.introduction.substring(0, 60) + '...' : book.introduction}</div>
-                    <div class="tooltip-text">${book.introduction}</div>
-                  </div>
-                </div>
-                
-                <!-- 操作按钮区域 -->
-                <div class="book-actions">
-                  <a href="#" class="btn btn-read">阅读</a>
-                  <button class="btn btn-add-shelf" data-book-id="${book.id}">
-                    加入书架
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
+    ${aiAnalysis ? `
+      <div class="bg-blue-50 p-4 rounded-lg mb-6">
+        <h3 class="font-semibold text-blue-700 mb-2">AI分析:</h3>
+        <div class="text-sm text-gray-700 space-y-2 ai-analysis">
+          ${aiAnalysis.split('\n').filter(line => line.trim()).map(line => `<p>${line}</p>`).join('')}
+        </div>
+      </div>
+    ` : ''}
+    <p class="mb-4 text-gray-600">为您找到 <span class="font-semibold">${books.length}</span> 本相关书籍</p>
   `;
   
-  // 处理豆瓣图片等需要代理的图片
-  setTimeout(() => {
-    const bookCovers = container.querySelectorAll('img.book-cover[data-use-proxy="true"]');
-    console.log(`处理${bookCovers.length}个需要代理的图片...`);
+  // 为了更好的用户体验，使用分页显示结果
+  const booksPerPage = window.innerWidth >= 768 ? 9 : 6; // 响应式调整每页显示数量
+  let currentPage = 1;
+  const totalPages = Math.ceil(books.length / booksPerPage);
+  
+  // 创建结果容器和分页
+  container.innerHTML = `
+    ${headerHtml}
+    <div class="books-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+      <!-- 书籍卡片将在这里动态添加 -->
+    </div>
+    ${totalPages > 1 ? `
+      <div class="pagination flex justify-center items-center space-x-2 mt-6">
+        <button class="pagination-prev bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded disabled:opacity-50" disabled>
+          上一页
+        </button>
+        <span class="page-info text-gray-600">第 <span class="current-page">1</span> 页，共 <span class="total-pages">${totalPages}</span> 页</span>
+        <button class="pagination-next bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded">
+          下一页
+        </button>
+      </div>
+    ` : ''}
+  `;
+  
+  const booksGrid = container.querySelector('.books-grid');
+  
+  // 书籍分页展示函数
+  function displayBooksForPage(page, booksPerPage) {
+    const startIndex = (page - 1) * booksPerPage;
+    const endIndex = Math.min(startIndex + booksPerPage, books.length);
+    const booksToShow = books.slice(startIndex, endIndex);
     
-    bookCovers.forEach(img => {
-      if (window.ImageProxy && img.dataset.originalSrc) {
-        window.ImageProxy.handleImageWithProxy(img, img.dataset.originalSrc);
+    booksGrid.innerHTML = '';
+    
+    // 为每本书添加延迟，创造动画效果
+    booksToShow.forEach((book, index) => {
+      const delay = index * 100; // 100ms的延迟增量
+      
+      const bookCard = document.createElement('div');
+      bookCard.className = 'book-card-wrapper opacity-0';
+      bookCard.style.animationDelay = `${delay}ms`;
+      
+      // 清理和验证数据
+      const cleanedBook = {
+        id: book.id || `search-${Date.now()}-${index}`,
+        title: book.title || '未知书名',
+        author: book.author || '未知作者',
+        description: book.description || book.introduction || '暂无简介',
+        categories: Array.isArray(book.categories) ? book.categories : 
+                  (book.category ? [book.category] : ['未分类']),
+        rating: typeof book.rating === 'number' ? book.rating : 4,
+        coverUrl: book.coverUrl || '../images/default-book-cover.png',
+        reasons: book.reasons || ''
+      };
+      
+      // 生成星级评分
+      const starRating = generateStarRating(cleanedBook.rating);
+      
+      // 获取类别标签的颜色
+      const categoryTags = cleanedBook.categories.map(category => {
+        const bgColor = getBgColorByCategory(category);
+        return `<span class="category-tag ${bgColor} text-white">${category}</span>`;
+      }).join('');
+      
+      // 构建书籍卡片
+      bookCard.innerHTML = `
+        <div class="book-card h-full flex flex-col" data-book-id="${cleanedBook.id}">
+          <div class="book-cover">
+            <img src="${cleanedBook.coverUrl}" alt="${cleanedBook.title}" loading="lazy" onerror="handleBookCoverError(this)">
+          </div>
+          <div class="book-info flex-1 flex flex-col">
+            <h3 class="book-title">${cleanedBook.title}</h3>
+            <p class="book-author">${cleanedBook.author}</p>
+            <div class="book-rating">
+              <div class="rating-stars">${starRating}</div>
+              <span class="text-sm text-gray-500">${cleanedBook.rating.toFixed(1)}</span>
+            </div>
+            <div class="book-categories">
+              ${categoryTags}
+            </div>
+            <p class="book-description flex-grow">${cleanedBook.description}</p>
+            ${cleanedBook.reasons ? `
+              <div class="book-reason text-sm text-green-700 bg-green-50 p-2 rounded mb-2">
+                <span class="font-medium">推荐理由:</span> ${cleanedBook.reasons}
+              </div>
+            ` : ''}
+            <div class="book-actions mt-auto">
+              <button class="read-btn flex items-center justify-center">
+                <i class="fas fa-book mr-1"></i> 阅读
+              </button>
+              <button class="add-btn flex items-center justify-center">
+                <i class="fas fa-plus mr-1"></i> 收藏
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      booksGrid.appendChild(bookCard);
+      
+      // 触发动画
+      setTimeout(() => {
+        bookCard.classList.remove('opacity-0');
+        bookCard.classList.add('animate-fadeIn');
+      }, 50);
+    });
+    
+    // 更新分页信息
+    const currentPageEl = container.querySelector('.current-page');
+    if (currentPageEl) {
+      currentPageEl.textContent = page;
+    }
+    
+    // 更新分页按钮状态
+    const prevBtn = container.querySelector('.pagination-prev');
+    const nextBtn = container.querySelector('.pagination-next');
+    
+    if (prevBtn) {
+      prevBtn.disabled = page <= 1;
+    }
+    
+    if (nextBtn) {
+      nextBtn.disabled = page >= totalPages;
+    }
+    
+    // 添加书籍卡片的事件监听
+    addBookCardListeners();
+    
+    // 添加描述工具提示
+    setupDescriptionTooltips();
+  }
+  
+  // 初始化显示第一页
+  displayBooksForPage(currentPage, booksPerPage);
+  
+  // 添加分页事件监听
+  const prevBtn = container.querySelector('.pagination-prev');
+  const nextBtn = container.querySelector('.pagination-next');
+  
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        displayBooksForPage(currentPage, booksPerPage);
+        // 滚动到结果顶部
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     });
-  }, 100);
+  }
   
-  // 添加书籍卡片的事件监听器
-  addBookCardListeners();
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      if (currentPage < totalPages) {
+        currentPage++;
+        displayBooksForPage(currentPage, booksPerPage);
+        // 滚动到结果顶部
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
+  
+  // 添加保存搜索历史的功能
+  saveSearchHistory(query);
   
   // 更新搜索历史显示
   updateSearchHistoryDisplay();

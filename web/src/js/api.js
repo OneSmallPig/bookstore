@@ -542,15 +542,14 @@ const aiApi = {
   },
   
   // AI智能搜索书籍
-  searchBooks(query, limit = 3) {
+  searchBooks(query) {
     return request('/ai/search', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        query,
-        limit
+        query
       })
     });
   },
