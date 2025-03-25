@@ -3005,6 +3005,9 @@ function displayAISearchResults(books, query, container) {
   
   console.log('处理后的书籍数据:', processedBooks);
   
+  // 确保ImageProxy模块已加载，用于处理豆瓣图片
+  loadImageProxyModule();
+  
   // 创建结果展示的HTML
   container.innerHTML = `
     <h2 class="text-xl font-bold mb-2">AI智能搜索: "${query}"</h2>
@@ -3019,8 +3022,7 @@ function displayAISearchResults(books, query, container) {
               <div class="book-card-content">
                 <!-- 书籍封面区域 -->
                 <div class="book-cover-container">
-                  <img src="${book.coverUrl}" alt="${book.title}" class="book-cover" 
-                    onerror="this.onerror=null; this.src='../images/default-book-cover.svg';">
+                  ${createBookCoverElement(book)}
                 </div>
                 
                 <!-- 书籍信息区域 -->
@@ -3059,8 +3061,17 @@ function displayAISearchResults(books, query, container) {
     </div>
   `;
   
-  // 确保ImageProxy模块已加载，用于处理豆瓣图片
-  loadImageProxyModule();
+  // 处理豆瓣图片等需要代理的图片
+  setTimeout(() => {
+    const bookCovers = container.querySelectorAll('img.book-cover[data-use-proxy="true"]');
+    console.log(`处理${bookCovers.length}个需要代理的图片...`);
+    
+    bookCovers.forEach(img => {
+      if (window.ImageProxy && img.dataset.originalSrc) {
+        window.ImageProxy.handleImageWithProxy(img, img.dataset.originalSrc);
+      }
+    });
+  }, 100);
   
   // 添加书籍卡片的事件监听器
   addBookCardListeners();
