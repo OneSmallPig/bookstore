@@ -266,37 +266,64 @@ function createBookCoverElement(bookData) {
       new URL(coverUrl); // 尝试创建URL对象，如果无效会抛出错误
       console.log('有效的封面URL:', coverUrl);
       
-      // 根据是否为豆瓣图片选择不同的处理方式
+      // 统一处理图片元素
+      const commonAttributes = `
+        class="book-cover w-full h-full object-cover transition-transform duration-300" 
+        alt="${bookData.title}" 
+        data-original-src="${coverUrl}"
+        loading="lazy"
+        onerror="handleBookCoverError(this)"
+      `;
+        
+      // 根据是否为豆瓣图片，可能需要直接使用代理
       if (isDoubanImage) {
         console.log('检测到豆瓣图片，添加代理处理标记');
         
-        // 返回带有代理处理标记的图片元素，添加备用图像
-        return `<img src="${coverUrl}" alt="${bookData.title}" class="book-cover" 
-                data-original-src="${coverUrl}" 
-                data-use-proxy="true"
-                onerror="this.onerror=null; handleBookCoverError(this);">`;
+        // 如果已加载ImageProxy模块，提前使用代理URL
+        let imgSrc = coverUrl;
+        if (window.ImageProxy) {
+          // 在ImageProxy模块可用的情况下，直接使用代理URL
+          try {
+            imgSrc = window.ImageProxy.getProxiedImageUrl(coverUrl);
+            console.log('使用代理URL:', imgSrc);
+          } catch (e) {
+            console.warn('生成代理URL失败，使用原始URL');
+          }
+        }
+        
+        // 返回带有代理处理标记的图片元素
+        return `<img src="${imgSrc}" ${commonAttributes} data-use-proxy="true">`;
       } else {
         // 非豆瓣图片，正常加载
-        return `<img src="${coverUrl}" alt="${bookData.title}" class="book-cover" 
-                onerror="this.onerror=null; handleBookCoverError(this);">`;
+        return `<img src="${coverUrl}" ${commonAttributes}>`;
       }
     } catch (e) {
       console.warn('无效的封面URL:', coverUrl, e);
       // 如果URL无效，使用默认图片
-      return `<img src="../images/default-book-cover.svg" alt="${bookData.title}" class="book-cover">`;
+      return `<img src="../images/default-book-cover.svg" alt="${bookData.title}" class="book-cover w-full h-full object-cover">`;
     }
   }
   
   // 使用默认图片
-  return `<img src="../images/default-book-cover.svg" alt="${bookData.title}" class="book-cover">`;
+  return `<img src="../images/default-book-cover.svg" alt="${bookData.title}" class="book-cover w-full h-full object-cover">`;
 }
 
 // 处理书籍封面加载错误
 function handleBookCoverError(img) {
   console.warn('书籍封面加载失败，尝试使用备用方法:', img.src);
   
-  // 获取原始URL
+  // 获取原始URL，确保我们有一个可靠的URL来尝试
   const originalUrl = img.dataset.originalSrc || img.src;
+  
+  // 如果URL已经是默认图片，不再尝试加载
+  if (originalUrl.includes('default-book-cover') || 
+      originalUrl.includes('/images/default') || 
+      !originalUrl) {
+    // 已经是默认图片或无效URL，直接使用默认图片
+    img.src = '../images/default-book-cover.svg';
+    img.onerror = null; // 防止无限循环
+    return;
+  }
   
   // 检查是否为豆瓣图片
   const isDoubanImage = originalUrl.includes('douban') || originalUrl.includes('doubanio');
@@ -313,22 +340,37 @@ function handleBookCoverError(img) {
     return;
   }
   
+  // 检查是否已经尝试过所有可用的代理服务
+  if (img.dataset.triedAllProxies === 'true') {
+    console.log('已尝试所有代理服务，使用默认图片');
+    img.src = '../images/default-book-cover.svg';
+    img.onerror = null; // 防止无限循环
+    return;
+  }
+  
   // 检查ImageProxy模块是否可用
   if (window.ImageProxy && (isDoubanImage || img.dataset.useProxy === 'true')) {
-    // 如果是豆瓣图片且未尝试过代理，使用代理服务
-    if (!img.dataset.triedProxy || img.dataset.triedProxy !== 'all') {
-      console.log('尝试使用图片代理服务加载豆瓣图片');
-      // 标记已尝试过代理
-      img.dataset.triedProxy = 'all';
-      img.dataset.useProxy = 'true';
+    // 豆瓣图片或指定需要代理的图片，使用代理服务
+    console.log('尝试使用图片代理服务加载豆瓣图片');
+    
+    // 标记正在使用代理
+    img.dataset.useProxy = 'true';
+    
+    try {
       // 使用图片代理服务
       window.ImageProxy.handleImageWithProxy(img, originalUrl);
       return; // 尝试使用代理加载，不立即显示默认图片
+    } catch (error) {
+      console.error('代理加载图片失败:', error);
+      // 发生错误时继续执行后续代码
     }
   }
   
-  // 如果图片代理服务不可用或代理失败，使用默认图片
+  // 如果以上方法都失败，使用默认图片
+  console.log('无法加载图片，使用默认图片');
   img.src = '../images/default-book-cover.svg';
+  img.onerror = null; // 防止无限循环
+  img.dataset.triedAllProxies = 'true'; // 标记已尝试所有方法
 }
 
 // 将函数添加到全局作用域

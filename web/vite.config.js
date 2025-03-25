@@ -29,14 +29,17 @@ export default defineConfig(({ command, mode }) => {
           bookSourceManagement: resolve(__dirname, 'src/pages/book-source-management.html'),
         },
       },
+      assetsDir: 'assets',
+      sourcemap: true
     },
     server: {
-      port: 5173,
+      port: 3000,
       open: true,
       proxy: {
         '/api': {
-          target: apiBaseUrl,
-          changeOrigin: true
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, '')
         }
       }
     },
