@@ -363,7 +363,12 @@
     </div>
   </footer>
 
-  <script type="module" src="src/js/main.js"></script>
+  <!-- 通用脚本，必须放在首位加载 -->
+  <script src="./src/js/main.js"></script>
+  
+  <!-- 主页脚本，需要放在main.js之后 -->
+  <script type="module" src="./src/js/homepage.js"></script>
+  
   <script type="module" src="src/js/profile-button.js"></script>
   <script>
     // 初始化导航菜单

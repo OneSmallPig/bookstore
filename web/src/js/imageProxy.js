@@ -17,8 +17,8 @@ const PROXY_SERVICES = [
   '/images/default-book-cover.svg'
 ];
 
-// 根据环境选择合适的API基础URL
-const API_BASE_URL = process.env.NODE_ENV === 'development' 
+// 根据环境选择合适的API基础URL - 使用模块内私有变量避免全局冲突
+const _proxyBaseUrl = window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1') 
   ? 'http://localhost:3000' 
   : '';
 
@@ -66,7 +66,7 @@ function getProxiedImageUrl(originalUrl, proxyIndex = 0) {
     if (proxyUrl.includes('localhost:3000')) {
       return proxyUrl + encodedUrl;
     } else if (proxyUrl.startsWith('/api/')) {
-      return API_BASE_URL + proxyUrl + encodedUrl;
+      return _proxyBaseUrl + proxyUrl + encodedUrl;
     }
     
     // 使用当前选中的代理服务

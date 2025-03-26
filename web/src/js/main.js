@@ -2778,6 +2778,11 @@ function initSearchHistory() {
   }
 }
 
+// 为AI搜索添加防抖和请求锁
+let searchRequestInProgress = false;
+let lastSearchTime = 0;
+const MIN_SEARCH_INTERVAL = 5000; // 最小搜索间隔，单位毫秒
+
 /**
  * 执行AI智能搜索
  * @param {string} query 搜索查询
@@ -2785,23 +2790,65 @@ function initSearchHistory() {
  */
 async function performAISearch(query, container) {
   try {
+    // 检查是否有请求正在进行中
+    if (searchRequestInProgress) {
+      console.warn('搜索请求正在处理中，请等待当前请求完成');
+      showToast('请等待当前搜索完成', 'warning');
+      return;
+    }
+    
+    // 检查距离上次搜索的时间间隔
+    const now = Date.now();
+    const timeSinceLastSearch = now - lastSearchTime;
+    
+    if (timeSinceLastSearch < MIN_SEARCH_INTERVAL) {
+      const remainingTime = Math.ceil((MIN_SEARCH_INTERVAL - timeSinceLastSearch) / 1000);
+      console.warn(`搜索请求过于频繁，请在${remainingTime}秒后再试`);
+      
+      container.innerHTML = `
+        <div class="bg-amber-50 text-amber-600 p-4 rounded-lg">
+          <h3 class="font-bold mb-2">请求过于频繁</h3>
+          <p>为了确保AI服务质量，请在${remainingTime}秒后再尝试新的搜索。</p>
+        </div>
+      `;
+      
+      return;
+    }
+    
+    // 设置请求锁和时间戳
+    searchRequestInProgress = true;
+    lastSearchTime = now;
+    
     // 显示AI搜索进行中的界面
     showAISearchProgress(container, query);
     
-    // 调用AI搜索API
-    const response = await aiApi.searchBooks(query);
-    console.log('AI搜索请求提交成功:', response);
-    
-    if (!response.success || !response.sessionId) {
-      throw new Error(response.message || '搜索请求提交失败');
+    try {
+      // 调用AI搜索API
+      const response = await aiApi.searchBooks(query);
+      console.log('AI搜索请求提交成功:', response);
+      
+      if (!response.success || !response.sessionId) {
+        throw new Error(response.message || '搜索请求提交失败');
+      }
+      
+      // 保存搜索历史
+      saveSearchHistory(query);
+      
+      // 开始轮询搜索进度
+      await pollSearchProgress(response.sessionId, container, query);
+      
+    } catch (error) {
+      console.error('搜索错误:', error);
+      
+      container.innerHTML = `
+        <div class="bg-red-50 text-red-500 p-4 rounded-lg">
+          搜索时出错: ${error.message || '未知错误'}
+        </div>
+      `;
+    } finally {
+      // 解除请求锁
+      searchRequestInProgress = false;
     }
-    
-    // 保存搜索历史
-    saveSearchHistory(query);
-    
-    // 开始轮询搜索进度
-    pollSearchProgress(response.sessionId, container, query);
-    
   } catch (error) {
     console.error('搜索错误:', error);
     
@@ -2810,6 +2857,9 @@ async function performAISearch(query, container) {
         搜索时出错: ${error.message || '未知错误'}
       </div>
     `;
+    
+    // 确保请求锁被释放
+    searchRequestInProgress = false;
   }
 }
 
@@ -2862,36 +2912,128 @@ function showAISearchProgress(container, query) {
  * @param {string} sessionId 会话ID
  * @param {HTMLElement} container 容器元素
  * @param {string} query 搜索查询
+ * @returns {Promise<void>} 完成时解析的Promise
  */
 async function pollSearchProgress(sessionId, container, query) {
-  let completed = false;
-  let retryCount = 0;
-  
-  // 使用时间控制而不是固定次数
-  const maxWaitTime = 180000; // 最大等待时间增加到180秒
-  const startTime = Date.now();
-  
-  const initialInterval = 1000; // 初始轮询间隔为1秒
-  let interval = initialInterval;
-  
-  const updateProgress = async () => {
-    try {
-      // 基于时间判断是否超时，而不是固定次数
-      const elapsedTime = Date.now() - startTime;
-      if (completed || elapsedTime > maxWaitTime) {
-        if (elapsedTime > maxWaitTime && !completed) {
-          console.error(`搜索请求超时，已等待${elapsedTime / 1000}秒`);
+  return new Promise((resolve, reject) => {
+    let completed = false;
+    let retryCount = 0;
+    
+    // 使用时间控制而不是固定次数
+    const maxWaitTime = 180000; // 最大等待时间增加到180秒
+    const startTime = Date.now();
+    
+    const initialInterval = 1000; // 初始轮询间隔为1秒
+    let interval = initialInterval;
+    
+    const updateProgress = async () => {
+      try {
+        // 基于时间判断是否超时，而不是固定次数
+        const elapsedTime = Date.now() - startTime;
+        if (completed || elapsedTime > maxWaitTime) {
+          if (elapsedTime > maxWaitTime && !completed) {
+            console.error(`搜索请求超时，已等待${elapsedTime / 1000}秒`);
+            const aiSearchResults = document.getElementById('ai-search-results');
+            if (aiSearchResults) {
+              aiSearchResults.innerHTML = `
+                <div class="bg-red-50 text-red-500 p-4 rounded-lg">
+                  <h3 class="font-bold mb-2">搜索处理超时</h3>
+                  <p>很抱歉，智能搜索处理时间超过了预期。这可能是因为我们的AI服务当前负载过高或您的查询特别复杂。</p>
+                  <p class="mt-2">您可以:</p>
+                  <ul class="list-disc pl-5 mt-1">
+                    <li>稍后再试</li>
+                    <li>尝试简化您的搜索查询</li>
+                    <li>使用更具体的关键词</li>
+                  </ul>
+                  <button class="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded" 
+                    onclick="document.querySelector('.search-form').scrollIntoView({behavior: 'smooth'})">
+                    返回搜索
+                  </button>
+                </div>
+              `;
+            }
+            resolve(); // 解析Promise
+          } else {
+            resolve(); // 解析Promise
+          }
+          return;
+        }
+        
+        retryCount++;
+        console.log(`轮询搜索进度 [${retryCount}], 已等待${elapsedTime / 1000}秒`);
+        
+        const response = await aiApi.getSearchProgress(sessionId);
+        
+        if (!response.success || !response.data) {
+          throw new Error(response.message || '获取搜索进度失败');
+        }
+        
+        const progressData = response.data;
+        console.log('获取到搜索进度数据:', progressData.status, progressData.progress, '结果数量:', progressData.results ? progressData.results.length : 0);
+        
+        // 更新进度条
+        const progressBar = document.getElementById('search-progress-bar');
+        const progressPercentage = document.getElementById('search-progress-percentage');
+        
+        if (progressBar && progressPercentage) {
+          progressBar.style.width = `${progressData.progress}%`;
+          progressPercentage.textContent = `${progressData.progress}%`;
+        }
+        
+        // 更新思考过程
+        const thinkingList = document.getElementById('ai-thinking-list');
+        if (thinkingList && progressData.thinking) {
+          thinkingList.innerHTML = progressData.thinking.map(thought => 
+            `<li>${thought}</li>`
+          ).join('');
+          
+          // 自动滚动到最新的思考过程
+          const thoughtItems = thinkingList.querySelectorAll('li');
+          if (thoughtItems.length > 0) {
+            thoughtItems[thoughtItems.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }
+        
+        // 检查是否完成
+        if (progressData.status === 'completed') {
+          console.log('搜索完成，状态:', progressData.status);
+          completed = true;
+          
+          // 检查是否有有效结果
+          if (progressData.results && progressData.results.length > 0) {
+            console.log('搜索完成，找到结果:', progressData.results.length);
+            // 立即显示结果，不再延迟
+            displayAISearchResults(progressData.results, query, container, progressData.aiAnalysis);
+          } else {
+            console.warn('搜索完成，但没有找到结果');
+            container.innerHTML = `
+              <div class="text-center py-12">
+                <img src="../images/no-results.svg" alt="无结果" class="w-40 h-40 mx-auto mb-4">
+                <h3 class="text-lg font-semibold mb-2">未找到相关书籍</h3>
+                <p class="text-gray-500 mb-4">尝试使用不同的关键词或更广泛的描述。</p>
+                <button class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded" 
+                  onclick="document.querySelector('.search-form').scrollIntoView({behavior: 'smooth'})">
+                  返回搜索
+                </button>
+              </div>
+            `;
+          }
+          resolve(); // 解析Promise
+          return;
+        } else if (progressData.status === 'failed') {
+          console.error('搜索处理失败');
+          completed = true;
+          
           const aiSearchResults = document.getElementById('ai-search-results');
           if (aiSearchResults) {
             aiSearchResults.innerHTML = `
               <div class="bg-red-50 text-red-500 p-4 rounded-lg">
-                <h3 class="font-bold mb-2">搜索处理超时</h3>
-                <p>很抱歉，智能搜索处理时间超过了预期。这可能是因为我们的AI服务当前负载过高或您的查询特别复杂。</p>
-                <p class="mt-2">您可以:</p>
+                <h3 class="font-bold mb-2">搜索处理失败</h3>
+                <p>很抱歉，处理您的请求时出现了问题。这可能是因为我们的AI服务当前负载过高。</p>
+                <p class="mt-2">建议：</p>
                 <ul class="list-disc pl-5 mt-1">
                   <li>稍后再试</li>
-                  <li>尝试简化您的搜索查询</li>
-                  <li>使用更具体的关键词</li>
+                  <li>尝试更简短或更具体的搜索查询</li>
                 </ul>
                 <button class="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded" 
                   onclick="document.querySelector('.search-form').scrollIntoView({behavior: 'smooth'})">
@@ -2900,158 +3042,75 @@ async function pollSearchProgress(sessionId, container, query) {
               </div>
             `;
           }
-        }
-        return;
-      }
-      
-      retryCount++;
-      console.log(`轮询搜索进度 [${retryCount}], 已等待${elapsedTime / 1000}秒`);
-      
-      const response = await aiApi.getSearchProgress(sessionId);
-      
-      if (!response.success || !response.data) {
-        throw new Error(response.message || '获取搜索进度失败');
-      }
-      
-      const progressData = response.data;
-      console.log('获取到搜索进度数据:', progressData.status, progressData.progress, '结果数量:', progressData.results ? progressData.results.length : 0);
-      
-      // 更新进度条
-      const progressBar = document.getElementById('search-progress-bar');
-      const progressPercentage = document.getElementById('search-progress-percentage');
-      
-      if (progressBar && progressPercentage) {
-        progressBar.style.width = `${progressData.progress}%`;
-        progressPercentage.textContent = `${progressData.progress}%`;
-      }
-      
-      // 更新思考过程
-      const thinkingList = document.getElementById('ai-thinking-list');
-      if (thinkingList && progressData.thinking) {
-        thinkingList.innerHTML = progressData.thinking.map(thought => 
-          `<li>${thought}</li>`
-        ).join('');
-        
-        // 自动滚动到最新的思考过程
-        const thoughtItems = thinkingList.querySelectorAll('li');
-        if (thoughtItems.length > 0) {
-          thoughtItems[thoughtItems.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-      }
-      
-      // 检查是否完成
-      if (progressData.status === 'completed') {
-        console.log('搜索完成，状态:', progressData.status);
-        completed = true;
-        
-        // 检查是否有有效结果
-        if (progressData.results && progressData.results.length > 0) {
-          console.log('搜索完成，找到结果:', progressData.results.length);
-          // 立即显示结果，不再延迟
-          displayAISearchResults(progressData.results, query, container, progressData.aiAnalysis);
-        } else {
-          console.warn('搜索完成，但没有找到结果');
-          container.innerHTML = `
-            <div class="text-center py-12">
-              <img src="../images/no-results.svg" alt="无结果" class="w-40 h-40 mx-auto mb-4">
-              <h3 class="text-lg font-semibold mb-2">未找到相关书籍</h3>
-              <p class="text-gray-500 mb-4">尝试使用不同的关键词或更广泛的描述。</p>
-              <button class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded" 
-                onclick="document.querySelector('.search-form').scrollIntoView({behavior: 'smooth'})">
-                返回搜索
-              </button>
-            </div>
-          `;
-        }
-        return;
-      } else if (progressData.status === 'failed') {
-        console.error('搜索处理失败');
-        completed = true;
-        
-        const aiSearchResults = document.getElementById('ai-search-results');
-        if (aiSearchResults) {
-          aiSearchResults.innerHTML = `
-            <div class="bg-red-50 text-red-500 p-4 rounded-lg">
-              <h3 class="font-bold mb-2">搜索处理失败</h3>
-              <p>很抱歉，处理您的请求时出现了问题。这可能是因为我们的AI服务当前负载过高。</p>
-              <p class="mt-2">建议：</p>
-              <ul class="list-disc pl-5 mt-1">
-                <li>稍后再试</li>
-                <li>尝试更简短或更具体的搜索查询</li>
-              </ul>
-              <button class="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded" 
-                onclick="document.querySelector('.search-form').scrollIntoView({behavior: 'smooth'})">
-                返回搜索
-              </button>
-            </div>
-          `;
+          
+          resolve(); // 解析Promise
+          return;
         }
         
-        return;
-      }
-      
-      // 结合进度和已用时间智能调整轮询间隔
-      if (progressData.progress >= 90) {
-        // 接近完成时，缩短轮询间隔
-        interval = 300;
-      } else if (progressData.progress >= 70) {
-        interval = 500;
-      } else if (progressData.progress >= 40) {
-        interval = 1000;
-      } else {
-        // 根据已经等待的时间逐渐缩短间隔，确保不会错过结果
-        const timeRatio = elapsedTime / maxWaitTime;
-        if (timeRatio > 0.7) {
-          interval = 800; // 等待时间超过70%，缩短间隔
-        } else if (timeRatio > 0.5) {
+        // 结合进度和已用时间智能调整轮询间隔
+        if (progressData.progress >= 90) {
+          // 接近完成时，缩短轮询间隔
+          interval = 300;
+        } else if (progressData.progress >= 70) {
+          interval = 500;
+        } else if (progressData.progress >= 40) {
           interval = 1000;
         } else {
-          interval = 1500;
+          // 根据已经等待的时间逐渐缩短间隔，确保不会错过结果
+          const timeRatio = elapsedTime / maxWaitTime;
+          if (timeRatio > 0.7) {
+            interval = 800; // 等待时间超过70%，缩短间隔
+          } else if (timeRatio > 0.5) {
+            interval = 1000;
+          } else {
+            interval = 1500;
+          }
+        }
+        
+        // 如果没有完成，继续轮询
+        if (!completed) {
+          setTimeout(updateProgress, interval);
+        }
+        
+      } catch (error) {
+        console.error('轮询搜索进度失败:', error);
+        
+        // 基于时间判断是否应该继续尝试
+        const elapsedTime = Date.now() - startTime;
+        if (!completed && elapsedTime < maxWaitTime) {
+          // 使用指数退避策略，增加重试间隔，避免频繁失败的请求
+          const backoffFactor = Math.min(Math.pow(1.5, retryCount), 5);
+          interval = Math.min(interval * backoffFactor, 5000); // 最大间隔5秒
+          console.log(`使用退避策略，下次轮询间隔: ${interval}ms`);
+          setTimeout(updateProgress, interval);
+        } else {
+          const aiSearchResults = document.getElementById('ai-search-results');
+          if (aiSearchResults) {
+            aiSearchResults.innerHTML = `
+              <div class="bg-red-50 text-red-500 p-4 rounded-lg">
+                <h3 class="font-bold mb-2">连接问题</h3>
+                <p>很抱歉，我们无法与搜索服务保持连接。这可能是因为网络问题或服务器负载过高。</p>
+                <p class="mt-2">您可以:</p>
+                <ul class="list-disc pl-5 mt-1">
+                  <li>检查您的网络连接</li>
+                  <li>刷新页面后重试</li>
+                  <li>稍后再尝试搜索</li>
+                </ul>
+                <button class="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded" 
+                  onclick="document.querySelector('.search-form').scrollIntoView({behavior: 'smooth'})">
+                  返回搜索
+                </button>
+              </div>
+            `;
+          }
+          reject(error); // 拒绝Promise
         }
       }
-      
-      // 如果没有完成，继续轮询
-      if (!completed) {
-        setTimeout(updateProgress, interval);
-      }
-      
-    } catch (error) {
-      console.error('轮询搜索进度失败:', error);
-      
-      // 基于时间判断是否应该继续尝试
-      const elapsedTime = Date.now() - startTime;
-      if (!completed && elapsedTime < maxWaitTime) {
-        // 使用指数退避策略，增加重试间隔，避免频繁失败的请求
-        const backoffFactor = Math.min(Math.pow(1.5, retryCount), 5);
-        interval = Math.min(interval * backoffFactor, 5000); // 最大间隔5秒
-        console.log(`使用退避策略，下次轮询间隔: ${interval}ms`);
-        setTimeout(updateProgress, interval);
-      } else {
-        const aiSearchResults = document.getElementById('ai-search-results');
-        if (aiSearchResults) {
-          aiSearchResults.innerHTML = `
-            <div class="bg-red-50 text-red-500 p-4 rounded-lg">
-              <h3 class="font-bold mb-2">连接问题</h3>
-              <p>很抱歉，我们无法与搜索服务保持连接。这可能是因为网络问题或服务器负载过高。</p>
-              <p class="mt-2">您可以:</p>
-              <ul class="list-disc pl-5 mt-1">
-                <li>检查您的网络连接</li>
-                <li>刷新页面后重试</li>
-                <li>稍后再尝试搜索</li>
-              </ul>
-              <button class="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded" 
-                onclick="document.querySelector('.search-form').scrollIntoView({behavior: 'smooth'})">
-                返回搜索
-              </button>
-            </div>
-          `;
-        }
-      }
-    }
-  };
-  
-  // 开始轮询
-  updateProgress();
+    };
+    
+    // 开始轮询
+    updateProgress();
+  });
 }
 
 /**
