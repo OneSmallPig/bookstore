@@ -146,9 +146,23 @@ class AIService {
   /**
    * 调用AI模型
    * @param {Array} messages - 消息列表
+   * @param {Object} options - 选项参数，包括是否使用流式响应等
    * @returns {Promise<Object>} - AI响应
    */
-  async callAI(messages) {
+  async callAI(messages, options = {}) {
+    // 默认选项
+    const defaultOptions = {
+      stream: false, // 默认不使用流式响应
+      temperature: 0.5,
+      max_tokens: 4000,
+      top_p: 0.9,
+      presence_penalty: 0.0,
+      frequency_penalty: 0.0
+    };
+    
+    // 合并选项
+    const mergedOptions = { ...defaultOptions, ...options };
+    
     // 如果开启了模拟数据模式，直接返回模拟结果
     if (this.useMockData) {
       logger.info('使用模拟数据模式，跳过真实API调用');
@@ -163,7 +177,7 @@ class AIService {
     
     // 创建唯一请求ID，用于追踪
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
-    logger.info(`开始AI调用 [请求ID: ${requestId}]`);
+    logger.info(`开始AI调用 [请求ID: ${requestId}]${mergedOptions.stream ? ' [流式响应]' : ''}`);
     
     // 失败重试计数器
     let retryCount = 0;
@@ -176,12 +190,12 @@ class AIService {
         const payload = {
           model: this.model, // 使用配置的模型名称
           messages: messages,
-          temperature: 0.5, // 降低温度，使结果更加确定性
-          max_tokens: 4000, // 保持回复长度上限
-          top_p: 0.9, // 稍微降低以减少随机性
-          presence_penalty: 0.0,  // 按文档添加参数
-          frequency_penalty: 0.0, // 按文档添加参数
-          stream: false, // 非流式响应
+          temperature: mergedOptions.temperature, 
+          max_tokens: mergedOptions.max_tokens,
+          top_p: mergedOptions.top_p,
+          presence_penalty: mergedOptions.presence_penalty,
+          frequency_penalty: mergedOptions.frequency_penalty,
+          stream: mergedOptions.stream, // 使用选项中的流式响应设置
           request_id: requestId, // 添加请求ID用于追踪
           system_fingerprint: "search_engine_bookstore" // 系统指纹，帮助追踪
         };
@@ -218,38 +232,72 @@ class AIService {
             source.cancel('请求超时 - 180秒');
           }, timeout);
           
-          response = await axios({
-            method: 'post',
-            url: this.apiUrl,
-            headers: requestOptions.headers,
-            data: payload,
-            timeout: timeout, // 180秒超时
-            cancelToken: source.token,
-            // 添加特殊处理，解决火山引擎在请求等待期间发送空行保持连接的问题
-            transformResponse: [function(data) {
-              try {
-                // 尝试解析JSON
-                return JSON.parse(data);
-              } catch (e) {
-                // 如果不是有效的JSON（可能是空行或保持连接消息），返回原始数据
-                logger.debug('收到非JSON响应，可能是保持连接消息');
-                return data;
+          // 根据是否使用流式响应选择不同的处理方式
+          if (mergedOptions.stream) {
+            // 流式响应处理
+            const axiosConfig = {
+              method: 'post',
+              url: this.apiUrl,
+              headers: requestOptions.headers,
+              data: payload,
+              timeout: timeout,
+              cancelToken: source.token,
+              responseType: 'stream',
+              // 特别处理流式响应
+              onDownloadProgress: (progressEvent) => {
+                logger.debug(`下载进度: ${progressEvent.loaded} bytes`);
               }
-            }],
-            // 处理进度事件，避免长时间没有数据导致断开连接
-            onUploadProgress: (progressEvent) => {
-              logger.debug(`上传进度: ${progressEvent.loaded}/${progressEvent.total || 'unknown'}`);
-            },
-            onDownloadProgress: (progressEvent) => {
-              logger.debug(`下载进度: ${progressEvent.loaded}/${progressEvent.total || 'unknown'}`);
-            }
-          });
-          
-          const responseTime = Date.now() - startTime;
-          logger.info(`AI响应时间: ${responseTime}ms [请求ID: ${requestId}]`);
-          
-          // 更新调用统计
-          this._updateApiCallStats(true, responseTime);
+            };
+            
+            // 发送流式请求
+            response = await axios(axiosConfig);
+            const responseTime = Date.now() - startTime;
+            logger.info(`AI流式响应初始化: ${responseTime}ms [请求ID: ${requestId}]`);
+            
+            // 更新调用统计
+            this._updateApiCallStats(true, responseTime);
+            
+            return {
+              success: true,
+              stream: true,
+              data: response.data, // 这是一个可读流
+              requestId
+            };
+          } else {
+            // 非流式响应处理
+            response = await axios({
+              method: 'post',
+              url: this.apiUrl,
+              headers: requestOptions.headers,
+              data: payload,
+              timeout: timeout, // 180秒超时
+              cancelToken: source.token,
+              // 添加特殊处理，解决火山引擎在请求等待期间发送空行保持连接的问题
+              transformResponse: [function(data) {
+                try {
+                  // 尝试解析JSON
+                  return JSON.parse(data);
+                } catch (e) {
+                  // 如果不是有效的JSON（可能是空行或保持连接消息），返回原始数据
+                  logger.debug('收到非JSON响应，可能是保持连接消息');
+                  return data;
+                }
+              }],
+              // 处理进度事件，避免长时间没有数据导致断开连接
+              onUploadProgress: (progressEvent) => {
+                logger.debug(`上传进度: ${progressEvent.loaded}/${progressEvent.total || 'unknown'}`);
+              },
+              onDownloadProgress: (progressEvent) => {
+                logger.debug(`下载进度: ${progressEvent.loaded}/${progressEvent.total || 'unknown'}`);
+              }
+            });
+            
+            const responseTime = Date.now() - startTime;
+            logger.info(`AI响应时间: ${responseTime}ms [请求ID: ${requestId}]`);
+            
+            // 更新调用统计
+            this._updateApiCallStats(true, responseTime);
+          }
           
           // 记录火山引擎DeepSeek API的响应详情
           if (this.debugMode && response.headers) {
@@ -999,150 +1047,228 @@ class AIService {
 在JSON格式外，请先提供一段分析用户需求的说明(200-300字)，帮助用户理解你的推荐逻辑。分析应该简洁清晰，避免过多专业术语。`
       };
       
-      // 用户消息
-      const userMessage = {
+      // 构建用户提示
+      const userPrompt = {
         role: "user",
-        content: `我想找这样的书籍: ${refinedQuery}`
+        content: `${refinedQuery}`
       };
       
-      // 准备消息数组
-      const messages = [systemPrompt, userMessage];
-      
       // 更新思考进度
-      this._updateThinkingProgress(sessionId, '连接AI服务...', 20);
-      this._updateThinkingProgress(sessionId, '分析您的阅读需求...', 30, 800);
+      this._updateThinkingProgress(sessionId, "分析用户查询语义和意图...", 15);
       
-      // 声明变量
-      let aiResponse;
-      
-      // 设置最大AI调用尝试次数
-      const MAX_AI_CALL_ATTEMPTS = 3;
-      let attempts = 0;
-      let aiCallSuccess = false;
-      
-      // 如果使用模拟数据模式，直接跳过AI调用
-      if (this.useMockData) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        aiResponse = this._getMockSearchResults(query);
-        aiCallSuccess = true;
-      }
-      
-      // 如果已经成功获取模拟数据，直接完成
-      if (aiCallSuccess) {
-        this._finalizeSearchResults(sessionId, aiResponse);
-        return;
-      }
-      
-      // 启动一个异步超时检查，即使AI调用时间较长也能定期更新会话状态
-      
-      // 尝试调用AI，最多尝试MAX_AI_CALL_ATTEMPTS次
-      while (attempts < MAX_AI_CALL_ATTEMPTS && !aiCallSuccess) {
-        attempts++;
+      try {
+        // 使用流式响应调用AI模型获取结果
+        const response = await this.callAI([systemPrompt, userPrompt], { 
+          stream: true, 
+          temperature: 0.5,
+          max_tokens: 4000
+        });
         
-        try {
-          // 更新思考进度
-          session.progress = 25 + attempts * 5;
+        if (!response.success) {
+          this._updateThinkingProgress(sessionId, `AI调用失败: ${response.error || '未知错误'}`, 20);
+          throw new Error(`AI调用失败: ${response.error || '未知错误'}`);
+        }
+        
+        // 检查是否收到流式响应
+        if (!response.stream || !response.data) {
+          this._updateThinkingProgress(sessionId, "无法获取AI流式响应", 20);
+          throw new Error('无法获取AI流式响应');
+        }
+        
+        // 使用变量收集完整的流式响应内容
+        let fullContent = '';
+        let lastChunkTime = Date.now();
+        let currentProgress = 20;
+        
+        // 处理流式响应
+        this._updateThinkingProgress(sessionId, "开始接收AI响应流...", currentProgress);
+        
+        // 创建流处理Promise
+        await new Promise((resolve, reject) => {
+          // 设置超时保护
+          const timeout = setTimeout(() => {
+            reject(new Error('流式响应超时'));
+          }, 120000); // 2分钟超时
           
-          this._updateThinkingProgress(sessionId, `第${attempts}次尝试连接AI服务...`, 40, 0);
+          // 处理数据块
+          response.data.on('data', (chunk) => {
+            try {
+              const now = Date.now();
+              // 更新最后接收数据块的时间
+              lastChunkTime = now;
+              
+              // 将Buffer转换为字符串
+              const chunkText = chunk.toString();
+              
+              // 火山引擎/DeepSeek的流格式可能是分行的JSON，需要特殊处理
+              const lines = chunkText.split('\n').filter(line => line.trim() !== '');
+              
+              for (const line of lines) {
+                // 过滤掉data: 前缀(如果有的话)
+                const content = line.startsWith('data: ') ? line.slice(6) : line;
+                
+                try {
+                  // 尝试解析JSON
+                  const jsonData = JSON.parse(content);
+                  
+                  // 提取内容
+                  if (jsonData.choices && jsonData.choices[0]) {
+                    const delta = jsonData.choices[0].delta;
+                    if (delta && delta.content) {
+                      fullContent += delta.content;
+                      
+                      // 大约每100个字符更新一次思考进度
+                      if (fullContent.length % 100 < 20) {
+                        // 根据内容长度动态更新进度
+                        const contentBasedProgress = Math.min(80, 20 + Math.floor(fullContent.length / 100));
+                        
+                        if (contentBasedProgress > currentProgress) {
+                          currentProgress = contentBasedProgress;
+                          
+                          // 从内容中提取并更新思考步骤
+                          const latestThoughts = this._extractThoughtsFromStream(fullContent);
+                          if (latestThoughts) {
+                            // 直接设置进度和思考内容
+                            const session = this.searchSessions.get(sessionId);
+                            if (session) {
+                              session.progress = currentProgress;
+                              if (latestThoughts.length > 0) {
+                                session.thinking = latestThoughts;
+                              }
+                              session.updatedAt = Date.now();
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                } catch (jsonError) {
+                  // 解析JSON失败，可能是不完整的数据块，继续收集
+                  logger.debug(`无法解析JSON数据块: ${jsonError.message}`);
+                }
+              }
+            } catch (chunkError) {
+              logger.error(`处理数据块时出错: ${chunkError.message}`);
+              // 继续处理，不中断流
+            }
+          });
           
-          this._updateThinkingProgress(sessionId, '连接AI模型获取智能推荐...', 40, 200);
+          // 处理结束
+          response.data.on('end', () => {
+            clearTimeout(timeout);
+            resolve();
+          });
           
-          // 设置超时 - 增加到180秒，因为DeepSeek模型可能需要较长思考时间
-          const AI_CALL_TIMEOUT = 180000; // 180秒超时
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('AI调用超时')), AI_CALL_TIMEOUT)
-          );
+          // 处理错误
+          response.data.on('error', (err) => {
+            clearTimeout(timeout);
+            reject(err);
+          });
+        });
+        
+        // 流处理完成，解析结果
+        logger.info(`流式响应接收完成，总内容长度: ${fullContent.length} 字符`);
+        this._updateThinkingProgress(sessionId, "AI响应接收完成，正在提取书籍信息...", 85);
+        
+        // 分析内容，提取书籍推荐结果
+        const aiAnalysis = this._extractAnalysisFromContent(fullContent);
+        const bookResults = this._extractJsonFromContent(fullContent);
+        
+        // 更新会话中的AI分析文本
+        session.aiAnalysis = aiAnalysis;
+        
+        // 检查提取的结果是否有效
+        if (Array.isArray(bookResults) && bookResults.length > 0) {
+          logger.info(`成功从AI响应中提取了${bookResults.length}本书籍`);
+          this._updateThinkingProgress(sessionId, `成功找到${bookResults.length}本相关书籍，正在整理结果...`, 90);
           
-          // 竞争Promise，谁先完成就采用谁的结果
-          const response = await Promise.race([
-            this.callAI(messages),
-            timeoutPromise
-          ]);
+          // 完成搜索结果
+          this._finalizeSearchResults(sessionId, bookResults);
+        } else {
+          logger.error(`无法从AI响应中提取有效的书籍数据: ${fullContent.substring(0, 200)}...`);
+          this._updateThinkingProgress(sessionId, "无法获取有效的书籍推荐结果，请重试", 90);
           
-          if (!response || !response.choices || !response.choices[0]) {
-            throw new Error('AI响应格式无效');
-          }
-          
-          aiCallSuccess = true;
-          
-          // 更新思考进度
-          this._updateThinkingProgress(sessionId, '分析AI返回的推荐结果...', 70, 200);
-          
-          // 解析AI响应
-          const content = response.choices[0].message.content;
-          
-          // 保存AI分析过程，如果存在
-          if (response.choices[0].message.reasoning_content) {
-            const aiAnalysis = response.choices[0].message.reasoning_content;
-            
-            session.aiAnalysis = aiAnalysis;
-            logger.info('保存AI分析过程，长度: ' + aiAnalysis.length);
-          } else {
-            // 尝试从内容中提取分析部分
-            const analysisExtract = this._extractAnalysisFromContent(content);
-            
-            session.aiAnalysis = analysisExtract;
-            logger.info('从内容中提取AI分析过程，长度: ' + analysisExtract.length);
-          }
-          
-          // 记录AI响应内容，便于调试
-          if (this.debugMode) {
-            logger.debug('AI响应内容:', content.substring(0, 500) + (content.length > 500 ? '...' : ''));
-          }
-          
-          // 更新思考进度
-          this._updateThinkingProgress(sessionId, '解析AI推荐数据...', 75, 100);
-          this._updateThinkingProgress(sessionId, '整理推荐书籍信息...', 85, 300);
-          
-          // 从内容中提取JSON数据
-          aiResponse = this._extractJsonFromContent(content);
-          
-          // 检查是否成功提取了书籍数据
-          if (Array.isArray(aiResponse) && aiResponse.length > 0) {
-            logger.info(`成功从AI响应中提取到${aiResponse.length}本书籍`);
-            aiCallSuccess = true;
+          // 更新会话状态为失败
+          session.status = 'failed';
+          session.progress = 100;
+          session.results = [];
+          session.updatedAt = Date.now();
+        }
+      } catch (error) {
+        logger.error(`处理搜索查询时出错 [会话ID: ${sessionId}]: ${error.message}`);
+        
+        // 更新会话状态为失败
+        session.status = 'failed';
+        session.progress = 100;
+        session.error = error.message;
+        session.updatedAt = Date.now();
+      }
+    } catch (error) {
+      logger.error(`搜索查询异常 [会话ID: ${sessionId}]: ${error.message}`);
+    }
+  }
+  
+  /**
+   * 从流式响应内容中提取思考步骤
+   * @param {string} content 内容
+   * @returns {string[]} 思考步骤数组
+   * @private
+   */
+  _extractThoughtsFromStream(content) {
+    try {
+      // 查找分析部分（JSON前的文本）
+      const analysisText = content.split('[')[0].trim();
+      
+      if (!analysisText) {
+        return null;
+      }
+      
+      // 按段落拆分
+      const paragraphs = analysisText.split(/\n\n|\r\n\r\n/)
+        .map(p => p.trim())
+        .filter(p => p.length > 10); // 过滤太短的段落
+      
+      if (paragraphs.length === 0) {
+        return null;
+      }
+      
+      // 提取关键段落作为思考步骤
+      const thoughts = [];
+      
+      // 第一段通常是总体分析
+      if (paragraphs[0]) {
+        thoughts.push(`分析: ${paragraphs[0].substring(0, 100)}${paragraphs[0].length > 100 ? '...' : ''}`);
+      }
+      
+      // 寻找特定的标记作为思考步骤
+      const stepIndicators = [
+        '首先', '第一', '接下来', '然后', '其次', '第二', '最后', '总结', 
+        '分析', '了解', '确定', '考虑', '筛选', '推荐'
+      ];
+      
+      for (const paragraph of paragraphs.slice(1)) {
+        for (const indicator of stepIndicators) {
+          if (paragraph.includes(indicator)) {
+            thoughts.push(`${paragraph.substring(0, 100)}${paragraph.length > 100 ? '...' : ''}`);
             break;
-          } else {
-            // 未能提取到有效数据，记录错误并准备重试
-            logger.warn(`未能从AI响应中提取到有效的书籍数据，尝试重新调用`);
-            this._updateThinkingProgress(sessionId, '推荐数据格式有误，重新分析...', 60);
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
-            aiCallSuccess = false;
           }
-        } catch (error) {
-          // 记录错误，准备重试
-          logger.error(`AI调用失败 (尝试 ${attempts}/${MAX_AI_CALL_ATTEMPTS}):`, error);
-          this._updateThinkingProgress(sessionId, `分析复杂，继续处理中... (${attempts}/${MAX_AI_CALL_ATTEMPTS})`, 40 + attempts * 10);
-          
-          // 如果是最后一次尝试，还是失败了，就使用模拟数据
-          if (attempts >= MAX_AI_CALL_ATTEMPTS) {
-            logger.warn('达到最大尝试次数，使用模拟数据');
-            aiResponse = this._getMockSearchResults(query);
-            aiCallSuccess = true;
-            this._updateThinkingProgress(sessionId, '使用备选数据源...', 90);
-            break;
-          }
-          
-          // 等待一段时间后重试
-          const waitTime = 2000 * attempts;
-          await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
       
-      // 处理最终结果
-      this._finalizeSearchResults(sessionId, aiResponse);
-      
-    } catch (error) {
-      logger.error('处理搜索查询时发生错误:', error);
-      
-      // 如果会话存在，更新状态
-      const session = this.searchSessions.get(sessionId);
-      if (session) {
-        session.status = 'failed';
-        session.error = error.message;
-        session.progress = 100;
-        session.endTimestamp = Date.now();
+      // 确保至少有一些思考步骤
+      if (thoughts.length === 0 && paragraphs.length > 0) {
+        // 如果没有找到明确的步骤，使用前两段作为思考
+        thoughts.push(`分析中: ${paragraphs[0].substring(0, 100)}${paragraphs[0].length > 100 ? '...' : ''}`);
+        
+        if (paragraphs.length > 1) {
+          thoughts.push(`继续分析: ${paragraphs[1].substring(0, 100)}${paragraphs[1].length > 100 ? '...' : ''}`);
+        }
       }
+      
+      return thoughts;
+    } catch (error) {
+      logger.error(`提取思考步骤出错: ${error.message}`);
+      return null;
     }
   }
   

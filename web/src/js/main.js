@@ -2920,15 +2920,24 @@ async function pollSearchProgress(sessionId, container, query) {
     let retryCount = 0;
     
     // 使用时间控制而不是固定次数
-    const maxWaitTime = 180000; // 最大等待时间增加到180秒
+    const maxWaitTime = 180000; // 最大等待时间180秒
     const startTime = Date.now();
     
-    const initialInterval = 1000; // 初始轮询间隔为1秒
+    // 配置更保守的轮询参数
+    const initialInterval = 1500; // 初始轮询间隔提高到1.5秒
     let interval = initialInterval;
+    let consecutiveErrorCount = 0; // 连续错误计数
+    let consecutiveEmptyResponseCount = 0; // 连续空响应计数
+    const maxConsecutiveErrors = 3; // 最大连续错误次数
     
+    // 记录上次请求时间，用于限制请求频率
+    let lastRequestTime = 0;
+    const minRequestInterval = 1000; // 最小请求间隔1秒
+    
+    // 使用更智能的指数退避策略
     const updateProgress = async () => {
       try {
-        // 基于时间判断是否超时，而不是固定次数
+        // 基于时间判断是否超时
         const elapsedTime = Date.now() - startTime;
         if (completed || elapsedTime > maxWaitTime) {
           if (elapsedTime > maxWaitTime && !completed) {
@@ -2952,23 +2961,72 @@ async function pollSearchProgress(sessionId, container, query) {
                 </div>
               `;
             }
-            resolve(); // 解析Promise
-          } else {
-            resolve(); // 解析Promise
           }
+          resolve(); // 解析Promise
           return;
         }
         
-        retryCount++;
-        console.log(`轮询搜索进度 [${retryCount}], 已等待${elapsedTime / 1000}秒`);
+        // 检查请求频率限制
+        const now = Date.now();
+        const timeSinceLastRequest = now - lastRequestTime;
         
-        const response = await aiApi.getSearchProgress(sessionId);
-        
-        if (!response.success || !response.data) {
-          throw new Error(response.message || '获取搜索进度失败');
+        if (timeSinceLastRequest < minRequestInterval) {
+          // 如果距离上次请求时间太短，则等待
+          const waitTime = minRequestInterval - timeSinceLastRequest;
+          console.log(`请求过于频繁，等待${waitTime}ms再发送下一个请求`);
+          setTimeout(updateProgress, waitTime);
+          return;
         }
         
+        // 更新上次请求时间
+        lastRequestTime = now;
+        retryCount++;
+        
+        // 记录轮询信息
+        console.log(`轮询搜索进度 [${retryCount}], 已等待${elapsedTime / 1000}秒, 间隔:${interval}ms`);
+        
+        // 发送请求
+        const response = await aiApi.getSearchProgress(sessionId);
+        
+        // 重置连续错误计数
+        consecutiveErrorCount = 0;
+        
+        // 检查响应是否有效
+        if (!response.success) {
+          // 处理API返回的错误
+          if (response.message && response.message.includes('请求过于频繁')) {
+            console.warn('服务器提示请求过于频繁，增加轮询间隔');
+            // 响应错误为频率限制，大幅增加轮询间隔
+            interval = Math.min(interval * 2.5, 8000); // 指数级增加间隔，最大8秒
+            setTimeout(updateProgress, interval);
+            return;
+          } else {
+            throw new Error(response.message || '获取搜索进度失败');
+          }
+        }
+        
+        // 提取进度数据
         const progressData = response.data;
+        
+        // 检查是否有进度数据
+        if (!progressData) {
+          consecutiveEmptyResponseCount++;
+          console.warn(`收到空响应 (${consecutiveEmptyResponseCount}次)`);
+          
+          if (consecutiveEmptyResponseCount >= 3) {
+            // 连续多次收到空响应，可能是服务器问题
+            throw new Error('多次收到空响应，服务器可能存在问题');
+          }
+          
+          // 增加轮询间隔并继续
+          interval = Math.min(interval * 1.5, 5000);
+          setTimeout(updateProgress, interval);
+          return;
+        }
+        
+        // 重置空响应计数
+        consecutiveEmptyResponseCount = 0;
+        
         console.log('获取到搜索进度数据:', progressData.status, progressData.progress, '结果数量:', progressData.results ? progressData.results.length : 0);
         
         // 更新进度条
@@ -3002,7 +3060,7 @@ async function pollSearchProgress(sessionId, container, query) {
           // 检查是否有有效结果
           if (progressData.results && progressData.results.length > 0) {
             console.log('搜索完成，找到结果:', progressData.results.length);
-            // 立即显示结果，不再延迟
+            // 立即显示结果
             displayAISearchResults(progressData.results, query, container, progressData.aiAnalysis);
           } else {
             console.warn('搜索完成，但没有找到结果');
@@ -3047,23 +3105,23 @@ async function pollSearchProgress(sessionId, container, query) {
           return;
         }
         
-        // 结合进度和已用时间智能调整轮询间隔
+        // 动态调整轮询间隔，基于进度和已用时间
         if (progressData.progress >= 90) {
           // 接近完成时，缩短轮询间隔
-          interval = 300;
+          interval = 800;
         } else if (progressData.progress >= 70) {
-          interval = 500;
+          interval = 1200;
         } else if (progressData.progress >= 40) {
-          interval = 1000;
+          interval = 2000;
         } else {
-          // 根据已经等待的时间逐渐缩短间隔，确保不会错过结果
+          // 根据已经等待的时间动态调整间隔
           const timeRatio = elapsedTime / maxWaitTime;
           if (timeRatio > 0.7) {
-            interval = 800; // 等待时间超过70%，缩短间隔
+            interval = 1500; // 等待时间超过70%，适当缩短间隔
           } else if (timeRatio > 0.5) {
-            interval = 1000;
+            interval = 2500;
           } else {
-            interval = 1500;
+            interval = 3000; // 初始阶段使用较长间隔
           }
         }
         
@@ -3075,12 +3133,41 @@ async function pollSearchProgress(sessionId, container, query) {
       } catch (error) {
         console.error('轮询搜索进度失败:', error);
         
+        // 增加连续错误计数
+        consecutiveErrorCount++;
+        
         // 基于时间判断是否应该继续尝试
         const elapsedTime = Date.now() - startTime;
+        
+        if (consecutiveErrorCount >= maxConsecutiveErrors) {
+          console.error(`连续 ${maxConsecutiveErrors} 次请求失败，停止轮询`);
+          const aiSearchResults = document.getElementById('ai-search-results');
+          if (aiSearchResults) {
+            aiSearchResults.innerHTML = `
+              <div class="bg-red-50 text-red-500 p-4 rounded-lg">
+                <h3 class="font-bold mb-2">连接问题</h3>
+                <p>很抱歉，我们无法与搜索服务保持连接。这可能是因为网络问题或服务器限制。</p>
+                <p class="mt-2">您可以:</p>
+                <ul class="list-disc pl-5 mt-1">
+                  <li>检查您的网络连接</li>
+                  <li>等待几分钟后重试</li>
+                  <li>刷新页面后重新搜索</li>
+                </ul>
+                <button class="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded" 
+                  onclick="document.querySelector('.search-form').scrollIntoView({behavior: 'smooth'})">
+                  返回搜索
+                </button>
+              </div>
+            `;
+          }
+          reject(error);
+          return;
+        }
+        
         if (!completed && elapsedTime < maxWaitTime) {
-          // 使用指数退避策略，增加重试间隔，避免频繁失败的请求
-          const backoffFactor = Math.min(Math.pow(1.5, retryCount), 5);
-          interval = Math.min(interval * backoffFactor, 5000); // 最大间隔5秒
+          // 使用更激进的指数退避策略
+          const backoffFactor = Math.pow(2, consecutiveErrorCount);
+          interval = Math.min(interval * backoffFactor, 10000); // 最大间隔10秒
           console.log(`使用退避策略，下次轮询间隔: ${interval}ms`);
           setTimeout(updateProgress, interval);
         } else {
@@ -3135,14 +3222,45 @@ function displayAISearchResults(books, query, container, aiAnalysis = '') {
     return;
   }
   
+  // 使用Marked.js将Markdown格式的AI分析转换为HTML
+  let parsedAnalysis = '';
+  if (aiAnalysis && typeof aiAnalysis === 'string') {
+    try {
+      // 检查marked库是否存在
+      if (typeof marked === 'function') {
+        // 移除json代码块（如果有）
+        let cleanedAnalysis = aiAnalysis;
+        
+        // 移除可能包含的JSON块
+        const jsonBlockRegex = /```json[\s\S]*?```/g;
+        cleanedAnalysis = cleanedAnalysis.replace(jsonBlockRegex, '');
+        
+        // 移除markdown中的特殊字符如\n
+        cleanedAnalysis = cleanedAnalysis.replace(/\\n/g, '\n');
+        
+        // 使用marked解析Markdown
+        parsedAnalysis = marked.parse(cleanedAnalysis);
+        console.log('Markdown解析成功');
+      } else {
+        // 如果marked库不可用，回退到基本的文本处理
+        console.warn('Marked.js库未加载，使用基本文本处理');
+        parsedAnalysis = aiAnalysis.split('\n').filter(line => line.trim()).map(line => `<p>${line}</p>`).join('');
+      }
+    } catch (error) {
+      console.error('Markdown解析错误:', error);
+      // 出错时回退到基本的文本处理
+      parsedAnalysis = aiAnalysis.split('\n').filter(line => line.trim()).map(line => `<p>${line}</p>`).join('');
+    }
+  }
+  
   // 创建头部展示内容
   const headerHtml = `
     <h2 class="text-xl font-bold mb-2">AI智能搜索: "${query}"</h2>
     ${aiAnalysis ? `
       <div class="bg-blue-50 p-4 rounded-lg mb-6">
         <h3 class="font-semibold text-blue-700 mb-2">AI分析:</h3>
-        <div class="text-sm text-gray-700 space-y-2 ai-analysis">
-          ${aiAnalysis.split('\n').filter(line => line.trim()).map(line => `<p>${line}</p>`).join('')}
+        <div class="text-sm text-gray-700 space-y-2 ai-analysis markdown-content">
+          ${parsedAnalysis}
         </div>
       </div>
     ` : ''}
