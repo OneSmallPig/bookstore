@@ -3183,86 +3183,140 @@ function displayAISearchResults(books, query, container, aiAnalysis = '') {
     
     booksGrid.innerHTML = '';
     
+    // 尝试获取用户书架数据，用于判断书籍是否已在书架中
+    let userBookshelfData = [];
+    try {
+      // 如果已登录，从本地变量获取书架数据
+      if (isLoggedIn() && window.currentBookshelfData) {
+        userBookshelfData = window.currentBookshelfData;
+        console.log('从window.currentBookshelfData获取书架数据:', userBookshelfData.length, '本书');
+      }
+    } catch (err) {
+      console.error('获取书架数据失败:', err);
+    }
+    
     // 为每本书添加延迟，创造动画效果
     booksToShow.forEach((book, index) => {
       const delay = index * 100; // 100ms的延迟增量
       
-      // 创建书籍卡片包装元素
-      const bookCard = document.createElement('div');
-      bookCard.className = 'book-card-wrapper opacity-0';
-      bookCard.setAttribute('data-id', book.id || `search-${Date.now()}-${index}`);
-      bookCard.style.animationDelay = `${delay}ms`;
+      // 创建卡片容器
+      const bookCardWrapper = document.createElement('div');
+      bookCardWrapper.className = 'book-card-wrapper transform transition duration-500';
+      bookCardWrapper.style.opacity = '0';
+      bookCardWrapper.style.transform = 'translateY(20px)';
+      bookCardWrapper.dataset.id = book.id || `search-${Date.now()}-${index}`;
       
-      // 清理和验证数据
-      const cleanedBook = {
-        id: book.id || `search-${Date.now()}-${index}`,
-        title: book.title || '未知书名',
+      // 为每本书设置不同的动画延迟
+      setTimeout(() => {
+        bookCardWrapper.style.opacity = '1';
+        bookCardWrapper.style.transform = 'translateY(0)';
+      }, delay);
+      
+      // 数据兼容处理 - 统一处理字段名称差异
+      const bookData = {
+        id: book.id || book._id || `search-${Date.now()}-${index}`,
+        title: book.title || book.name || '未知书名',
         author: book.author || '未知作者',
-        description: book.description || book.introduction || '暂无简介',
-        categories: Array.isArray(book.categories) ? book.categories : 
-                  (book.category ? [book.category] : ['未分类']),
-        rating: typeof book.rating === 'number' ? book.rating : 4,
-        coverUrl: book.coverUrl || '../images/default-book-cover.png',
+        tags: book.tags || book.categories || [],
+        coverUrl: book.coverImage || book.cover || book.coverUrl || '../images/default-book-cover.svg',
+        introduction: book.description || book.introduction || '暂无简介',
+        popularity: book.popularity || book.heat || 0,
+        rating: book.rating || 0,
+        searchFrequency: book.searchFrequency || book.frequency || 0,
         reasons: book.reasons || ''
       };
       
-      // 生成星级评分HTML
-      const starRating = generateStarRating(cleanedBook.rating);
+      // 确保标签始终是数组格式
+      if (!Array.isArray(bookData.tags)) {
+        if (typeof bookData.tags === 'string') {
+          bookData.tags = bookData.tags.split(',').map((tag) => tag.trim());
+        } else {
+          bookData.tags = [];
+        }
+      }
       
-      // 获取类别标签
-      const categories = cleanedBook.categories.map(category => {
-        const bgColor = getBgColorByCategory(category);
-        return `<span class="category-tag ${bgColor} text-white px-2 py-1 rounded text-xs mr-1">${category}</span>`;
-      }).join('');
+      // 检查书籍是否已经在书架中
+      const isInBookshelf = userBookshelfData.some(item => {
+        // 考虑不同的数据结构
+        const shelfBook = item.Book || item;
+        return shelfBook.id === bookData.id || 
+               shelfBook.bookId === bookData.id || 
+               shelfBook.title === bookData.title;
+      });
       
-      // 使用与热门搜索一致的卡片HTML结构
-      bookCard.innerHTML = `
-        <div class="book-card h-full bg-white rounded-lg shadow-md overflow-hidden flex flex-col transition-all duration-300 hover:shadow-xl">
-          <div class="book-cover-container relative h-48 overflow-hidden">
-            <img src="${cleanedBook.coverUrl}" alt="${cleanedBook.title}" class="book-cover w-full h-full object-cover transition-transform duration-300" loading="lazy" onerror="handleBookCoverError(this)">
-            <div class="absolute top-0 right-0 p-2">
-              <button class="add-to-bookshelf bg-white text-blue-500 hover:text-blue-700 rounded-full p-2 shadow-md transition-colors duration-200" data-book-id="${cleanedBook.id}">
-                <i class="fas fa-plus"></i>
-              </button>
+      console.log(`书籍 "${bookData.title}" ${isInBookshelf ? '已在' : '不在'}书架中`);
+      
+      // 检查是否有搜索频率数据，如果有则使用搜索频率展示，否则使用评分展示
+      let ratingOrFrequencyHtml = '';
+      if (bookData.searchFrequency || bookData.searchFrequency === 0) {
+        // 使用搜索频率
+        ratingOrFrequencyHtml = generateSearchFrequencyIndicator(bookData.searchFrequency);
+        console.log(`书籍 "${bookData.title}" 使用搜索频率展示: ${bookData.searchFrequency}`);
+      } else {
+        // 使用评分
+        const fullStars = Math.floor(bookData.rating);
+        const hasHalfStar = bookData.rating - fullStars >= 0.5;
+        let starsHtml = '';
+    
+        for (let i = 0; i < 5; i++) {
+          if (i < fullStars) {
+            starsHtml += '<i class="fas fa-star"></i>'; // 实心星星
+          } else if (i === fullStars && hasHalfStar) {
+            starsHtml += '<i class="fas fa-star-half-alt"></i>'; // 半星
+          } else {
+            starsHtml += '<i class="far fa-star"></i>'; // 空心星星
+          }
+        }
+        ratingOrFrequencyHtml = `<div class="flex items-center">
+                                  ${starsHtml}
+                                  <span class="text-gray-600 text-sm ml-1">${bookData.rating.toFixed(1)}</span>
+                                </div>`;
+      }
+      
+      // 准备简介内容，处理过长的情况
+      const shortIntro = bookData.introduction.length > 60 
+        ? bookData.introduction.substring(0, 60) + '...' 
+        : bookData.introduction;
+      
+      // 使用与首页相同的卡片结构
+      bookCardWrapper.innerHTML = `
+        <div class="book-card">
+          <div class="book-card-content">
+            <!-- 书籍封面区域 -->
+            <div class="book-cover-container">
+              ${createBookCoverElement(bookData)}
             </div>
-          </div>
-          <div class="book-info-container p-4 flex-1 flex flex-col">
-            <h3 class="book-title text-lg font-bold mb-1 line-clamp-2">${cleanedBook.title}</h3>
-            <p class="book-author text-sm text-gray-600 mb-2">${cleanedBook.author}</p>
-            <div class="book-rating-container flex items-center mb-2">
-              <div class="rating-stars text-yellow-400 mr-1">
-                ${starRating}
+            
+            <!-- 书籍信息区域 -->
+            <div class="book-info-container">
+              <h3 class="book-title">${bookData.title}</h3>
+              <p class="book-author">${bookData.author}</p>
+              
+              <!-- 评分或搜索频率区域 -->
+              <div class="book-rating-container">
+                ${ratingOrFrequencyHtml}
               </div>
-              <span class="rating-score text-sm text-gray-500">${cleanedBook.rating.toFixed(1)}</span>
-            </div>
-            <div class="book-categories mb-2">
-              ${categories}
-            </div>
-            <p class="book-introduction text-sm text-gray-700 line-clamp-3 mb-3">${cleanedBook.description}</p>
-            ${cleanedBook.reasons ? `
-              <div class="book-reason text-sm text-green-700 bg-green-50 p-2 rounded mb-2">
-                <span class="font-medium">推荐理由:</span> ${cleanedBook.reasons}
+  
+              <!-- 简介区域 -->
+              <div class="tooltip">
+                <div class="book-introduction">${shortIntro}</div>
+                <div class="tooltip-text">${bookData.introduction}</div>
               </div>
-            ` : ''}
-            <div class="book-actions mt-auto flex justify-between">
-              <button class="btn btn-read bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors duration-200 flex items-center justify-center flex-1 mr-2">
-                <i class="fas fa-book mr-1"></i> 阅读
-              </button>
-              <button class="btn btn-add-shelf bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md transition-colors duration-200 flex items-center justify-center flex-1" data-book-id="${cleanedBook.id}">
-                <i class="fas fa-plus mr-1"></i> 收藏
+            </div>
+            
+            <!-- 操作按钮区域 -->
+            <div class="book-actions">
+              <a href="#" class="btn btn-read">阅读</a>
+              <button class="btn btn-add-shelf ${isInBookshelf ? 'added' : ''}" data-book-id="${bookData.id}">
+                ${isInBookshelf ? '已加入书架' : '加入书架'}
               </button>
             </div>
           </div>
         </div>
       `;
       
-      booksGrid.appendChild(bookCard);
-      
-      // 触发动画
-      setTimeout(() => {
-        bookCard.classList.remove('opacity-0');
-        bookCard.classList.add('animate-fadeIn');
-      }, 50);
+      // 添加到容器
+      booksGrid.appendChild(bookCardWrapper);
     });
     
     // 更新分页信息
