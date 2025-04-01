@@ -120,9 +120,39 @@ const getBookshelf = async (req, res) => {
   }
 };
 
+/**
+ * 获取当前登录用户的书架
+ */
+const getCurrentUserBookshelf = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // 加载用户的书架，包括书籍详情
+    const bookshelf = await Bookshelf.findAll({
+      where: { userId },
+      include: [
+        {
+          model: require('../models/book.model'),
+          as: 'book',
+          attributes: ['id', 'title', 'author', 'coverImage', 'categories', 'rating', 'description']
+        }
+      ]
+    });
+    
+    return res.status(200).json({ 
+      bookshelf,
+      message: '成功获取书架数据' 
+    });
+  } catch (error) {
+    logger.error(`获取当前用户书架失败: ${error.message}`);
+    return res.status(500).json({ message: '获取书架数据过程中发生错误' });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
   changePassword,
-  getBookshelf
+  getBookshelf,
+  getCurrentUserBookshelf
 }; 

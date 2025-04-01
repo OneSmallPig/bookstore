@@ -1,7 +1,7 @@
 const Book = require('../models/book.model');
 const Bookshelf = require('../models/bookshelf.model');
 const { Op } = require('sequelize');
-const logger = require('../config/logger');
+const logger = require('../utils/logger');
 
 /**
  * 获取所有书籍
@@ -96,15 +96,35 @@ const addToBookshelf = async (req, res) => {
     const userId = req.user.id;
     const { bookId } = req.params;
     
-    // 检查书籍是否存在
-    const book = await Book.findByPk(bookId);
-    if (!book) {
-      return res.status(404).json({ message: '书籍不存在' });
+    // 检查书籍是否存在，先尝试通过ID查找，然后尝试通过书名查找
+    let book;
+    if (!isNaN(bookId)) {
+      // 如果是数字，通过ID查找
+      book = await Book.findByPk(bookId);
+    } else {
+      // 如果不是数字，通过书名查找
+      book = await Book.findOne({ where: { title: bookId } });
     }
+    
+    // 如果书籍不存在，创建一个新的书籍记录
+    if (!book) {
+      console.log(`书籍"${bookId}"不存在，创建新书籍记录`);
+      // 创建一个新的书籍记录
+      book = await Book.create({
+        title: bookId,
+        author: req.body.author || '未知作者',
+        description: req.body.description || '暂无描述',
+        coverImage: req.body.coverImage || 'default-cover.png'
+      });
+      console.log(`创建了新书籍: ${book.title}, ID: ${book.id}`);
+    }
+    
+    // 使用找到的书籍的ID
+    const actualBookId = book.id;
     
     // 检查是否已在书架中
     const existingEntry = await Bookshelf.findOne({
-      where: { userId, bookId }
+      where: { userId, bookId: actualBookId }
     });
     
     if (existingEntry) {
@@ -114,10 +134,10 @@ const addToBookshelf = async (req, res) => {
     // 添加到书架
     const bookshelfEntry = await Bookshelf.create({
       userId,
-      bookId,
-      readingStatus: '未开始',
-      currentPage: 0,
-      lastReadAt: new Date()
+      bookId: actualBookId,
+      reading_status: req.body.reading_status || '未开始',
+      current_page: req.body.current_page || 0,
+      last_read_at: new Date()
     });
     
     return res.status(201).json({
@@ -138,9 +158,26 @@ const removeFromBookshelf = async (req, res) => {
     const userId = req.user.id;
     const { bookId } = req.params;
     
+    // 先检查书籍是否存在，先尝试通过ID查找，然后尝试通过书名查找
+    let book;
+    if (!isNaN(bookId)) {
+      // 如果是数字，通过ID查找
+      book = await Book.findByPk(bookId);
+    } else {
+      // 如果不是数字，通过书名查找
+      book = await Book.findOne({ where: { title: bookId } });
+    }
+    
+    if (!book) {
+      return res.status(404).json({ message: `书籍"${bookId}"不存在，无法从书架中移除` });
+    }
+    
+    // 使用找到的书籍的ID
+    const actualBookId = book.id;
+    
     // 检查是否在书架中
     const bookshelfEntry = await Bookshelf.findOne({
-      where: { userId, bookId }
+      where: { userId, bookId: actualBookId }
     });
     
     if (!bookshelfEntry) {
@@ -166,11 +203,28 @@ const updateReadingProgress = async (req, res) => {
   try {
     const userId = req.user.id;
     const { bookId } = req.params;
-    const { currentPage, readingStatus } = req.body;
+    const { current_page, reading_status } = req.body;
+    
+    // 先检查书籍是否存在，先尝试通过ID查找，然后尝试通过书名查找
+    let book;
+    if (!isNaN(bookId)) {
+      // 如果是数字，通过ID查找
+      book = await Book.findByPk(bookId);
+    } else {
+      // 如果不是数字，通过书名查找
+      book = await Book.findOne({ where: { title: bookId } });
+    }
+    
+    if (!book) {
+      return res.status(404).json({ message: `书籍"${bookId}"不存在，无法更新阅读进度` });
+    }
+    
+    // 使用找到的书籍的ID
+    const actualBookId = book.id;
     
     // 检查是否在书架中
     const bookshelfEntry = await Bookshelf.findOne({
-      where: { userId, bookId }
+      where: { userId, bookId: actualBookId }
     });
     
     if (!bookshelfEntry) {
@@ -179,9 +233,9 @@ const updateReadingProgress = async (req, res) => {
     
     // 更新阅读进度
     const updatedEntry = await bookshelfEntry.update({
-      currentPage: currentPage !== undefined ? currentPage : bookshelfEntry.currentPage,
-      readingStatus: readingStatus || bookshelfEntry.readingStatus,
-      lastReadAt: new Date()
+      current_page: current_page !== undefined ? current_page : bookshelfEntry.current_page,
+      reading_status: reading_status || bookshelfEntry.reading_status,
+      last_read_at: new Date()
     });
     
     return res.status(200).json({

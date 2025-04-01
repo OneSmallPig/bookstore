@@ -15,6 +15,21 @@ const authenticate = async (req, res, next) => {
     // 提取令牌
     const token = authHeader.split(' ')[1];
     
+    // 开发环境下的测试token
+    if (process.env.NODE_ENV === 'development' && token === 'test-token') {
+      console.log('开发环境使用测试token');
+      // 为测试token创建一个测试用户
+      req.user = {
+        id: 1,
+        username: 'test-user',
+        email: 'test@example.com',
+        role: 'user',
+        isActive: true
+      };
+      next();
+      return;
+    }
+    
     // 验证令牌
     const decoded = verifyToken(token);
     if (!decoded) {

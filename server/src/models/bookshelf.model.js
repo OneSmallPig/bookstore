@@ -62,7 +62,7 @@ User.hasMany(Bookshelf, { foreignKey: 'user_id' });
 Bookshelf.belongsTo(User, { foreignKey: 'user_id' });
 
 Book.hasMany(Bookshelf, { foreignKey: 'book_id' });
-Bookshelf.belongsTo(Book, { foreignKey: 'book_id' });
+Bookshelf.belongsTo(Book, { foreignKey: 'book_id', as: 'book' });
 
 // 同步模型到数据库
 Bookshelf.sync({ alter: process.env.NODE_ENV === 'development' })

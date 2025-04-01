@@ -73,7 +73,8 @@ const Book = sequelize.define('Book', {
   }
 }, {
   tableName: 'books',
-  timestamps: true
+  timestamps: true,
+  underscored: true
 });
 
 // 同步模型到数据库

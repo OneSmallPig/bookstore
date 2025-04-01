@@ -18,6 +18,9 @@ router.put('/change-password', userController.changePassword);
 // 获取用户书架
 router.get('/bookshelf', userController.getBookshelf);
 
+// 获取当前用户书架
+router.get('/me/bookshelf', userController.getCurrentUserBookshelf);
+
 module.exports = router;
 
  
