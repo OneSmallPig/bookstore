@@ -110,12 +110,16 @@ export function saveAuth(user, token, expiresIn = 86400) {
       'bookstore_recommended_books',
       'bookstore_popular_books',
       'bookstore_popular_searches',
-      'bookstore_cache_timestamp'
+      'bookstore_cache_timestamp',
+      'bookstore_user_bookshelf' // 添加用户书架缓存
     ];
     
     cachesToClear.forEach(cacheKey => {
       localStorage.removeItem(cacheKey);
     });
+    
+    // 保存当前token到缓存，用于后续比较登录状态变化
+    localStorage.setItem('cachedToken', token);
     
     console.log('认证信息已保存，所有缓存已清除');
     
@@ -183,12 +187,16 @@ export function logout() {
       'bookstore_recommended_books',
       'bookstore_popular_books',
       'bookstore_popular_searches',
-      'bookstore_cache_timestamp'
+      'bookstore_cache_timestamp',
+      'bookstore_user_bookshelf' // 添加用户书架缓存
     ];
     
     cachesToClear.forEach(cacheKey => {
       localStorage.removeItem(cacheKey);
     });
+    
+    // 清除缓存的Token
+    localStorage.removeItem('cachedToken');
     
     console.log('用户已退出登录，所有缓存已清除');
     

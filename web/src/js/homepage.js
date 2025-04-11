@@ -595,6 +595,12 @@ function createBookCard(book, isAiRecommended = false) {
  */
 function checkBookInBookshelf(bookId) {
   try {
+    // 首先检查用户是否已登录，未登录用户不应该有书架中的书籍
+    const token = getUserToken();
+    if (!token) {
+      return false;
+    }
+    
     const bookshelfData = localStorage.getItem(CACHE_KEYS.USER_BOOKSHELF);
     if (!bookshelfData) return false;
     
