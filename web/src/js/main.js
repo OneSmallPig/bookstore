@@ -2294,6 +2294,12 @@ function showMessage(message, type) {
 
 // 显示登录提示
 function showLoginPrompt() {
+  // 先移除可能已存在的登录弹窗，防止重复显示
+  const existingModal = document.getElementById('login-modal');
+  if (existingModal) {
+    existingModal.parentNode.removeChild(existingModal);
+  }
+
   const modalHtml = `
     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" id="login-modal">
       <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
@@ -2318,24 +2324,40 @@ function showLoginPrompt() {
   const cancelBtn = document.getElementById('cancel-login');
   const confirmBtn = document.getElementById('confirm-login');
   
+  // 定义移除模态框的函数，确保能正确移除
+  const removeModal = () => {
+    if (modal && modal.parentNode) {
+      modal.parentNode.removeChild(modal);
+    }
+  };
+  
   // 添加事件监听器
-  cancelBtn.addEventListener('click', () => {
-    modal.remove();
-  });
+  cancelBtn.addEventListener('click', removeModal);
   
   confirmBtn.addEventListener('click', () => {
     // 保存当前URL，登录后可以返回
     const currentPath = window.location.pathname + window.location.search;
     sessionStorage.setItem('auth_redirect', currentPath);
     
+    // 确定正确的登录页面路径
+    let loginUrl = '';
+    // 判断当前是否在pages目录下
+    if (window.location.pathname.includes('/src/pages/')) {
+      // 如果在pages目录下，使用相对路径
+      loginUrl = 'login.html';
+    } else {
+      // 否则使用完整路径
+      loginUrl = '/src/pages/login.html';
+    }
+    
     // 跳转到登录页面
-    window.location.href = '/src/pages/login.html';
+    window.location.href = loginUrl;
   });
   
   // 点击背景关闭模态框
   modal.addEventListener('click', (e) => {
     if (e.target === modal) {
-      modal.remove();
+      removeModal();
     }
   });
 }
