@@ -198,7 +198,7 @@ const bookshelfApi = {
       if (order) queryParams.append('order', order);
       
       const queryString = queryParams.toString();
-      const url = `${config.api.baseUrl}/users/bookshelf${queryString ? `?${queryString}` : ''}`;
+      const url = `${config.api.baseUrl}/users/me/bookshelf${queryString ? `?${queryString}` : ''}`;
       
       console.log('获取书架API请求URL:', url);
       
@@ -249,7 +249,7 @@ const bookshelfApi = {
       if (params.limit) queryParams.append('limit', params.limit);
       
       const queryString = queryParams.toString();
-      const url = `${config.api.baseUrl}/bookshelf/books${queryString ? `?${queryString}` : ''}`;
+      const url = `${config.api.baseUrl}/users/me/bookshelf${queryString ? `?${queryString}` : ''}`;
       
       console.log('获取书架书籍API请求URL:', url);
       
@@ -268,15 +268,41 @@ const bookshelfApi = {
         }
         
         const data = await response.json();
-        console.log('获取书架书籍API响应:', data);
+        console.log('获取书架书籍API响应:', JSON.stringify(data).substring(0, 200) + '...');
         
-        // 如果服务器端API尚未实现，在客户端进行过滤
-        if ((!data.success || !data.data) && window.currentBookshelfData) {
-          console.log('服务器API未实现或返回数据格式不正确，使用客户端过滤');
-          return clientSideFilterBooks(window.currentBookshelfData, params);
+        // 详细记录数据结构
+        console.log('API响应数据结构:', {
+          hasBookshelf: data && data.bookshelf ? 'yes' : 'no',
+          bookshelfType: data && data.bookshelf ? typeof data.bookshelf : 'n/a',
+          bookshelfIsArray: data && data.bookshelf ? Array.isArray(data.bookshelf) : 'n/a',
+          bookshelfLength: data && data.bookshelf && Array.isArray(data.bookshelf) ? data.bookshelf.length : 'n/a',
+          topLevelKeys: data ? Object.keys(data) : []
+        });
+        
+        // 检查是否有效的响应数据
+        if (data) {
+          // 处理不同的API响应格式
+          if (data.bookshelf && Array.isArray(data.bookshelf)) {
+            // 直接返回带有bookshelf数组的响应
+            window.currentBookshelfData = data.bookshelf;
+            console.log('返回类型1: data包含bookshelf数组');
+            return data;
+          } else if (data.data && data.data.bookshelf && Array.isArray(data.data.bookshelf)) {
+            // 返回data.data中的bookshelf数组
+            window.currentBookshelfData = data.data.bookshelf;
+            console.log('返回类型2: data.data包含bookshelf数组');
+            return data.data;
+          } else if (Array.isArray(data)) {
+            // 如果直接返回的是数组
+            window.currentBookshelfData = data;
+            console.log('返回类型3: data本身是数组');
+            return { bookshelf: data };
+          }
         }
         
-        return data;
+        // 如果没有识别到有效的书架数据，但API请求成功了，返回一个默认结构
+        console.log('未识别到标准的书架数据结构，返回空书架');
+        return { bookshelf: [] };
       } catch (error) {
         console.error('API请求失败:', error);
         // 如果API请求失败，尝试在客户端进行过滤
@@ -302,20 +328,36 @@ const bookshelfApi = {
   // 添加书籍到书架
   async addToBookshelf(bookId, status = 'toRead') {
     try {
+      console.log(`添加书籍到书架: bookId=${bookId}, status=${status}`);
+      if (!bookId) {
+        throw new Error('bookId参数是必需的');
+      }
+      
       const response = await fetch(`${config.api.baseUrl}/books/${bookId}/bookshelf`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getToken()}`
         },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ readingStatus: status })
       });
       
+      console.log(`添加书籍API响应状态: ${response.status}`);
+      
       if (!response.ok) {
-        throw new Error(`添加书籍到书架失败: ${response.status}`);
+        if (response.status === 400) {
+          // 可能是书籍已经在书架中
+          const errorData = await response.json();
+          console.warn('添加书籍到书架失败(400):', errorData);
+          throw new Error(errorData.message || '该书籍可能已在您的书架中');
+        } else {
+          throw new Error(`添加书籍到书架失败: ${response.status}`);
+        }
       }
       
-      return await response.json();
+      const data = await response.json();
+      console.log('添加书籍到书架成功:', data);
+      return data;
     } catch (error) {
       console.error('添加书籍到书架错误:', error);
       throw error;
@@ -325,6 +367,11 @@ const bookshelfApi = {
   // 从书架移除书籍
   async removeFromBookshelf(bookId) {
     try {
+      console.log(`从书架移除书籍: bookId=${bookId}`);
+      if (!bookId) {
+        throw new Error('bookId参数是必需的');
+      }
+      
       const response = await fetch(`${config.api.baseUrl}/books/${bookId}/bookshelf`, {
         method: 'DELETE',
         headers: {
@@ -333,11 +380,15 @@ const bookshelfApi = {
         }
       });
       
+      console.log(`移除书籍API响应状态: ${response.status}`);
+      
       if (!response.ok) {
         throw new Error(`从书架移除书籍失败: ${response.status}`);
       }
       
-      return await response.json();
+      const data = await response.json();
+      console.log('从书架移除书籍成功:', data);
+      return data;
     } catch (error) {
       console.error('从书架移除书籍错误:', error);
       throw error;
@@ -347,6 +398,11 @@ const bookshelfApi = {
   // 更新阅读进度
   async updateReadingProgress(bookId, progress) {
     try {
+      console.log(`更新阅读进度: bookId=${bookId}, progress=${progress}`);
+      if (!bookId) {
+        throw new Error('bookId参数是必需的');
+      }
+      
       const response = await fetch(`${config.api.baseUrl}/books/${bookId}/reading-progress`, {
         method: 'PUT',
         headers: {
@@ -356,11 +412,15 @@ const bookshelfApi = {
         body: JSON.stringify({ progress })
       });
       
+      console.log(`更新进度API响应状态: ${response.status}`);
+      
       if (!response.ok) {
         throw new Error(`更新阅读进度失败: ${response.status}`);
       }
       
-      return await response.json();
+      const data = await response.json();
+      console.log('更新阅读进度成功:', data);
+      return data;
     } catch (error) {
       console.error('更新阅读进度错误:', error);
       throw error;

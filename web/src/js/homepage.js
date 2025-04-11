@@ -838,8 +838,9 @@ function addToBookshelf(bookId) {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({ 
-        reading_status: '未开始',
-        current_page: 0
+        readingStatus: '未开始',
+        currentPage: 0,
+        author: '未知作者'  // 确保提供作者信息，以防书籍不存在需要创建
       })
     })
     .then(response => {

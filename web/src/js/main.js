@@ -1414,76 +1414,138 @@ function generateBookshelfCard(book) {
     return window.generateBookshelfCard(book);
   }
   
-  console.log('生成书架卡片:', book);
+  console.log('生成书架卡片 - 原始数据:', book);
   
-  // 确保我们有正确的书籍数据结构
-  const bookInfo = book.Book || book;
-  const progress = book.progress || 0;
-  const status = book.status || 'toRead';
-  
-  // 获取书籍信息
-  const bookId = bookInfo.id || book.bookId || '';
-  const title = bookInfo.title || '未知标题';
-  const author = bookInfo.author || '未知作者';
-  const cover = bookInfo.coverUrl || bookInfo.cover || '../images/default-cover.jpg';
-  
-  // 根据状态设置标签
-  let statusLabel = '';
-  let statusClass = '';
-  
-  if (status === 'reading') {
-    statusLabel = '阅读中';
-    statusClass = 'bg-blue-100 text-blue-800';
-  } else if (status === 'completed' || status === 'finished') {
-    statusLabel = '已完成';
-    statusClass = 'bg-green-100 text-green-800';
-  } else {
-    statusLabel = '未读';
-    statusClass = 'bg-yellow-100 text-yellow-800';
-  }
-  
-  return `
-    <div class="book-card bg-white p-4 relative rounded-lg" data-book-id="${bookId}" data-status="${status}" data-progress="${progress}">
-      <div class="absolute top-2 left-2 dropdown-container">
-        <button class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 card-menu-btn">
-          <i class="fas fa-ellipsis-v"></i>
-        </button>
-        <div class="dropdown-menu hidden" style="position: absolute; left: 0; top: 28px; z-index: 100; background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 150px; padding: 0.5rem 0; display: none;">
-          <a href="book-detail.html?id=${bookId}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-            <i class="fas fa-info-circle mr-2"></i>查看详情
-          </a>
-          <button class="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 remove-from-shelf-btn">
-            <i class="fas fa-times mr-2"></i>移出书架
+  try {
+    // 提取书籍信息，兼容各种数据结构
+    let bookInfo = book;
+    
+    // 检查嵌套结构
+    if (book.Book && typeof book.Book === 'object') {
+      console.log('从book.Book中提取书籍信息');
+      bookInfo = book.Book;
+    } else if (book.book && typeof book.book === 'object') {
+      console.log('从book.book中提取书籍信息');
+      bookInfo = book.book;
+    }
+    
+    // 提取各种可能的字段名
+    // 书籍基本信息
+    const bookId = book.bookId || book.book_id || bookInfo.id || bookInfo.bookId || '';
+    const title = bookInfo.title || bookInfo.name || '未知标题';
+    const author = bookInfo.author || bookInfo.authors || '未知作者';
+    const description = bookInfo.description || bookInfo.summary || '';
+    
+    // 书籍封面
+    const cover = bookInfo.coverUrl || bookInfo.cover || bookInfo.cover_url || bookInfo.coverImage || '../images/default-cover.jpg';
+    
+    // 阅读状态和进度
+    let status = book.status || book.readingStatus || book.reading_status || 'toRead';
+    let progress = book.progress || book.readingProgress || book.reading_progress || 0;
+    
+    // 规范化状态值
+    if (status === 'finished') status = 'completed';
+    if (status === '阅读中') status = 'reading';
+    if (status === '已完成' || status === '已读完') status = 'completed';
+    
+    // 确保进度是数字
+    progress = Number(progress) || 0;
+    
+    // 根据状态设置标签
+    let statusLabel = '';
+    let statusClass = '';
+    
+    if (status === 'reading') {
+      statusLabel = '阅读中';
+      statusClass = 'bg-blue-100 text-blue-800';
+    } else if (status === 'completed') {
+      statusLabel = '已完成';
+      statusClass = 'bg-green-100 text-green-800';
+      // 如果状态是已完成，但进度不是100%，强制设为100%
+      progress = 100;
+    } else {
+      statusLabel = '未读';
+      statusClass = 'bg-yellow-100 text-yellow-800';
+      // 如果状态是未读，但进度不是0，重置为0
+      progress = 0;
+    }
+    
+    console.log(`处理书籍: ID=${bookId}, 标题=${title}, 状态=${status}, 进度=${progress}%`);
+    
+    // 生成书架卡片HTML
+    return `
+      <div class="book-card bg-white p-4 relative rounded-lg" data-book-id="${bookId}" data-status="${status}" data-progress="${progress}">
+        <div class="absolute top-2 left-2 dropdown-container">
+          <button class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 card-menu-btn">
+            <i class="fas fa-ellipsis-v"></i>
           </button>
-        </div>
-      </div>
-      
-      <div class="flex flex-col items-center">
-        <img src="${cover}" alt="${title}" class="book-cover w-32 h-48 mb-3 object-cover rounded">
-        <div class="text-center mb-4">
-          <h3 class="font-bold">${title}</h3>
-          <p class="text-gray-600 text-sm">${author}</p>
-        </div>
-      </div>
-      
-      <div class="mt-auto pt-3 border-t border-gray-100">
-        <div class="flex justify-between text-sm text-gray-500 mb-1">
-          <span>阅读进度</span>
-          <span>${progress}%</span>
-        </div>
-        <div class="bg-gray-200 rounded-full h-2 overflow-hidden mb-3">
-          <div class="bg-blue-500 h-full" style="width: ${progress}%"></div>
+          <div class="dropdown-menu hidden" style="position: absolute; left: 0; top: 28px; z-index: 100; background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 150px; padding: 0.5rem 0; display: none;">
+            <a href="book-detail.html?id=${bookId}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+              <i class="fas fa-info-circle mr-2"></i>查看详情
+            </a>
+            <button class="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 remove-from-shelf-btn">
+              <i class="fas fa-times mr-2"></i>移出书架
+            </button>
+          </div>
         </div>
         
-        <div class="flex justify-between items-center mt-3">
-          <span class="inline-block ${statusClass} text-xs px-2 py-1 rounded-full">${statusLabel}</span>
-          <button class="bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded continue-reading-btn">
-            ${status === 'reading' ? '继续阅读' : status === 'completed' ? '重新阅读' : '开始阅读'}
-          </button>
+        <div class="flex flex-col items-center">
+          <img src="${cover}" alt="${title}" class="book-cover w-32 h-48 mb-3 object-cover rounded" onerror="this.src='../images/default-cover.jpg'">
+          <div class="text-center mb-4">
+            <h3 class="font-bold">${title}</h3>
+            <p class="text-gray-600 text-sm">${author}</p>
+          </div>
+        </div>
+        
+        <div class="mt-auto pt-3 border-t border-gray-100">
+          <div class="flex justify-between text-sm text-gray-500 mb-1">
+            <span>阅读进度</span>
+            <span>${progress}%</span>
+          </div>
+          <div class="bg-gray-200 rounded-full h-2 overflow-hidden mb-3">
+            <div class="bg-blue-500 h-full" style="width: ${progress}%"></div>
+          </div>
+          
+          <div class="flex justify-between items-center mt-3">
+            <span class="inline-block ${statusClass} text-xs px-2 py-1 rounded-full">${statusLabel}</span>
+            <button class="bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded continue-reading-btn">
+              ${status === 'reading' ? '继续阅读' : status === 'completed' ? '重新阅读' : '开始阅读'}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  `;
+    `;
+  } catch (error) {
+    console.error('生成书架卡片出错:', error, book);
+    
+    // 尝试提取书名做为最基本的信息
+    let title = '未知书名';
+    let bookId = '';
+    
+    try {
+      if (book) {
+        if (book.title) title = book.title;
+        else if (book.Book && book.Book.title) title = book.Book.title;
+        
+        if (book.id) bookId = book.id;
+        else if (book.bookId) bookId = book.bookId;
+        else if (book.Book && book.Book.id) bookId = book.Book.id;
+      }
+    } catch (e) {
+      console.warn('提取基本信息也失败了:', e);
+    }
+    
+    // 返回一个简单的错误卡片
+    return `
+      <div class="book-card bg-white p-4 relative rounded-lg" data-book-id="${bookId}">
+        <div class="text-center py-4">
+          <div class="text-red-500 mb-2"><i class="fas fa-exclamation-circle text-xl"></i></div>
+          <h3 class="font-bold">${title}</h3>
+          <p class="text-gray-500 text-sm mt-2">加载书籍信息时出错</p>
+        </div>
+      </div>
+    `;
+  }
 }
 
 // 添加书架卡片事件监听器
@@ -1653,16 +1715,52 @@ async function loadUserBookshelf() {
     showLoadingState();
     
     // 调用API获取用户书架
-    const bookshelfData = await bookshelfApi.getBookshelf();
-    console.log('获取到的书架数据类型:', typeof bookshelfData);
-    console.log('获取到的书架数据:', JSON.stringify(bookshelfData, null, 2));
+    const response = await bookshelfApi.getBookshelf();
+    console.log('获取到的原始书架数据:', response);
     
-    // 确保我们正确处理bookshelf数据
-    const books = bookshelfData.bookshelf || bookshelfData || [];
+    // 处理不同格式的数据结构
+    let bookshelfData;
+    let books = [];
+    
+    // 兼容处理各种可能的响应格式
+    if (Array.isArray(response)) {
+      console.log('API返回数组格式数据');
+      books = response;
+      bookshelfData = { bookshelf: response };
+    } else if (response && typeof response === 'object') {
+      bookshelfData = response;
+      
+      // 尝试从不同的位置提取书籍数组
+      if (response.bookshelf && Array.isArray(response.bookshelf)) {
+        console.log('从response.bookshelf中提取数据');
+        books = response.bookshelf;
+      } else if (response.data && Array.isArray(response.data)) {
+        console.log('从response.data中提取数据');
+        books = response.data;
+        bookshelfData = { bookshelf: response.data };
+      } else if (response.data && response.data.bookshelf && Array.isArray(response.data.bookshelf)) {
+        console.log('从response.data.bookshelf中提取数据');
+        books = response.data.bookshelf;
+        bookshelfData = { bookshelf: response.data.bookshelf };
+      } else {
+        // 尝试查找任何可能的数组
+        for (const key in response) {
+          if (Array.isArray(response[key])) {
+            console.log(`从response.${key}中提取数据`);
+            books = response[key];
+            bookshelfData = { bookshelf: response[key] };
+            break;
+          }
+        }
+      }
+    }
+    
+    console.log('处理后的书架数据:', { bookshelfData, books, length: books.length });
     
     // 将书架数据存储在window对象中，以便bookshelf.js能够访问
     window.currentBookshelfData = books;
     
+    // 显示书架内容
     displayBookshelf(bookshelfData);
     
     // 返回书架数据，以便其他函数能够使用
@@ -1681,13 +1779,50 @@ function displayBookshelf(bookshelfData) {
   const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
   if (!bookshelfContent) return;
   
-  console.log('显示书架数据:', JSON.stringify(bookshelfData, null, 2));
+  console.log('显示书架数据 - 原始数据:', bookshelfData);
   
-  // 确保我们正确处理bookshelf数据
-  const books = bookshelfData.bookshelf || bookshelfData || [];
+  // 处理不同的数据格式
+  let books = [];
+  
+  if (Array.isArray(bookshelfData)) {
+    console.log('bookshelfData是数组，直接使用');
+    books = bookshelfData;
+  } else if (bookshelfData && typeof bookshelfData === 'object') {
+    if (bookshelfData.bookshelf && Array.isArray(bookshelfData.bookshelf)) {
+      console.log('从bookshelfData.bookshelf中提取书籍数组');
+      books = bookshelfData.bookshelf;
+    } else if (bookshelfData.data && Array.isArray(bookshelfData.data)) {
+      console.log('从bookshelfData.data中提取书籍数组');
+      books = bookshelfData.data;
+    } else if (bookshelfData.data && bookshelfData.data.bookshelf && Array.isArray(bookshelfData.data.bookshelf)) {
+      console.log('从bookshelfData.data.bookshelf中提取书籍数组');
+      books = bookshelfData.data.bookshelf;
+    } else {
+      // 尝试查找任何可能的数组字段
+      for (const key in bookshelfData) {
+        if (Array.isArray(bookshelfData[key])) {
+          console.log(`从bookshelfData.${key}中提取书籍数组`);
+          books = bookshelfData[key];
+          break;
+        }
+      }
+    }
+  } else {
+    console.warn('无法识别的bookshelfData格式:', bookshelfData);
+    books = [];
+  }
+  
+  // 检查最终提取的books是否为有效数组
+  if (!Array.isArray(books)) {
+    console.warn('处理后的books不是有效数组，创建空数组');
+    books = [];
+  }
+  
+  console.log('处理后的书架书籍数组:', books.length ? books : '空数组');
   
   // 检查书架数据
-  if (!Array.isArray(books) || books.length === 0) {
+  if (books.length === 0) {
+    console.log('书架为空，显示空状态');
     bookshelfContent.innerHTML = `
       <div class="text-center py-8">
         您的书架还没有书籍
@@ -1696,15 +1831,40 @@ function displayBookshelf(bookshelfData) {
     return;
   }
   
-  console.log('处理后的书架书籍:', books);
+  // 检查第一本书的数据结构，以便适当处理
+  const sampleBook = books[0];
+  console.log('样本书籍数据结构:', sampleBook);
   
   // 更新书架内容
   bookshelfContent.innerHTML = `
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       ${books.map(book => {
-        // 获取书籍信息，考虑可能的数据结构
-        const bookInfo = book.Book || book;
-        return generateBookshelfCard(bookInfo);
+        try {
+          // 获取书籍信息，考虑可能的数据结构
+          let bookInfo = book;
+          
+          // 检查各种可能的嵌套结构
+          if (book.Book && typeof book.Book === 'object') {
+            console.log('书籍存在Book子对象');
+            bookInfo = book.Book;
+          } else if (book.book && typeof book.book === 'object') {
+            console.log('书籍存在book子对象');
+            bookInfo = book.book;
+          }
+          
+          // 尝试确保书籍有ID和标题
+          const id = book.bookId || bookInfo.id || book.id || 'unknown';
+          const title = bookInfo.title || book.title || '未知标题';
+          
+          // 使用ID标记调试日志
+          console.log(`处理书籍ID:${id}, 标题:${title}`);
+          
+          // 使用generateBookshelfCard生成卡片
+          return generateBookshelfCard(book);
+        } catch (error) {
+          console.error('生成书架卡片时出错:', error, book);
+          return `<div class="book-card error">加载书籍信息出错</div>`;
+        }
       }).join('')}
     </div>
   `;
@@ -1718,7 +1878,7 @@ function displayBookshelf(bookshelfData) {
 
 // 更新书架统计数据
 function updateBookshelfStats(books) {
-  console.log('更新书架统计数据:', books);
+  console.log('更新书架统计数据 - 传入数据:', books ? `${books.length}本书籍` : '无数据');
   
   // 确保books是数组
   if (!books || !Array.isArray(books)) {
@@ -1731,30 +1891,66 @@ function updateBookshelfStats(books) {
   
   let finishedBooks = 0;
   let readingBooks = 0;
+  let toReadBooks = 0;
   
   books.forEach(book => {
-    // 处理不同的数据结构
-    const bookInfo = book.Book || book;
-    const progress = book.progress || bookInfo.progress || bookInfo.readingProgress || 0;
-    const status = book.status || bookInfo.status || '';
-    
-    if (progress === 100 || status === 'completed' || status === 'finished') {
-      finishedBooks++;
-    } else if (progress > 0 || status === 'reading') {
-      readingBooks++;
+    try {
+      // 处理不同的数据结构
+      let bookInfo = book;
+      
+      // 检查嵌套结构
+      if (book.Book && typeof book.Book === 'object') {
+        bookInfo = book.Book;
+      } else if (book.book && typeof book.book === 'object') {
+        bookInfo = book.book;
+      }
+      
+      // 提取状态和进度信息
+      let status = book.status || book.readingStatus || book.reading_status || '';
+      let progress = book.progress || book.readingProgress || book.reading_progress || 0;
+      
+      // 尝试从bookInfo中提取（如果上面没找到）
+      if (!status) {
+        status = bookInfo.status || bookInfo.readingStatus || bookInfo.reading_status || '';
+      }
+      
+      if (!progress) {
+        progress = bookInfo.progress || bookInfo.readingProgress || bookInfo.reading_progress || 0;
+      }
+      
+      // 规范化状态值
+      if (status === 'finished') status = 'completed';
+      if (status === '阅读中') status = 'reading';
+      if (status === '已完成' || status === '已读完') status = 'completed';
+      
+      // 确保进度是数字
+      progress = Number(progress) || 0;
+      
+      // 基于状态和进度分类
+      if (status === 'completed' || progress === 100) {
+        finishedBooks++;
+      } else if (status === 'reading' || (progress > 0 && progress < 100)) {
+        readingBooks++;
+      } else {
+        toReadBooks++;
+      }
+    } catch (error) {
+      console.error('处理书籍统计信息时出错:', error, book);
     }
   });
   
-  console.log(`统计结果: 总计 ${totalBooks} 本, 已完成 ${finishedBooks} 本, 阅读中 ${readingBooks} 本`);
+  console.log(`统计结果: 总计 ${totalBooks} 本, 已完成 ${finishedBooks} 本, 阅读中 ${readingBooks} 本, 未读 ${toReadBooks} 本`);
   
   // 更新DOM元素
   const totalElement = document.getElementById('total-books');
   const finishedElement = document.getElementById('finished-books');
   const readingElement = document.getElementById('reading-books');
+  const toReadElement = document.getElementById('toread-books');
   
   if (totalElement) totalElement.textContent = totalBooks;
   if (finishedElement) finishedElement.textContent = finishedBooks;
   if (readingElement) readingElement.textContent = readingBooks;
+  if (toReadElement) toReadElement.textContent = toReadBooks;
 }
 
 // 初始化书籍详情页面

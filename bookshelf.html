@@ -1,0 +1,70 @@
+window.applySortingFunction = function(sortValue) {
+  console.log('应用排序:', sortValue);
+  
+  // 获取当前分类
+  const activeTab = document.querySelector('.category-tab.active');
+  const category = activeTab ? activeTab.dataset.category : 'all';
+  console.log('当前分类:', category);
+  
+  // 使用window.currentBookshelfData作为数据源
+  const books = window.currentBookshelfData;
+  
+  if (!books || !Array.isArray(books) || books.length === 0) {
+    console.log('没有找到书籍数据');
+    return;
+  }
+  
+  // 排序逻辑
+  const sortedBooks = [...books].sort((a, b) => {
+    // 获取书籍信息，考虑可能的数据结构
+    const bookInfoA = a.Book || a.book || a;
+    const bookInfoB = b.Book || b.book || b;
+    
+    if (sortValue === 'title-asc') {
+      return (bookInfoA.title || '').localeCompare(bookInfoB.title || '');
+    } else if (sortValue === 'title-desc') {
+      return (bookInfoB.title || '').localeCompare(bookInfoA.title || '');
+    } else if (sortValue === 'author-asc') {
+      return (bookInfoA.author || '').localeCompare(bookInfoB.author || '');
+    } else if (sortValue === 'author-desc') {
+      return (bookInfoB.author || '').localeCompare(bookInfoA.author || '');
+    } else if (sortValue === 'progress-asc') {
+      const progressA = a.progress || a.readingProgress || 0;
+      const progressB = b.progress || b.readingProgress || 0;
+      return progressA - progressB;
+    } else if (sortValue === 'progress-desc') {
+      const progressA = a.progress || a.readingProgress || 0;
+      const progressB = b.progress || b.readingProgress || 0;
+      return progressB - progressA;
+    } else if (sortValue === 'date-asc') {
+      // 日期升序（最早添加的先显示）
+      const dateA = new Date(a.addedAt || a.created_at || a.updatedAt || 0);
+      const dateB = new Date(b.addedAt || b.created_at || b.updatedAt || 0);
+      return dateA - dateB;
+    } else {
+      // 默认 date-desc（最近添加的先显示）
+      const dateA = new Date(a.addedAt || a.created_at || a.updatedAt || 0);
+      const dateB = new Date(b.addedAt || b.created_at || b.updatedAt || 0);
+      return dateB - dateA;
+    }
+  });
+  
+  // 根据分类过滤
+  let filteredBooks = sortedBooks;
+  if (category !== 'all') {
+    filteredBooks = sortedBooks.filter(book => {
+      const status = book.status || book.readingStatus || '';
+      return status === category;
+    });
+  }
+  
+  // 更新显示
+  console.log(`排序后有${filteredBooks.length}本书籍`);
+  const container = document.querySelector(`.category-content[data-category="${category}"] .grid`);
+  
+  if (container && window.displayBooks) {
+    window.displayBooks(container, filteredBooks);
+  } else {
+    console.error('找不到容器或displayBooks函数');
+  }
+} 

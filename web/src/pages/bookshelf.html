@@ -389,13 +389,32 @@
       </div>
     </section>
     
+    <!-- 加载指示器 -->
+    <div id="loading-indicator" class="text-center py-12 hidden">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+      <p class="text-gray-600 mt-4 text-lg">加载您的书架中...</p>
+    </div>
+    
     <!-- 空状态 -->
     <div id="empty-state" class="hidden text-center py-12">
-      <img src="../images/empty-bookshelf.svg" alt="空书架" class="mx-auto w-40 h-40 mb-4">
-      <h3 class="text-xl font-bold mb-2">您的书架还是空的</h3>
-      <p class="text-gray-600 mb-4">开始添加书籍到您的书架，追踪您的阅读进度。</p>
-      <button id="add-first-book-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg" onclick="window.location.href='search.html'">
+      <img src="../images/empty-bookshelf.svg" alt="空书架" class="mx-auto w-64 h-64 mb-6">
+      <h3 class="text-2xl font-bold mb-3 text-gray-800">您的书架还是空的</h3>
+      <p class="text-gray-600 mb-6 max-w-md mx-auto">开始添加书籍到您的书架，追踪您的阅读进度，记录您的阅读历程。</p>
+      <button id="add-first-book-btn" class="bg-blue-500 hover:bg-blue-600 transition-colors text-white px-6 py-3 rounded-lg shadow-md" onclick="window.location.href='search.html'">
         <i class="fas fa-plus mr-2"></i>添加第一本书
+      </button>
+    </div>
+    
+    <!-- 加载失败状态 -->
+    <div id="error-state" class="hidden text-center py-12">
+      <i class="fas fa-exclamation-circle text-red-500 text-6xl mb-6"></i>
+      <h3 class="text-2xl font-bold mb-3 text-gray-800">加载书架失败</h3>
+      <p class="text-gray-600 mb-6 max-w-md mx-auto">无法加载您的书架数据，可能是网络连接问题或服务器暂时不可用。</p>
+      <button id="retry-load-btn" class="bg-blue-500 hover:bg-blue-600 transition-colors text-white px-6 py-3 rounded-lg shadow-md mr-4">
+        <i class="fas fa-sync-alt mr-2"></i>重试加载
+      </button>
+      <button id="browse-books-btn" class="bg-gray-200 hover:bg-gray-300 transition-colors text-gray-800 px-6 py-3 rounded-lg shadow-md">
+        <i class="fas fa-book mr-2"></i>浏览图书馆
       </button>
     </div>
   </main>
@@ -919,11 +938,52 @@
   
   <!-- 添加一个内联脚本，确保在页面加载时能够正确显示所有书籍 -->
   <script>
+    // 检查书籍数据状态的函数
+    function checkAndLoadBookshelfData() {
+      console.log('检查书籍数据状态...');
+      
+      // 检查当前数据状态
+      if (!window.currentBookshelfData || !Array.isArray(window.currentBookshelfData) || window.currentBookshelfData.length === 0) {
+        // 查看统计数据
+        const totalBooksElement = document.getElementById('total-books');
+        const totalBooks = totalBooksElement ? parseInt(totalBooksElement.textContent, 10) : 0;
+        
+        // 如果统计显示有书籍但数据为空，尝试重新获取
+        if (totalBooks > 0) {
+          console.log(`统计显示有${totalBooks}本书，但数据为空，尝试重新加载...`);
+          
+          // 如果loadUserBookshelfData函数可用，调用它
+          if (typeof window.loadUserBookshelfData === 'function') {
+            window.loadUserBookshelfData().then(books => {
+              if (books && books.length > 0) {
+                console.log(`成功重新加载${books.length}本书籍`);
+                
+                // 确保更新全局数据
+                window.currentBookshelfData = books;
+                
+                // 应用默认排序
+                setTimeout(() => {
+                  if (typeof window.applySortingFunction === 'function') {
+                    window.applySortingFunction('date-desc');
+                  }
+                }, 300);
+              }
+            });
+          }
+        }
+      } else {
+        console.log(`数据正常，当前有${window.currentBookshelfData.length}本书`);
+      }
+    }
+    
     window.addEventListener('load', function() {
       console.log('页面加载完成，初始化书籍数据');
       
       // 确保书籍数据已加载
       setTimeout(function() {
+        // 检查数据状态
+        checkAndLoadBookshelfData();
+        
         // 获取当前活跃的分类标签
         const activeTab = document.querySelector('.category-tab.active');
         if (activeTab) {
@@ -973,8 +1033,25 @@
       
       // 获取所有书籍数据
       const allBooks = window.currentBookshelfData || [];
-      if (!allBooks.length) {
-        console.warn('没有找到书籍数据');
+      console.log('从window.currentBookshelfData获取数据:', allBooks ? `找到${allBooks.length}本书籍` : '未找到数据');
+      
+      if (!allBooks || !Array.isArray(allBooks) || allBooks.length === 0) {
+        console.error('书籍数据为空或不是数组，请检查以下原因:');
+        console.error('1. 数据加载是否完成');
+        console.error('2. window.currentBookshelfData是否正确设置');
+        console.error('3. 数据格式是否正确');
+        console.error('window.currentBookshelfData值:', window.currentBookshelfData);
+        
+        // 尝试通过重新加载数据解决
+        if (typeof window.loadUserBookshelfData === 'function') {
+          console.log('尝试重新加载书架数据');
+          window.loadUserBookshelfData().then(data => {
+            if (data && data.length > 0) {
+              console.log('重新加载成功，再次尝试排序');
+              window.applySortingFunction(sortBy);
+            }
+          });
+        }
         return;
       }
       
@@ -983,7 +1060,7 @@
       if (window.currentSearchQuery) {
         const searchQuery = window.currentSearchQuery.toLowerCase();
         searchFilteredBooks = allBooks.filter(book => {
-          const bookInfo = book.Book || book;
+          const bookInfo = book.Book || book.book || book;
           const title = (bookInfo.title || '').toLowerCase();
           const author = (bookInfo.author || '').toLowerCase();
           const description = (bookInfo.description || '').toLowerCase();
@@ -1004,19 +1081,19 @@
       } else if (category === 'reading') {
         // 筛选阅读中的书籍
         filteredBooks = searchFilteredBooks.filter(book => {
-          const status = book.status || (book.Book && book.Book.status) || 'toRead';
+          const status = book.status || book.readingStatus || (book.Book && book.Book.status) || 'toRead';
           return status === 'reading';
         });
       } else if (category === 'completed') {
         // 筛选已读完的书籍
         filteredBooks = searchFilteredBooks.filter(book => {
-          const status = book.status || (book.Book && book.Book.status) || 'toRead';
+          const status = book.status || book.readingStatus || (book.Book && book.Book.status) || 'toRead';
           return status === 'completed' || status === 'finished';
         });
       } else if (category === 'toRead') {
         // 筛选未读的书籍
         filteredBooks = searchFilteredBooks.filter(book => {
-          const status = book.status || (book.Book && book.Book.status) || 'toRead';
+          const status = book.status || book.readingStatus || (book.Book && book.Book.status) || 'toRead';
           return status === 'toRead' || status === 'unread';
         });
       }
@@ -1048,8 +1125,8 @@
       } else if (sortBy === 'progress') {
         // 阅读进度
         filteredBooks.sort((a, b) => {
-          const progressA = a.progress || 0;
-          const progressB = b.progress || 0;
+          const progressA = a.progress || a.readingProgress || 0;
+          const progressB = b.progress || b.readingProgress || 0;
           return progressB - progressA;
         });
       }
@@ -1057,6 +1134,8 @@
       // 更新书架显示
       const gridContainer = activeContent.querySelector('.grid');
       if (gridContainer) {
+        console.log('找到网格容器，准备渲染排序后的书籍');
+        
         // 清空内容
         gridContainer.innerHTML = '';
         
@@ -1083,39 +1162,43 @@
             </div>
           `;
         } else {
-          // 如果有搜索查询，显示搜索结果标题和清除搜索按钮
-          if (window.currentSearchQuery) {
-            const searchResultHeader = document.createElement('div');
-            searchResultHeader.className = 'mb-4 flex items-center justify-between col-span-full';
-            searchResultHeader.innerHTML = `
-              <div class="text-gray-700">
-                找到 <span class="font-medium">${filteredBooks.length}</span> 本匹配 "${window.currentSearchQuery}" ${category !== 'all' ? `且${getCategoryName(category)}` : ''} 的书籍
-              </div>
-              <button class="text-blue-500 hover:text-blue-700 flex items-center" onclick="window.clearSearch()">
-                <i class="fas fa-times mr-1"></i>清除搜索
-              </button>
-            `;
-            gridContainer.appendChild(searchResultHeader);
+          // 使用displayBooks函数显示排序后的书籍
+          if (window.displayBooks && typeof window.displayBooks === 'function') {
+            console.log('使用window.displayBooks函数渲染书籍');
+            window.displayBooks(gridContainer, filteredBooks);
+          } else {
+            console.error('window.displayBooks函数不可用，无法渲染书籍');
+            // 回退方案：直接渲染基本卡片
+            const fragment = document.createDocumentFragment();
+            
+            filteredBooks.forEach(book => {
+              try {
+                const bookInfo = book.Book || book.book || book;
+                const title = bookInfo.title || '未知标题';
+                const author = bookInfo.author || '未知作者';
+                const cover = bookInfo.coverUrl || bookInfo.cover || '../images/default-cover.jpg';
+                
+                const bookCard = document.createElement('div');
+                bookCard.className = 'book-card bg-white p-4 rounded-lg shadow';
+                bookCard.innerHTML = `
+                  <div class="flex flex-col items-center">
+                    <img src="${cover}" alt="${title}" class="w-32 h-48 object-cover rounded mb-3" onerror="this.src='../images/default-cover.jpg'">
+                    <h3 class="font-bold text-center">${title}</h3>
+                    <p class="text-gray-600 text-sm">${author}</p>
+                  </div>
+                `;
+                
+                fragment.appendChild(bookCard);
+              } catch (error) {
+                console.error('渲染书籍卡片出错:', error);
+              }
+            });
+            
+            gridContainer.appendChild(fragment);
           }
-          
-          // 生成书籍卡片
-          filteredBooks.forEach(book => {
-            if (window.generateBookshelfCard) {
-              const bookCardHtml = window.generateBookshelfCard(book);
-              gridContainer.innerHTML += bookCardHtml;
-            }
-          });
-          
-          // 添加事件监听器
-          setTimeout(() => {
-            if (typeof window.addBookshelfCardListeners === 'function') {
-              window.addBookshelfCardListeners();
-            } else {
-              // 如果函数不存在，手动添加事件监听器
-              addCardListeners();
-            }
-          }, 200);
         }
+      } else {
+        console.error('未找到网格容器，无法显示排序结果');
       }
     };
     
