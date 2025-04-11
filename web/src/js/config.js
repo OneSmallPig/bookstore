@@ -60,8 +60,8 @@ const config = {
   
   // 图片配置
   images: {
-    fallbackCover: '/src/images/default-cover.jpg',
-    placeholderImage: '/src/images/placeholder.svg',
+    fallbackCover: '../images/default-cover.jpg',
+    placeholderImage: '../images/placeholder.svg',
     proxyEnabled: true,
     proxyUrl: isProduction 
       ? `${window.location.origin}/api/proxy/image?url=` 

@@ -30,8 +30,13 @@ window.onload = function () {
   // 检查是否需要预先加载图片代理服务
   loadImageProxyIfNeeded();
   
-  // 延迟一点时间后检查和修复图片加载问题
-  setTimeout(checkAndFixCoverImages, 1000);
+  // 在首次加载页面后，只执行一次封面图片修复
+  // 延长延迟时间，确保图片有足够时间完成加载
+  if (!window._hasFixedCoverImages) {
+    window._hasFixedCoverImages = true;
+    console.log('页面首次加载，将在2秒后检查和修复封面图片');
+    setTimeout(checkAndFixCoverImages, 2000);
+  }
   
   // 加载用户书架数据
   loadUserBookshelf();
@@ -1026,10 +1031,46 @@ function showError(container, message) {
  * 检查并修复书籍封面图片加载问题
  */
 function checkAndFixCoverImages() {
+  // 检查是否在书架页面，如果是则跳过执行
+  if (window._isBookshelfPage) {
+    console.log('当前在书架页面，跳过封面图片检查');
+    return;
+  }
+
+  // 防止重复执行
+  if (window._isCheckingCoverImages) {
+    console.log('已有检查封面任务在执行中，跳过...');
+    return;
+  }
+
+  window._isCheckingCoverImages = true;
   console.log('检查所有书籍封面图片...');
   const coverImages = document.querySelectorAll('.book-cover-image');
   
+  // 处理计数，用于跟踪处理完成
+  let processedCount = 0;
+  const totalImages = coverImages.length;
+  
+  if (totalImages === 0) {
+    console.log('页面上没有找到需要处理的封面图片');
+    window._isCheckingCoverImages = false;
+    return;
+  }
+  
   coverImages.forEach((img, index) => {
+    // 检查图片是否已经处理过或标记为已处理
+    if (img.dataset.checked === 'true' || img.dataset.processed === 'true' || img.dataset.fallbackAttempted === 'true') {
+      processedCount++;
+      if (processedCount >= totalImages) {
+        console.log('所有封面图片处理完成');
+        window._isCheckingCoverImages = false;
+      }
+      return;
+    }
+    
+    // 标记图片已检查
+    img.dataset.checked = 'true';
+    
     // 检查图片是否已经加载或加载失败
     if (img.complete) {
       if (img.naturalHeight === 0) {
@@ -1038,18 +1079,38 @@ function checkAndFixCoverImages() {
       } else {
         console.log(`封面图片 #${index} 加载成功:`, img.src);
       }
+      processedCount++;
+      if (processedCount >= totalImages) {
+        console.log('所有封面图片处理完成');
+        window._isCheckingCoverImages = false;
+      }
     } else {
       // 图片尚未加载完毕，添加事件监听器
       img.addEventListener('load', () => {
         console.log(`封面图片 #${index} 延迟加载成功:`, img.src);
+        processedCount++;
+        if (processedCount >= totalImages) {
+          console.log('所有封面图片处理完成');
+          window._isCheckingCoverImages = false;
+        }
       });
       
       img.addEventListener('error', () => {
         console.warn(`封面图片 #${index} 加载失败:`, img.src);
         handleImageError(img);
+        processedCount++;
+        if (processedCount >= totalImages) {
+          console.log('所有封面图片处理完成');
+          window._isCheckingCoverImages = false;
+        }
       });
     }
   });
+  
+  // 设置安全超时，确保状态最终会被重置
+  setTimeout(() => {
+    window._isCheckingCoverImages = false;
+  }, 10000); // 10秒后重置状态
 }
 
 /**

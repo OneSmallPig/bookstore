@@ -156,9 +156,10 @@
     .book-actions {
       display: flex;
       gap: 0.5rem;
+      margin-top: auto;
     }
     
-    .read-btn, .add-btn {
+    .read-btn, .add-btn, .btn-read, .btn-add-shelf {
       flex: 1;
       padding: 0.5rem;
       border-radius: 0.25rem;
@@ -166,24 +167,33 @@
       text-align: center;
       cursor: pointer;
       transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px; /* 固定高度确保一致性 */
     }
     
-    .read-btn {
+    .read-btn, .btn-read {
       background-color: #3b82f6;
       color: white;
     }
     
-    .read-btn:hover {
+    .read-btn:hover, .btn-read:hover {
       background-color: #2563eb;
     }
     
-    .add-btn {
+    .add-btn, .btn-add-shelf {
       background-color: #f3f4f6;
       color: #4b5563;
     }
     
-    .add-btn:hover {
+    .add-btn:hover, .btn-add-shelf:hover {
       background-color: #e5e7eb;
+    }
+    
+    .btn-add-shelf.added {
+      background-color: #10b981;
+      color: white;
     }
     
     /* 动画效果 */

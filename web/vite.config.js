@@ -40,8 +40,33 @@ export default defineConfig(({ command, mode }) => {
           target: 'http://localhost:3001',
           changeOrigin: true
         }
+      },
+      // 添加静态文件服务配置
+      fs: {
+        // 允许为 /src 目录提供服务
+        allow: ['..']
       }
     },
+    // 静态资源处理
+    publicDir: 'public',
+    // 添加自定义重定向处理
+    plugins: [
+      {
+        name: 'image-fallback-plugin',
+        configureServer(server) {
+          server.middlewares.use((req, res, next) => {
+            // 处理请求 /src/images/default-cover.jpg
+            if (req.url === '/src/images/default-cover.jpg') {
+              console.log('重定向默认封面图片请求到正确路径');
+              return res.writeHead(302, {
+                'Location': '../images/default-cover.jpg'
+              }).end();
+            }
+            next();
+          });
+        }
+      }
+    ],
     // 定义环境变量前缀，默认为'VITE_'
     envPrefix: 'VITE_',
   };

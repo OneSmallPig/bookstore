@@ -198,23 +198,13 @@ const bookshelfApi = {
       if (order) queryParams.append('order', order);
       
       const queryString = queryParams.toString();
-      const url = `${config.api.baseUrl}/users/me/bookshelf${queryString ? `?${queryString}` : ''}`;
+      const endpoint = `/users/me/bookshelf${queryString ? `?${queryString}` : ''}`;
       
-      console.log('获取书架API请求URL:', url);
+      console.log('获取书架API请求参数:', { status, sort, order });
+      console.log('获取书架API请求endpoint:', endpoint);
       
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken()}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`获取书架失败: ${response.status}`);
-      }
-      
-      const data = await response.json();
+      // 使用通用request函数发起请求
+      const data = await request(endpoint);
       console.log('获取书架API响应:', data);
       return data;
     } catch (error) {

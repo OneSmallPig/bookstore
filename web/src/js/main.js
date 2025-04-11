@@ -242,70 +242,21 @@ function loadImageProxyModule() {
 
 // 创建书籍封面元素
 function createBookCoverElement(bookData) {
-  console.log('处理书籍封面:', bookData.title, '封面URL:', bookData.coverUrl);
-  
-  // 检查封面URL是否有效，处理更多可能的格式
-  if (bookData.coverUrl && typeof bookData.coverUrl === 'string' && bookData.coverUrl.trim() !== '') {
-    let coverUrl = bookData.coverUrl.trim();
+  try {
+    const coverUrl = bookData.coverUrl || bookData.cover;
     
-    // 处理相对路径
-    if (coverUrl.startsWith('/') && !coverUrl.startsWith('//')) {
-      coverUrl = coverUrl; // 保持相对路径不变
+    // 如果有封面URL，创建图片元素
+    if (coverUrl && typeof coverUrl === 'string') {
+      return `<img src="${coverUrl}" alt="${bookData.title}" class="book-cover w-full h-full object-cover" onerror="this.src='../images/default-cover.jpg';">`;
     }
     
-    // 如果是不完整的URL（如//example.com/image.jpg），添加https:
-    if (coverUrl.startsWith('//')) {
-      coverUrl = 'https:' + coverUrl;
-    }
-    
-    // 检测是否为豆瓣或其他可能有防盗链的图片
-    const isDoubanImage = coverUrl.includes('douban') || coverUrl.includes('doubanio');
-    
-    // 确保URL是安全的
-    try {
-      new URL(coverUrl); // 尝试创建URL对象，如果无效会抛出错误
-      console.log('有效的封面URL:', coverUrl);
-      
-      // 统一处理图片元素
-      const commonAttributes = `
-        class="book-cover w-full h-full object-cover transition-transform duration-300" 
-        alt="${bookData.title}" 
-        data-original-src="${coverUrl}"
-        loading="lazy"
-        onerror="handleBookCoverError(this)"
-      `;
-        
-      // 根据是否为豆瓣图片，可能需要直接使用代理
-      if (isDoubanImage) {
-        console.log('检测到豆瓣图片，添加代理处理标记');
-        
-        // 如果已加载ImageProxy模块，提前使用代理URL
-        let imgSrc = coverUrl;
-        if (window.ImageProxy) {
-          // 在ImageProxy模块可用的情况下，直接使用代理URL
-          try {
-            imgSrc = window.ImageProxy.getProxiedImageUrl(coverUrl);
-            console.log('使用代理URL:', imgSrc);
-          } catch (e) {
-            console.warn('生成代理URL失败，使用原始URL');
-          }
-        }
-        
-        // 返回带有代理处理标记的图片元素
-        return `<img src="${imgSrc}" ${commonAttributes} data-use-proxy="true">`;
-      } else {
-        // 非豆瓣图片，正常加载
-        return `<img src="${coverUrl}" ${commonAttributes}>`;
-      }
-    } catch (e) {
-      console.warn('无效的封面URL:', coverUrl, e);
-      // 如果URL无效，使用默认图片
-      return `<img src="../images/default-book-cover.svg" alt="${bookData.title}" class="book-cover w-full h-full object-cover">`;
-    }
+    // 否则使用默认封面
+    return `<img src="../images/default-cover.jpg" alt="${bookData.title}" class="book-cover w-full h-full object-cover">`;
+  } catch (error) {
+    console.error('创建书籍封面元素出错:', error);
+    // 出错时使用默认封面
+    return `<img src="../images/default-cover.jpg" alt="${bookData.title}" class="book-cover w-full h-full object-cover">`;
   }
-  
-  // 使用默认图片
-  return `<img src="../images/default-book-cover.svg" alt="${bookData.title}" class="book-cover w-full h-full object-cover">`;
 }
 
 // 处理书籍封面加载错误
@@ -671,15 +622,16 @@ function renderBooks(books, container) {
     
     // 数据兼容处理 - 统一处理字段名称差异
     const bookData = {
-      id: book.id || book._id || book.title || '',
-      title: book.title || book.name || '未知书名',
+      id: book.id || book._id || '',
+      title: book.title || '',
       author: book.author || '未知作者',
       tags: book.tags || book.categories || [],
-      coverUrl: book.coverImage || book.cover || book.coverUrl || '../images/default-book-cover.svg',
+      coverUrl: book.coverImage || book.cover || book.coverUrl || '../images/default-cover.jpg',
       introduction: book.description || book.introduction || '暂无简介',
       popularity: book.popularity || book.heat || 0,
       rating: book.rating || 0,
-      searchFrequency: book.searchFrequency || book.frequency || 0
+      searchFrequency: book.searchFrequency || book.frequency || 0,
+      reasons: book.reasons || ''
     };
     
     // 确保标签始终是数组格式
@@ -1178,7 +1130,7 @@ function generateBookCard(book, isInBookshelf = false) {
     '暂无简介';
   
   // 获取封面图片URL，如果没有则使用默认图片
-  const coverImage = book.coverImage || book.cover_image || book.cover || 'src/images/default-book-cover.svg';
+  const coverImage = book.coverImage || book.cover_image || book.cover || '../images/default-cover.jpg';
   
   // 根据是否已在书架中设置按钮文本和样式
   const addBtnClass = isInBookshelf ? 'add-to-bookshelf in-bookshelf' : 'add-to-bookshelf';
