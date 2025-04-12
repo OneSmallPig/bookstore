@@ -9,9 +9,11 @@ import config from './config.js';
 const PROXY_SERVICES = [
   // 直接尝试原始URL
   '',
-  // 公共代理服务
+  // 豆瓣专用代理服务（针对doubanio.com域名）- 使用正确的代理服务格式
   'https://images.weserv.nl/?url=',
   'https://wsrv.nl/?url=',
+  // 备用无防盗链代理
+  'https://cors-anywhere.herokuapp.com/',
   // 本地代理（确保路径正确）
   'http://localhost:3000/api/img-proxy?url=',  // 开发环境
   '/api/img-proxy?url=',  // 生产环境
@@ -53,12 +55,36 @@ function getProxiedImageUrl(originalUrl, proxyIndex = 0) {
       return originalUrl;
     }
     
+    // 检查是否为豆瓣图片URLs
+    const isDoubanImage = originalUrl.includes('doubanio.com') || 
+                          originalUrl.includes('douban.com') || 
+                          originalUrl.includes('img9.') ||
+                          originalUrl.includes('img1.') || 
+                          originalUrl.includes('img2.') || 
+                          originalUrl.includes('img3.');
+    
     // 如果是最后一个选项（默认图片），直接返回默认图片
     if (proxyIndex === PROXY_SERVICES.length - 1) {
       return PROXY_SERVICES[proxyIndex];
     }
     
-    // 如果是第一个选项（空字符串），直接返回原始URL
+    // 豆瓣图片特殊处理：永远不使用index 0（直接访问），强制使用代理
+    if (isDoubanImage) {
+      // 如果proxyIndex是0（直接URL），改为使用第一个代理
+      if (proxyIndex === 0) {
+        console.log('豆瓣图片强制使用代理服务，而不是直接URL');
+        proxyIndex = 1;
+      }
+      
+      // 使用images.weserv.nl或wsrv.nl处理豆瓣图片
+      if (proxyIndex === 1 || proxyIndex === 2) {
+        // 为处理https URLs，先移除协议部分
+        const urlWithoutProtocol = originalUrl.replace(/^https?:\/\//, '');
+        return `${PROXY_SERVICES[proxyIndex]}${encodeURIComponent(urlWithoutProtocol)}`;
+      }
+    }
+    
+    // 如果是第一个选项（空字符串）且不是豆瓣图片，直接返回原始URL
     if (proxyIndex === 0) {
       return originalUrl;
     }
@@ -105,8 +131,23 @@ function handleImageWithProxy(imgElement, originalUrl) {
   
   loadingUrls.add(cacheKey);
   
-  // 获取或初始化当前URL的代理索引
+  // 检查是否为豆瓣图片
+  const isDoubanImage = imgElement.dataset.doubanImage === 'true' || 
+                        originalUrl.includes('doubanio.com') || 
+                        originalUrl.includes('douban.com') || 
+                        originalUrl.includes('img9.') ||
+                        originalUrl.includes('img1.') ||
+                        originalUrl.includes('img2.') ||
+                        originalUrl.includes('img3.');
+  
+  // 获取当前代理索引
   let currentIndex = urlProxyIndexMap.get(originalUrl) || 0;
+  
+  // 豆瓣图片强制从代理开始，跳过直接URL请求
+  if (isDoubanImage && currentIndex === 0) {
+    console.log('检测到豆瓣图片，跳过直接URL请求，直接使用代理服务:', originalUrl);
+    currentIndex = 1; // 从代理服务1开始
+  }
   
   // 如果已经尝试过所有代理服务，使用默认图片
   if (currentIndex >= PROXY_SERVICES.length - 1) {
@@ -120,17 +161,22 @@ function handleImageWithProxy(imgElement, originalUrl) {
   }
   
   // 更新代理索引
-  currentIndex++;
   urlProxyIndexMap.set(originalUrl, currentIndex);
   
-  console.log(`重定向默认封面图片请求到正确路径 #${currentIndex}:`, originalUrl);
+  console.log(`使用代理服务 #${currentIndex} 加载图片:`, originalUrl);
   
   // 获取新的代理URL
   const proxiedUrl = getProxiedImageUrl(originalUrl, currentIndex);
+  console.log('代理后的URL:', proxiedUrl);
   
   // 保存原始URL（如果还没有保存）
   if (!imgElement.dataset.originalSrc) {
     imgElement.dataset.originalSrc = originalUrl;
+  }
+  
+  // 标记为豆瓣图片（如果是）
+  if (isDoubanImage) {
+    imgElement.dataset.doubanImage = 'true';
   }
   
   // 设置新的src前先移除事件处理器，避免触发错误事件
@@ -139,18 +185,23 @@ function handleImageWithProxy(imgElement, originalUrl) {
   // 设置新的代理URL
   imgElement.src = proxiedUrl;
   
-  // 处理加载错误 - 使用非递归方式尝试下一个代理
+  // 处理加载错误 - 尝试下一个代理
   imgElement.onerror = function() {
     console.warn(`代理服务 #${currentIndex} 加载失败:`, proxiedUrl);
     
     // 延迟一下再尝试下一个代理，避免快速循环
     setTimeout(() => {
       loadingUrls.delete(cacheKey);
+      
+      // 准备尝试下一个代理
+      const nextIndex = currentIndex + 1;
+      urlProxyIndexMap.set(originalUrl, nextIndex);
+      
       // 如果还有下一个代理可用，则尝试
-      if (currentIndex < PROXY_SERVICES.length - 1) {
-        // 在书架页面，最多尝试1次代理
-        if (window._isBookshelfPage && currentIndex >= 1) {
-          console.log('在书架页面，仅尝试一次代理后使用默认图片:', originalUrl);
+      if (nextIndex < PROXY_SERVICES.length - 1) {
+        // 在书架页面，限制尝试次数
+        if (window._isBookshelfPage && nextIndex >= 3) {
+          console.log('在书架页面，仅尝试有限次数代理后使用默认图片');
           imgElement.src = DEFAULT_IMAGE;
           imgElement.onerror = null;
           imgElement.dataset.fallbackAttempted = 'true';
@@ -166,7 +217,7 @@ function handleImageWithProxy(imgElement, originalUrl) {
         imgElement.dataset.fallbackAttempted = 'true';
         imgElement.dataset.processed = 'true';
       }
-    }, 200);
+    }, 300);
   };
   
   // 处理加载成功
