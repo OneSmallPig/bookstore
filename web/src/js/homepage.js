@@ -40,6 +40,9 @@ window.onload = function () {
   
   // 加载用户书架数据
   loadUserBookshelf();
+  
+  // 确保书籍卡片事件绑定
+  setTimeout(ensureBookCardListeners, 1000);
 };
 
 // 接收HTML解析事件，在页面结构可用但资源可能尚未加载完成时执行
@@ -545,14 +548,19 @@ function createBookCard(book, isAiRecommended = false) {
   // 检查书籍是否已在书架中
   const isInBookshelf = checkBookInBookshelf(bookData.id) || checkBookInBookshelf(bookData.title);
   
-  // 准备加入书架按钮的状态
+  // 准备加入书架按钮的状态 - 恢复为文本形式
   const shelfBtnClass = isInBookshelf ? 'btn btn-add-shelf added' : 'btn btn-add-shelf';
   const shelfBtnText = isInBookshelf ? '已加入书架' : '加入书架';
   const shelfBtnDisabled = isInBookshelf ? 'disabled' : '';
 
-  // 按照新的设计要求创建卡片结构
-  const cardHtml = `
-    <div class="book-card">
+  // 创建卡片元素
+  const cardElement = document.createElement('div');
+  cardElement.className = 'book-card-wrapper';
+  cardElement.setAttribute('data-book-id', bookData.id || bookData.title);
+  
+  // 设置卡片内容
+  cardElement.innerHTML = `
+    <div class="book-card" data-book-id="${bookData.id || bookData.title}">
       <div class="book-card-content">
         <!-- 书籍封面区域 -->
         <div class="book-cover-container">
@@ -579,18 +587,28 @@ function createBookCard(book, isAiRecommended = false) {
         
         <!-- 操作按钮区域 -->
         <div class="book-actions">
-          <a href="/src/pages/book.html?id=${encodeURIComponent(bookData.id || bookData.title)}" class="btn btn-read">阅读</a>
+          <a href="/src/pages/book-detail.html?id=${encodeURIComponent(bookData.id || bookData.title)}" class="btn btn-read">阅读</a>
           <button class="${shelfBtnClass}" onclick="addToBookshelf('${encodeURIComponent(bookData.id || bookData.title)}')" ${shelfBtnDisabled}>${shelfBtnText}</button>
         </div>
       </div>
     </div>
   `;
-
-  // 使用临时容器创建DOM元素
-  const temp = document.createElement('div');
-  temp.innerHTML = cardHtml.trim();
-
-  return temp.firstChild;
+  
+  // 为卡片添加点击事件（整个卡片点击跳转到详情页）
+  const card = cardElement.querySelector('.book-card');
+  card.addEventListener('click', (e) => {
+    // 如果点击的是按钮或链接，不处理
+    if (e.target.closest('button') || e.target.closest('a')) {
+      return;
+    }
+    
+    const bookId = card.getAttribute('data-book-id');
+    if (bookId) {
+      window.location.href = `src/pages/book-detail.html?id=${bookId}`;
+    }
+  });
+  
+  return cardElement;
 }
 
 /**
@@ -806,7 +824,9 @@ function addToBookshelf(bookId) {
     const authData = localStorage.getItem('bookstore_auth');
     if (!authData) {
       console.log('用户未登录，显示登录提示');
-      if (window.showErrorMessage) {
+      if (window.showLoginPrompt) {
+        window.showLoginPrompt();
+      } else if (window.showErrorMessage) {
         window.showErrorMessage('请先登录后再将书籍加入书架');
       } else {
         alert('请先登录后再将书籍加入书架');
@@ -843,7 +863,7 @@ function addToBookshelf(bookId) {
       apiBaseUrl = '/api';
     }
     
-    // 显示加载状态 - 只获取当前点击的按钮，通过event对象
+    // 显示加载状态 - 只获取当前点击的按钮，通过onclick属性选择
     const btn = document.querySelector(`.btn-add-shelf[onclick*="${bookId}"]:not(.added)`);
     if (!btn) {
       console.log('未找到对应按钮或按钮已标记为added');
@@ -855,17 +875,53 @@ function addToBookshelf(bookId) {
     btn.textContent = '添加中...';
     btn.disabled = true;
     
-    // 发送请求到API - 按照后端错误信息修改请求参数
+    // 获取书籍卡片的完整信息
+    const bookCard = btn.closest('.book-card');
+    let bookInfo = {
+      title: decodedBookId,
+      author: '未知作者',
+      description: '暂无简介',
+      coverImage: 'default-cover.png'
+    };
+    
+    // 尝试从卡片中提取更多书籍信息
+    try {
+      // 获取作者
+      const authorElement = bookCard.querySelector('.book-author');
+      if (authorElement) {
+        bookInfo.author = authorElement.textContent.trim();
+      }
+      
+      // 获取简介
+      const introElement = bookCard.querySelector('.tooltip-text');
+      if (introElement) {
+        bookInfo.description = introElement.textContent.trim();
+      }
+      
+      // 获取封面图片
+      const coverElement = bookCard.querySelector('.book-cover-image');
+      if (coverElement && coverElement.src) {
+        bookInfo.coverImage = coverElement.src;
+      }
+      
+      console.log('从卡片提取到的书籍信息:', bookInfo);
+    } catch (infoError) {
+      console.error('提取书籍信息时出错:', infoError);
+    }
+    
+    // 发送请求到API
     fetch(`${apiBaseUrl}/books/${decodedBookId}/bookshelf`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ 
-        readingStatus: '未开始',
-        currentPage: 0,
-        author: '未知作者'  // 确保提供作者信息，以防书籍不存在需要创建
+      body: JSON.stringify({
+        reading_status: '未开始',
+        current_page: 0,
+        author: bookInfo.author,
+        description: bookInfo.description,
+        coverImage: bookInfo.coverImage
       })
     })
     .then(response => {
@@ -881,61 +937,31 @@ function addToBookshelf(bookId) {
     })
     .then(result => {
       // 处理不同的响应状态
-      if (result.ok) {
-        // 成功添加到书架
-        console.log('添加书籍成功:', result.data);
+      if (result.ok || (result.status === 400 && result.data.message === "该书籍已在您的书架中")) {
+        // 成功添加到书架或书籍已在书架中
+        console.log('添加书籍成功或已在书架中:', result.data);
+        
+        // 更新按钮状态
         btn.textContent = '已加入书架';
         btn.classList.add('added');
         btn.disabled = true;
-        
-        // 更新所有相同书籍的按钮状态
-        document.querySelectorAll(`.btn-add-shelf[onclick*="${bookId}"]`).forEach(otherBtn => {
-          if (otherBtn !== btn) {
-            otherBtn.textContent = '已加入书架';
-            otherBtn.classList.add('added');
-            otherBtn.disabled = true;
-          }
-        });
         
         // 更新本地书架缓存
         updateLocalBookshelfCache(decodedBookId);
         
         // 显示成功消息
         if (window.showSuccessMessage) {
-          window.showSuccessMessage('成功添加到书架');
+          window.showSuccessMessage(result.status === 400 ? result.data.message : '成功添加到书架');
+        } else if (window.showToast) {
+          window.showToast(result.status === 400 ? result.data.message : '已添加到书架', 'success');
         } else {
-          alert('成功添加《' + decodedBookId + '》到书架');
-        }
-      } else if (result.status === 400 && result.data.message === "该书籍已在您的书架中") {
-        // 书籍已在书架中，也视为"成功"状态
-        console.log('书籍已在书架中:', result.data);
-        btn.textContent = '已加入书架';
-        btn.classList.add('added');
-        btn.disabled = true;
-        
-        // 更新所有相同书籍的按钮状态
-        document.querySelectorAll(`.btn-add-shelf[onclick*="${bookId}"]`).forEach(otherBtn => {
-          if (otherBtn !== btn) {
-            otherBtn.textContent = '已加入书架';
-            otherBtn.classList.add('added');
-            otherBtn.disabled = true;
-          }
-        });
-        
-        // 更新本地书架缓存
-        updateLocalBookshelfCache(decodedBookId);
-        
-        // 显示信息
-        if (window.showInfoMessage) {
-          window.showInfoMessage(result.data.message);
-        } else if (window.showSuccessMessage) {
-          window.showSuccessMessage(result.data.message);
-        } else {
-          alert(result.data.message);
+          alert(result.status === 400 ? result.data.message : '已添加到书架');
         }
       } else {
         // 其他错误
         console.error('添加书籍失败:', result);
+        
+        // 恢复按钮状态
         btn.textContent = originalText;
         btn.disabled = false;
         
@@ -945,6 +971,8 @@ function addToBookshelf(bookId) {
         
         if (window.showErrorMessage) {
           window.showErrorMessage(errorMessage);
+        } else if (window.showToast) {
+          window.showToast(errorMessage, 'error');
         } else {
           alert(errorMessage);
         }
@@ -952,11 +980,15 @@ function addToBookshelf(bookId) {
     })
     .catch(error => {
       console.error('添加书籍请求失败:', error);
+      
+      // 恢复按钮状态
       btn.textContent = originalText;
       btn.disabled = false;
       
       if (window.showErrorMessage) {
         window.showErrorMessage(error.message || '添加书籍失败，请稍后重试');
+      } else if (window.showToast) {
+        window.showToast(error.message || '添加书籍失败，请稍后重试', 'error');
       } else {
         alert(error.message || '添加书籍失败，请稍后重试');
       }
@@ -969,6 +1001,8 @@ function addToBookshelf(bookId) {
     console.error('添加书籍到书架出错:', error);
     if (window.showErrorMessage) {
       window.showErrorMessage('添加书籍到书架时发生错误，请稍后再试');
+    } else if (window.showToast) {
+      window.showToast('添加书籍到书架时发生错误，请稍后再试', 'error');
     } else {
       alert('添加书籍到书架时发生错误，请稍后再试');
     }
@@ -1442,4 +1476,35 @@ function updateLocalBookshelfCache(bookId) {
 
 // 将handleImageError函数暴露到全局作用域
 window.handleImageError = handleImageError;
+
+/**
+ * 确保所有书籍卡片的点击事件正确绑定
+ */
+function ensureBookCardListeners() {
+  console.log('确保书籍卡片事件绑定...');
+  
+  // 为所有书籍卡片添加点击事件
+  document.querySelectorAll('.book-card').forEach(card => {
+    // 移除可能存在的旧事件监听器
+    const newCard = card.cloneNode(true);
+    if (card.parentNode) {
+      card.parentNode.replaceChild(newCard, card);
+    }
+    
+    // 添加新的点击事件
+    newCard.addEventListener('click', (e) => {
+      // 如果点击的是按钮或链接，不处理
+      if (e.target.closest('button') || e.target.closest('a')) {
+        return;
+      }
+      
+      const bookId = newCard.getAttribute('data-book-id');
+      if (bookId) {
+        window.location.href = `src/pages/book-detail.html?id=${bookId}`;
+      }
+    });
+  });
+  
+  console.log('书籍卡片事件绑定完成');
+}
 

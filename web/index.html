@@ -385,6 +385,28 @@
       
       // 检查管理员权限并显示管理员菜单
       checkAdminAccess();
+      
+      // 确保书籍卡片功能正常工作
+      if (!window.checkBookInBookshelf) {
+        window.checkBookInBookshelf = function(bookId) {
+          try {
+            // 首先检查用户是否已登录，未登录用户不应该有书架中的书籍
+            const authData = localStorage.getItem('bookstore_auth');
+            if (!authData) {
+              return false;
+            }
+            
+            const bookshelfData = localStorage.getItem('bookstore_user_bookshelf');
+            if (!bookshelfData) return false;
+            
+            const bookshelfMap = JSON.parse(bookshelfData);
+            return !!bookshelfMap[bookId];
+          } catch (error) {
+            console.error('检查书籍是否在书架中出错:', error);
+            return false;
+          }
+        };
+      }
     });
     
     // 检查管理员权限

@@ -117,6 +117,22 @@ const addToBookshelf = async (req, res) => {
         coverImage: req.body.coverImage || 'default-cover.png'
       });
       console.log(`创建了新书籍: ${book.title}, ID: ${book.id}`);
+    } else {
+      // 如果书籍存在但数据不完整，使用请求中的数据更新书籍信息
+      const shouldUpdate = 
+        (book.author === '未知作者' && req.body.author) || 
+        ((!book.description || book.description === '暂无描述') && req.body.description) ||
+        ((!book.coverImage || book.coverImage === 'default-cover.png') && req.body.coverImage);
+      
+      if (shouldUpdate) {
+        console.log(`书籍"${bookId}"存在但信息不完整，更新书籍信息`);
+        await book.update({
+          author: req.body.author || book.author,
+          description: req.body.description || book.description,
+          coverImage: req.body.coverImage || book.coverImage
+        });
+        console.log(`更新了书籍信息: ${book.title}, ID: ${book.id}`);
+      }
     }
     
     // 使用找到的书籍的ID

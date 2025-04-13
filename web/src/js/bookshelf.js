@@ -1014,87 +1014,62 @@ function updateCategoryContent(category, books) {
 // 更新书架显示
 function updateBookshelfDisplay(books, searchQuery = '') {
   // 数据验证和调试日志
-  console.log('updateBookshelfDisplay 被调用，传入数据:', {
-    books: books,
-    isArray: Array.isArray(books),
-    length: books ? books.length : 0,
-    searchQuery: searchQuery
+  console.log('updateBookshelfDisplay函数被调用:', {
+    booksLength: books ? books.length : 0,
+    searchQuery,
   });
   
-  // 处理可能的不同数据格式
-  let processedBooks = [];
-  
-  if (Array.isArray(books)) {
-    // 如果直接是数组
-    console.log('books是数组类型，直接使用');
-    processedBooks = books;
-  } else if (books && typeof books === 'object') {
-    // 处理可能的嵌套结构
-    if (books.bookshelf && Array.isArray(books.bookshelf)) {
-      console.log('从books.bookshelf中提取书籍数组');
-      processedBooks = books.bookshelf;
-    } else if (books.data && Array.isArray(books.data)) {
-      console.log('从books.data中提取书籍数组');
-      processedBooks = books.data;
-    } else if (books.data && books.data.bookshelf && Array.isArray(books.data.bookshelf)) {
-      console.log('从books.data.bookshelf中提取书籍数组');
-      processedBooks = books.data.bookshelf;
-    } else {
-      // 尝试寻找任何可能的数组
-      let foundArray = false;
-      for (const key in books) {
-        if (Array.isArray(books[key])) {
-          console.log(`从books.${key}中找到并提取书籍数组`);
-          processedBooks = books[key];
-          foundArray = true;
-          break;
-        } else if (books[key] && typeof books[key] === 'object') {
-          for (const nestedKey in books[key]) {
-            if (Array.isArray(books[key][nestedKey])) {
-              console.log(`从books.${key}.${nestedKey}中找到并提取书籍数组`);
-              processedBooks = books[key][nestedKey];
-              foundArray = true;
-              break;
-            }
-          }
-          if (foundArray) break;
-        }
-      }
-      
-      if (!foundArray) {
-        console.warn('未能找到书籍数组，创建空数组');
-        processedBooks = [];
-      }
-    }
-  } else {
-    console.warn('books不是数组也不是对象，创建空数组');
-    processedBooks = [];
-  }
-  
-  console.log('处理后的书籍数组长度:', processedBooks.length);
-  
-  // 同步更新window对象上的数据
-  window.currentBookshelfData = processedBooks;
-  console.log('已更新window.currentBookshelfData:', window.currentBookshelfData.length);
-  
-  // 获取所有分类内容容器
+  // 获取分类容器和内容容器
   const allContentContainer = document.querySelector('.category-content[data-category="all"]');
   const readingContentContainer = document.querySelector('.category-content[data-category="reading"]');
   const completedContentContainer = document.querySelector('.category-content[data-category="completed"]');
   const toReadContentContainer = document.querySelector('.category-content[data-category="toRead"]');
   
-  // 确保容器存在并获取其中的grid元素
-  const allContent = allContentContainer ? allContentContainer.querySelector('.grid') : null;
-  const readingContent = readingContentContainer ? readingContentContainer.querySelector('.grid') : null;
-  const completedContent = completedContentContainer ? completedContentContainer.querySelector('.grid') : null;
-  const toReadContent = toReadContentContainer ? toReadContentContainer.querySelector('.grid') : null;
+  // 确保容器元素存在
+  if (!allContentContainer) {
+    console.error('未找到"全部"分类容器');
+    return;
+  }
   
-  console.log('网格容器状态:', {
-    allContent: allContent ? '已找到' : '未找到',
-    readingContent: readingContent ? '已找到' : '未找到',
-    completedContent: completedContent ? '已找到' : '未找到',
-    toReadContent: toReadContent ? '已找到' : '未找到'
-  });
+  // 获取grid容器
+  const allContent = allContentContainer.querySelector('.grid');
+  const readingContent = readingContentContainer?.querySelector('.grid');
+  const completedContent = completedContentContainer?.querySelector('.grid');
+  const toReadContent = toReadContentContainer?.querySelector('.grid');
+  
+  // 处理书籍数据
+  let processedBooks = [];
+  
+  if (books && books.length > 0) {
+    // 克隆书籍数组，避免修改原始数据
+    processedBooks = [...books];
+    
+    // 对书籍数据进行兼容处理
+    processedBooks = processedBooks.map(book => {
+      // 创建一个新对象以避免修改原始数据
+      let processedBook = { ...book };
+      
+      // 处理嵌套结构
+      if (book.Book && typeof book.Book === 'object') {
+        processedBook = {
+          ...book,
+          ...book.Book,
+          originalData: book
+        };
+      }
+      
+      // 确保书籍有必要的属性
+      processedBook.id = processedBook.id || processedBook.bookId || processedBook.book_id || '';
+      processedBook.title = processedBook.title || processedBook.name || '未知书名';
+      processedBook.author = processedBook.author || '未知作者';
+      processedBook.description = processedBook.description || processedBook.intro || '暂无简介';
+      processedBook.coverUrl = processedBook.coverUrl || processedBook.cover || processedBook.cover_image || '';
+      processedBook.status = processedBook.status || processedBook.readingStatus || 'toRead';
+      processedBook.progress = parseInt(processedBook.progress || processedBook.reading_progress || 0);
+      
+      return processedBook;
+    });
+  }
   
   // 清空所有容器
   if (allContent) {
@@ -1122,7 +1097,28 @@ function updateBookshelfDisplay(books, searchQuery = '') {
   if (!processedBooks || processedBooks.length === 0) {
     console.log('没有书籍数据，显示空状态');
     // 显示空状态
-    document.getElementById('empty-state')?.classList.remove('hidden');
+    const emptyState = document.getElementById('empty-state');
+    if (emptyState) {
+      emptyState.classList.remove('hidden');
+      
+      // 更新空状态内容，确保正确显示
+      emptyState.innerHTML = `
+        <img src="../images/empty-bookshelf.svg" alt="空书架" class="mx-auto w-40 h-40 mb-4">
+        <h3 class="text-xl font-bold mb-2">您的书架还是空的</h3>
+        <p class="text-gray-600 mb-4">开始添加书籍到您的书架，追踪您的阅读进度。</p>
+        <button id="add-first-book-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg" onclick="window.location.href='search.html'">
+          <i class="fas fa-plus mr-2"></i>添加第一本书
+        </button>
+      `;
+      
+      // 重新绑定添加第一本书按钮的事件
+      const addFirstBookBtn = document.getElementById('add-first-book-btn');
+      if (addFirstBookBtn) {
+        addFirstBookBtn.addEventListener('click', () => {
+          window.location.href = 'search.html';
+        });
+      }
+    }
     
     // 在每个分类中显示空提示
     const containers = [allContent, readingContent, completedContent, toReadContent];
@@ -1143,196 +1139,10 @@ function updateBookshelfDisplay(books, searchQuery = '') {
   
   // 隐藏空状态
   console.log('有书籍数据，隐藏空状态');
-  document.getElementById('empty-state')?.classList.add('hidden');
-  
-  // 分类书籍
-  const allBooks = [];
-  const readingBooks = [];
-  const completedBooks = [];
-  const toReadBooks = [];
-  
-  processedBooks.forEach(book => {
-    // 确保我们有正确的书籍数据结构
-    const bookData = book.book || book.Book || book;
-    const status = book.readingStatus || bookData.readingStatus || book.reading_status || bookData.reading_status || 'toRead';
-    
-    // 添加到所有书籍
-    allBooks.push(book);
-    
-    // 根据状态分类
-    if (status === 'reading' || status === '阅读中') {
-      readingBooks.push(book);
-    } else if (status === 'completed' || status === 'finished' || status === '已读完' || status === '已完成') {
-      completedBooks.push(book);
-    } else {
-      toReadBooks.push(book);
-    }
-  });
-  
-  console.log('书籍分类完成:', {
-    all: allBooks.length,
-    reading: readingBooks.length,
-    completed: completedBooks.length,
-    toRead: toReadBooks.length
-  });
-  
-  // 更新统计数据
-  const totalBooksElement = document.getElementById('total-books');
-  const finishedBooksElement = document.getElementById('finished-books');
-  const readingBooksElement = document.getElementById('reading-books');
-  
-  if (totalBooksElement) totalBooksElement.textContent = allBooks.length;
-  if (finishedBooksElement) finishedBooksElement.textContent = completedBooks.length;
-  if (readingBooksElement) readingBooksElement.textContent = readingBooks.length;
-  
-  // 显示书籍
-  function displayBooks(container, booksArray) {
-    if (!container) {
-      console.error('displayBooks: 容器不存在');
-      return;
-    }
-    
-    console.log(`displayBooks: 准备显示${booksArray ? booksArray.length : 0}本书籍到容器`, container);
-    
-    // 确保booksArray是一个数组
-    if (!Array.isArray(booksArray)) {
-      console.warn('displayBooks: booksArray不是数组类型:', booksArray);
-      booksArray = [];
-    }
-    
-    if (booksArray.length === 0) {
-      const emptyMessage = document.createElement('div');
-      emptyMessage.className = 'col-span-full text-center py-8 text-gray-500';
-      emptyMessage.innerHTML = `
-        <i class="fas fa-book-open fa-3x mb-3"></i>
-        <p class="text-xl font-medium">暂无书籍</p>
-      `;
-      container.appendChild(emptyMessage);
-      return;
-    }
-    
-    console.log(`displayBooks: 开始渲染${booksArray.length}本书籍`);
-    
-    // 使用documentFragment优化批量添加DOM
-    const fragment = document.createDocumentFragment();
-    let cardsAdded = 0;
-    
-    booksArray.forEach((book, index) => {
-      try {
-        const bookCard = generateBookshelfCard(book);
-        if (bookCard) {
-          fragment.appendChild(bookCard);
-          cardsAdded++;
-        } else {
-          console.warn(`generateBookshelfCard返回了null或undefined，书籍索引: ${index}`);
-        }
-      } catch (error) {
-        console.error(`生成第${index + 1}本书籍卡片时出错:`, error);
-        
-        // 添加一个简单的错误卡片
-        try {
-          const errorCard = document.createElement('div');
-          errorCard.className = 'book-card bg-white rounded-xl overflow-hidden shadow-sm p-4 text-center';
-          errorCard.innerHTML = `
-            <div class="text-red-500">
-              <i class="fas fa-exclamation-triangle mb-2"></i>
-              <p>加载此书籍时出错</p>
-            </div>
-          `;
-          fragment.appendChild(errorCard);
-          cardsAdded++;
-        } catch (fallbackError) {
-          console.error('创建错误卡片也失败了:', fallbackError);
-        }
-      }
-    });
-    
-    // 一次性添加所有卡片到容器
-    container.appendChild(fragment);
-    console.log(`displayBooks: 完成渲染${cardsAdded}/${booksArray.length}本书籍`);
-    
-    // 验证DOM是否真的更新了
-    const actualCards = container.querySelectorAll('.book-card');
-    console.log(`容器现在包含${actualCards.length}个书籍卡片`);
+  const emptyState = document.getElementById('empty-state');
+  if (emptyState) {
+    emptyState.classList.add('hidden');
   }
-  
-  // 将displayBooks函数添加到window对象，使其在HTML中可用
-  window.displayBooks = displayBooks;
-  
-  // 显示各分类的书籍
-  console.log('开始显示各分类书籍');
-  
-  // 修复: 重新获取grid元素，以防在之前的代码中被更新
-  const allGridContent = allContentContainer ? allContentContainer.querySelector('.grid') : null;
-  
-  if (allGridContent) {
-    console.log('渲染全部书籍分类');
-    displayBooks(allGridContent, allBooks);
-  } else {
-    console.error('无法渲染全部书籍分类，容器不存在');
-    // 如果容器不存在，尝试创建一个并显示书籍
-    if (allContentContainer) {
-      allContentContainer.innerHTML = '<div class="grid"></div>';
-      const newAllContent = allContentContainer.querySelector('.grid');
-      if (newAllContent) {
-        console.log('已创建新的grid元素，尝试渲染全部书籍');
-        displayBooks(newAllContent, allBooks);
-      }
-    }
-  }
-  
-  if (readingContent) {
-    console.log('渲染阅读中分类');
-    displayBooks(readingContent, readingBooks);
-  }
-  
-  if (completedContent) {
-    console.log('渲染已完成分类');
-    displayBooks(completedContent, completedBooks);
-  }
-  
-  if (toReadContent) {
-    console.log('渲染未开始分类');
-    displayBooks(toReadContent, toReadBooks);
-  }
-  
-  // 添加书籍卡片事件监听器
-  console.log('添加书籍卡片事件监听器');
-  attachBookCardEventListeners();
-  
-  // 在搜索框有查询内容时添加搜索结果标题
-  if (searchQuery && allContent) {
-    console.log('添加搜索结果标题');
-    const searchResultHeader = document.createElement('div');
-    searchResultHeader.className = 'col-span-full mb-4 flex justify-between items-center';
-    searchResultHeader.innerHTML = `
-      <h3 class="text-lg font-semibold">搜索结果: "${searchQuery}" (${processedBooks.length}本)</h3>
-      <button id="clear-search-btn" class="text-sm text-blue-600 hover:text-blue-800">
-        <i class="fas fa-times-circle mr-1"></i>清除搜索
-      </button>
-    `;
-    allContent.insertBefore(searchResultHeader, allContent.firstChild);
-    
-    // 添加清除搜索按钮事件
-    const clearSearchBtn = searchResultHeader.querySelector('#clear-search-btn');
-    if (clearSearchBtn) {
-      clearSearchBtn.addEventListener('click', () => {
-        const searchInput = document.getElementById('search-input');
-        if (searchInput) {
-          searchInput.value = '';
-          // 重新加载书架
-          loadUserBookshelfData().then(data => {
-            if (data) {
-              currentBookshelfData = data;
-              updateBookshelfDisplay(currentBookshelfData);
-            }
-          });
-        }
-      });
-    }
-  }
-  
-  console.log('updateBookshelfDisplay 函数执行完成');
 }
 
 // 生成书架卡片
@@ -1657,15 +1467,55 @@ function attachBookCardEventListeners() {
 
 // 检查是否需要显示空状态
 function checkEmptyState() {
-  const allBooksContainer = document.querySelector('.category-content[data-category="all"] .grid');
-  const emptyState = document.getElementById('empty-state');
+  console.log('checkEmptyState函数被调用');
   
-  if (allBooksContainer && emptyState) {
-    if (allBooksContainer.children.length === 0) {
-      emptyState.classList.remove('hidden');
-    } else {
-      emptyState.classList.add('hidden');
+  // 获取空状态元素和书籍容器
+  const emptyState = document.getElementById('empty-state');
+  const allBooksContainer = document.querySelector('.category-content[data-category="all"] .grid');
+  
+  if (!emptyState) {
+    console.error('未找到empty-state元素');
+    return;
+  }
+  
+  if (!allBooksContainer) {
+    console.error('未找到书籍容器');
+    // 如果找不到容器，显示空状态
+    emptyState.classList.remove('hidden');
+    return;
+  }
+  
+  // 检查是否有书籍卡片（排除空消息元素）
+  const hasBooks = allBooksContainer.querySelectorAll('.book-card').length > 0;
+  console.log('书架上的书籍数量:', allBooksContainer.querySelectorAll('.book-card').length);
+  
+  // 如果没有书籍，显示空状态；否则隐藏
+  if (!hasBooks) {
+    console.log('书架为空，显示空状态');
+    emptyState.classList.remove('hidden');
+    
+    // 确保空状态内容正确
+    if (emptyState.innerHTML.trim() === '') {
+      emptyState.innerHTML = `
+        <img src="../images/empty-bookshelf.svg" alt="空书架" class="mx-auto w-40 h-40 mb-4">
+        <h3 class="text-xl font-bold mb-2">您的书架还是空的</h3>
+        <p class="text-gray-600 mb-4">开始添加书籍到您的书架，追踪您的阅读进度。</p>
+        <button id="add-first-book-btn" class="bg-blue-500 text-white px-4 py-2 rounded-lg">
+          <i class="fas fa-plus mr-2"></i>添加第一本书
+        </button>
+      `;
+      
+      // 添加按钮事件
+      const addFirstBookBtn = document.getElementById('add-first-book-btn');
+      if (addFirstBookBtn) {
+        addFirstBookBtn.addEventListener('click', () => {
+          window.location.href = 'search.html';
+        });
+      }
     }
+  } else {
+    console.log('书架有书籍，隐藏空状态');
+    emptyState.classList.add('hidden');
   }
 }
 
