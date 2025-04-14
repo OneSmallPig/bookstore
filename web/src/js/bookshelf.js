@@ -765,6 +765,19 @@ async function loadUserBookshelf() {
       
       // 处理不同的API响应结构
       if (bookshelfData && bookshelfData.data && bookshelfData.data.bookshelf) {
+        // 检查返回的数据中的时间字段
+        if (bookshelfData.data.bookshelf.length > 0) {
+          const sampleBook = bookshelfData.data.bookshelf[0].Book || bookshelfData.data.bookshelf[0];
+          console.log('书籍数据样例:', sampleBook);
+          console.log('书籍数据样例中的时间字段:', {
+            createdAt: sampleBook.createdAt,
+            addedAt: sampleBook.addedAt,
+            created_at: sampleBook.created_at,
+            added_at: sampleBook.added_at,
+            create_time: sampleBook.create_time
+          });
+        }
+        
         // 保存到全局变量，以便客户端过滤使用
         window.currentBookshelfData = bookshelfData.data.bookshelf;
         return bookshelfData.data.bookshelf;
@@ -957,6 +970,10 @@ function generateBookshelfCard(bookData) {
   const author = book.author || '未知作者';
   const cover = book.coverUrl || book.cover || '../images/default-cover.jpg';
   
+  // 获取创建时间和添加时间
+  const createdAt = book.createdAt || bookData.createdAt || new Date().toISOString();
+  const addedAt = book.addedAt || bookData.addedAt || createdAt;
+  
   // 根据状态设置标签
   let statusLabel = '';
   let statusClass = '';
@@ -976,6 +993,10 @@ function generateBookshelfCard(bookData) {
   const cardElement = document.createElement('div');
   cardElement.className = 'book-card bg-white p-4 relative rounded-lg';
   cardElement.dataset.bookId = bookId;
+  cardElement.dataset.createdAt = createdAt;
+  cardElement.dataset.addedAt = addedAt;
+  cardElement.dataset.title = title;
+  cardElement.dataset.progress = progress;
   
   // 设置卡片内容
   cardElement.innerHTML = `
