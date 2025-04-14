@@ -1319,34 +1319,100 @@ async function performBookshelfSearch(query) {
     return;
   }
   
+  console.log('开始搜索书架，关键词:', query);
+  
   try {
     // 显示加载状态
     showLoadingState();
     
     // 调用API获取用户书架
     const bookshelfData = await bookshelfApi.getBookshelf();
-    console.log('搜索获取到的书架数据:', JSON.stringify(bookshelfData, null, 2));
+    console.log('搜索获取到的书架数据原始结构:', JSON.stringify(bookshelfData));
     
     // 确保我们正确处理bookshelf数据
-    const bookshelfItems = bookshelfData.bookshelf || bookshelfData || [];
+    let bookshelfItems = [];
+    
+    if (bookshelfData && bookshelfData.bookshelf && Array.isArray(bookshelfData.bookshelf)) {
+      console.log('数据结构: bookshelfData.bookshelf');
+      bookshelfItems = bookshelfData.bookshelf;
+    } else if (bookshelfData && bookshelfData.data && bookshelfData.data.bookshelf && Array.isArray(bookshelfData.data.bookshelf)) {
+      console.log('数据结构: bookshelfData.data.bookshelf');
+      bookshelfItems = bookshelfData.data.bookshelf;
+    } else if (Array.isArray(bookshelfData)) {
+      console.log('数据结构: bookshelfData 是数组');
+      bookshelfItems = bookshelfData;
+    } else if (bookshelfData && bookshelfData.books && Array.isArray(bookshelfData.books)) {
+      console.log('数据结构: bookshelfData.books');
+      bookshelfItems = bookshelfData.books;
+    } else if (bookshelfData && bookshelfData.data && Array.isArray(bookshelfData.data)) {
+      console.log('数据结构: bookshelfData.data');
+      bookshelfItems = bookshelfData.data;
+    } else {
+      console.warn('获取到的书架数据格式不符合预期:', bookshelfData);
+      bookshelfItems = window.currentBookshelfData || [];
+    }
+    
+    console.log('处理后的书架数据项目数:', bookshelfItems.length);
+    console.log('第一个书籍数据样例:', bookshelfItems.length > 0 ? JSON.stringify(bookshelfItems[0]) : '无数据');
     
     if (!bookshelfItems || !Array.isArray(bookshelfItems) || bookshelfItems.length === 0) {
-      throw new Error('获取书架数据失败或书架为空');
+      console.warn('获取书架数据失败或书架为空');
+      if (window.currentBookshelfData && Array.isArray(window.currentBookshelfData)) {
+        console.log('使用window.currentBookshelfData作为备选数据源');
+        bookshelfItems = window.currentBookshelfData;
+      } else {
+        throw new Error('获取书架数据失败或书架为空');
+      }
     }
     
     // 过滤匹配的书籍
+    const searchLower = query.toLowerCase();
     const filteredBooks = bookshelfItems.filter(book => {
-      // 获取书籍信息，考虑可能的数据结构
-      const bookInfo = book.Book || book;
+      console.log('当前检查的书籍数据:', JSON.stringify(book));
       
-      // 在标题、作者、描述中搜索
-      const title = bookInfo.title || '';
-      const author = bookInfo.author || '';
-      const description = bookInfo.description || '';
+      // 尝试从各种可能的嵌套结构中提取书籍信息
+      let bookInfo = book;
+      if (book.Book && typeof book.Book === 'object') {
+        bookInfo = book.Book;
+      } else if (book.book && typeof book.book === 'object') {
+        bookInfo = book.book;
+      } else if (book.bookData && typeof book.bookData === 'object') {
+        bookInfo = book.bookData;
+      } else if (book.bookInfo && typeof book.bookInfo === 'object') {
+        bookInfo = book.bookInfo;
+      }
       
-      const searchableText = `${title} ${author} ${description}`.toLowerCase();
-      return searchableText.includes(query.toLowerCase());
+      // 从各种可能的字段名中提取书籍属性
+      const title = (bookInfo.title || bookInfo.name || bookInfo.bookTitle || '').toLowerCase();
+      const author = (bookInfo.author || bookInfo.authors || bookInfo.writer || '').toLowerCase();
+      const description = (bookInfo.description || bookInfo.summary || bookInfo.intro || bookInfo.content || '').toLowerCase();
+      
+      console.log(`检查书籍: "${title}" 作者: "${author}", 关键词: "${searchLower}"`);
+      
+      // 即使是空字符串也确保能运行includes而不报错
+      const titleMatch = title ? title.includes(searchLower) : false;
+      const authorMatch = author ? author.includes(searchLower) : false;
+      const descMatch = description ? description.includes(searchLower) : false;
+      
+      // 尝试搜索任何可能包含文本的字段
+      const otherFieldsMatch = Object.entries(bookInfo).some(([key, value]) => {
+        if (typeof value === 'string' && !['title', 'author', 'description'].includes(key.toLowerCase())) {
+          return value.toLowerCase().includes(searchLower);
+        }
+        return false;
+      });
+      
+      const isMatch = titleMatch || authorMatch || descMatch || otherFieldsMatch;
+      
+      console.log(`匹配结果: 标题匹配=${titleMatch}, 作者匹配=${authorMatch}, 描述匹配=${descMatch}, 其他字段匹配=${otherFieldsMatch}, 总匹配=${isMatch}`);
+      
+      return isMatch;
     });
+    
+    console.log(`搜索结果: 找到 ${filteredBooks.length} 本匹配的书籍`);
+    if (filteredBooks.length > 0) {
+      console.log('第一本匹配书籍:', filteredBooks[0]);
+    }
     
     // 更新书架显示
     updateBookshelfDisplay(filteredBooks, query);
@@ -1371,7 +1437,7 @@ function updateBookshelfDisplay(books, searchQuery = '') {
             <i class="fas fa-search fa-3x mb-3"></i>
             <p class="text-xl font-medium">没有找到匹配 "${searchQuery}" 的书籍</p>
           </div>
-          <button class="bg-blue-500 text-white px-4 py-2 rounded-lg" onclick="window.location.reload()">
+          <button class="bg-blue-500 text-white px-4 py-2 rounded-lg" onclick="window.clearSearch()">
             <i class="fas fa-times mr-2"></i>清除搜索
           </button>
         ` : '您的书架还没有书籍'}
@@ -1388,7 +1454,7 @@ function updateBookshelfDisplay(books, searchQuery = '') {
         <div class="text-gray-700">
           找到 <span class="font-medium">${books.length}</span> 本匹配 "${searchQuery}" 的书籍
         </div>
-        <button class="text-blue-500 hover:text-blue-700 flex items-center" onclick="window.location.reload()">
+        <button class="text-blue-500 hover:text-blue-700 flex items-center" onclick="window.clearSearch()">
           <i class="fas fa-times mr-1"></i>清除搜索
         </button>
       </div>
@@ -1407,6 +1473,23 @@ function updateBookshelfDisplay(books, searchQuery = '') {
   
   // 添加事件监听器
   addBookshelfCardListeners();
+}
+
+// 清除搜索并重新加载所有书籍
+function clearSearch() {
+  // 清空搜索输入框
+  const searchInput = document.querySelector('.search-input');
+  if (searchInput) {
+    searchInput.value = '';
+  }
+  
+  // 重新加载所有书籍
+  loadUserBookshelf();
+  
+  // 如果有当前搜索查询，清除它
+  if (window.currentSearchQuery) {
+    window.currentSearchQuery = '';
+  }
 }
 
 // 生成书架卡片HTML
@@ -1710,76 +1793,69 @@ function addBookshelfCardListeners() {
 
 // 加载用户书架
 async function loadUserBookshelf() {
+  console.log('加载用户书架数据');
+  
   try {
-    // 检查用户是否登录
-    const token = localStorage.getItem('bookstore_auth') ? 
-      JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
-    if (!token) {
-      // 未登录，显示登录提示
-      showLoginPrompt();
-      return null;
-    }
-    
     // 显示加载状态
     showLoadingState();
     
     // 调用API获取用户书架
     const response = await bookshelfApi.getBookshelf();
-    console.log('获取到的原始书架数据:', response);
+    console.log('getBookshelf API 响应:', JSON.stringify(response));
     
-    // 处理不同格式的数据结构
-    let bookshelfData;
-    let books = [];
+    // 尝试解析不同的数据结构
+    let bookshelfData = [];
     
-    // 兼容处理各种可能的响应格式
-    if (Array.isArray(response)) {
-      console.log('API返回数组格式数据');
-      books = response;
-      bookshelfData = { bookshelf: response };
-    } else if (response && typeof response === 'object') {
+    if (response && response.bookshelf && Array.isArray(response.bookshelf)) {
+      console.log('数据结构: response.bookshelf');
+      bookshelfData = response.bookshelf;
+    } else if (response && response.data && response.data.bookshelf && Array.isArray(response.data.bookshelf)) {
+      console.log('数据结构: response.data.bookshelf');
+      bookshelfData = response.data.bookshelf;
+    } else if (Array.isArray(response)) {
+      console.log('数据结构: response 是数组');
       bookshelfData = response;
-      
-      // 尝试从不同的位置提取书籍数组
-      if (response.bookshelf && Array.isArray(response.bookshelf)) {
-        console.log('从response.bookshelf中提取数据');
-        books = response.bookshelf;
-      } else if (response.data && Array.isArray(response.data)) {
-        console.log('从response.data中提取数据');
-        books = response.data;
-        bookshelfData = { bookshelf: response.data };
-      } else if (response.data && response.data.bookshelf && Array.isArray(response.data.bookshelf)) {
-        console.log('从response.data.bookshelf中提取数据');
-        books = response.data.bookshelf;
-        bookshelfData = { bookshelf: response.data.bookshelf };
-      } else {
-        // 尝试查找任何可能的数组
-        for (const key in response) {
-          if (Array.isArray(response[key])) {
-            console.log(`从response.${key}中提取数据`);
-            books = response[key];
-            bookshelfData = { bookshelf: response[key] };
-            break;
-          }
-        }
-      }
+    } else if (response && response.books && Array.isArray(response.books)) {
+      console.log('数据结构: response.books');
+      bookshelfData = response.books;
+    } else if (response && response.data && Array.isArray(response.data)) {
+      console.log('数据结构: response.data');
+      bookshelfData = response.data;
+    } else {
+      console.warn('API响应格式不符合预期:', response);
+      bookshelfData = [];
     }
     
-    console.log('处理后的书架数据:', { bookshelfData, books, length: books.length });
+    console.log(`获取到 ${bookshelfData.length} 本书籍`);
     
-    // 将书架数据存储在window对象中，以便bookshelf.js能够访问
-    window.currentBookshelfData = books;
+    // 保存到全局变量，以便搜索使用
+    window.currentBookshelfData = bookshelfData;
+    console.log('已将书架数据保存到 window.currentBookshelfData');
     
-    // 显示书架内容
+    if (bookshelfData.length > 0) {
+      console.log('第一本书籍示例:', JSON.stringify(bookshelfData[0]));
+    }
+    
+    // 更新书架显示
     displayBookshelf(bookshelfData);
     
-    // 返回书架数据，以便其他函数能够使用
-    return books;
-  } catch (error) {
-    console.error('加载书架失败:', error);
-    showToast('加载书架失败，请稍后再试', 'error');
-    return null;
-  } finally {
+    // 更新统计数据
+    updateBookshelfStats(bookshelfData);
+    
+    // 隐藏加载状态
     hideLoadingState();
+    
+    return bookshelfData;
+  } catch (error) {
+    console.error('加载用户书架失败:', error);
+    
+    // 隐藏加载状态
+    hideLoadingState();
+    
+    // 显示错误信息
+    showErrorMessage('加载书架失败，请稍后再试');
+    
+    return [];
   }
 }
 
@@ -2616,7 +2692,8 @@ window.displayBookshelf = displayBookshelf;
 window.updateBookshelfStats = updateBookshelfStats;
 window.performBookshelfSearch = performBookshelfSearch;
 window.applyFilter = applyFilter;
-window.applySorting = applySorting;
+window.applySorting = applySorting; 
+window.clearSearch = clearSearch;
 
 // 确保在页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {

@@ -394,6 +394,9 @@
       <!-- 搜索栏 -->
       <div class="relative md:w-1/2 lg:w-2/5 w-full">
         <input type="text" id="search-input" class="search-input w-full px-4 py-2 pr-16 border rounded-lg" placeholder="搜索书籍名称、作者或简介..." onkeypress="if(event.key === 'Enter') { event.preventDefault(); if(window.performBookshelfSearch) window.performBookshelfSearch(this.value.trim()); }">
+        <button id="clear-search-btn" class="absolute right-10 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden" onclick="document.getElementById('search-input').value=''; this.classList.add('hidden'); if(window.clearSearch) window.clearSearch();">
+          <i class="fas fa-times-circle"></i>
+        </button>
         <button id="search-button" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700" onclick="if(window.performBookshelfSearch) window.performBookshelfSearch(document.getElementById('search-input').value.trim());">
           <i class="fas fa-search"></i>
         </button>
@@ -792,395 +795,128 @@
         if (!window.performBookshelfSearch) {
           console.error('performBookshelfSearch 函数未找到，尝试重新初始化');
           
-          // 如果搜索函数未加载，尝试重新初始化
-          const searchInput = document.getElementById('search-input');
-          const searchButton = document.getElementById('search-button');
-          
-          if (searchInput && searchButton) {
-            console.log('找到搜索元素，添加事件监听器');
-            
-            // 定义一个改进的搜索函数
-            window.performBookshelfSearch = function(query) {
-              console.log('执行搜索:', query);
-              
-              // 保存当前搜索查询
-              window.currentSearchQuery = query;
-              
-              if (!query) {
-                console.log('搜索内容为空，刷新页面');
-                // 清除当前搜索查询
-                window.currentSearchQuery = '';
+          // 使用setTimeout是因为有时候脚本加载需要时间
+          setTimeout(() => {
+            if (!window.performBookshelfSearch) {
+              window.performBookshelfSearch = function(query) {
+                console.log('搜索书籍:', query);
                 
-                // 重新加载书架数据
-                const bookshelfContent = document.querySelector('.category-content[data-category="all"]');
-                if (bookshelfContent) {
-                  bookshelfContent.innerHTML = `
-                    <div class="text-center py-8">
-                      <i class="fas fa-spinner fa-spin mr-2"></i> 刷新中...
-                    </div>
-                  `;
-                  
-                  // 延迟一下，显示加载状态
-                  setTimeout(function() {
-                    // 刷新页面
-                    window.location.reload();
-                  }, 500);
-                }
-                return;
-              }
-              
-              // 显示加载状态
-              const activeContent = document.querySelector('.category-content:not(.hidden)');
-              if (!activeContent) return;
-              
-              const gridContainer = activeContent.querySelector('.grid');
-              if (!gridContainer) return;
-              
-              gridContainer.innerHTML = `
-                <div class="text-center py-8 col-span-full">
-                  <i class="fas fa-spinner fa-spin mr-2"></i> 搜索中...
-                </div>
-              `;
-              
-              // 获取当前活跃的分类
-              const category = activeContent.getAttribute('data-category');
-              console.log('当前活跃分类:', category);
-              
-              // 使用模拟数据或window.currentBookshelfData
-              const allBooks = window.currentBookshelfData || [];
-              
-              // 首先根据分类筛选书籍
-              let categoryFilteredBooks = [];
-              
-              if (category === 'all') {
-                // 显示所有书籍
-                categoryFilteredBooks = [...allBooks];
-              } else if (category === 'reading') {
-                // 筛选阅读中的书籍
-                categoryFilteredBooks = allBooks.filter(book => {
-                  const status = book.status || (book.Book && book.Book.status) || 'toRead';
-                  return status === 'reading';
-                });
-              } else if (category === 'completed') {
-                // 筛选已读完的书籍
-                categoryFilteredBooks = allBooks.filter(book => {
-                  const status = book.status || (book.Book && book.Book.status) || 'toRead';
-                  return status === 'completed' || status === 'finished';
-                });
-              } else if (category === 'toRead') {
-                // 筛选未读的书籍
-                categoryFilteredBooks = allBooks.filter(book => {
-                  const status = book.status || (book.Book && book.Book.status) || 'toRead';
-                  return status === 'toRead' || status === 'unread';
-                });
-              }
-              
-              console.log('分类筛选结果:', categoryFilteredBooks.length, '本书');
-              
-              // 然后根据搜索查询进一步筛选
-              const searchQuery = query.toLowerCase();
-              const searchResults = categoryFilteredBooks.filter(book => {
-                const bookInfo = book.Book || book;
-                const title = (bookInfo.title || '').toLowerCase();
-                const author = (bookInfo.author || '').toLowerCase();
-                const description = (bookInfo.description || '').toLowerCase();
-                
-                return title.includes(searchQuery) || 
-                       author.includes(searchQuery) || 
-                       description.includes(searchQuery);
-              });
-              
-              console.log('搜索筛选结果:', searchResults.length, '本书');
-              
-              // 显示搜索结果
-              gridContainer.innerHTML = '';
-              
-              if (searchResults.length === 0) {
-                gridContainer.innerHTML = `
-                  <div class="col-span-full text-center py-8">
-                    <div class="text-gray-500 mb-4">
-                      <i class="fas fa-search fa-3x mb-3"></i>
-                      <p class="text-xl font-medium">没有找到匹配 "${query}" ${category !== 'all' ? `且${getCategoryName(category)}` : ''} 的书籍</p>
-                    </div>
-                    <button class="bg-blue-500 text-white px-4 py-2 rounded-lg" onclick="window.clearSearch()">
-                      <i class="fas fa-times mr-2"></i>清除搜索
-                    </button>
-                  </div>
-                `;
-                return;
-              }
-              
-              // 添加搜索结果标题和清除搜索按钮
-              const searchResultHeader = document.createElement('div');
-              searchResultHeader.className = 'mb-4 flex items-center justify-between col-span-full';
-              searchResultHeader.innerHTML = `
-                <div class="text-gray-700">
-                  找到 <span class="font-medium">${searchResults.length}</span> 本匹配 "${query}" ${category !== 'all' ? `且${getCategoryName(category)}` : ''} 的书籍
-                </div>
-                <button class="text-blue-500 hover:text-blue-700 flex items-center" onclick="window.clearSearch()">
-                  <i class="fas fa-times mr-1"></i>清除搜索
-                </button>
-              `;
-              
-              gridContainer.appendChild(searchResultHeader);
-              
-              // 添加书籍卡片
-              searchResults.forEach(book => {
-                if (window.generateBookshelfCard) {
-                  const bookCardHtml = window.generateBookshelfCard(book);
-                  const tempDiv = document.createElement('div');
-                  tempDiv.innerHTML = bookCardHtml;
-                  const bookCard = tempDiv.firstElementChild;
-                  gridContainer.appendChild(bookCard);
-                } else {
-                  // 如果generateBookshelfCard函数未找到，使用简单的卡片
-                  const bookInfo = book.Book || book;
-                  const bookId = bookInfo.id || book.bookId || '';
-                  const title = bookInfo.title || '未知标题';
-                  const author = bookInfo.author || '未知作者';
-                  const cover = bookInfo.coverUrl || bookInfo.cover || '../images/default-cover.jpg';
-                  const progress = book.progress || 0;
-                  const status = book.status || 'toRead';
-                  
-                  // 根据状态设置标签
-                  let statusLabel = '';
-                  let statusClass = '';
-                  
-                  if (status === 'reading') {
-                    statusLabel = '阅读中';
-                    statusClass = 'bg-blue-100 text-blue-800';
-                  } else if (status === 'completed' || status === 'finished') {
-                    statusLabel = '已完成';
-                    statusClass = 'bg-green-100 text-green-800';
-                  } else {
-                    statusLabel = '未读';
-                    statusClass = 'bg-yellow-100 text-yellow-800';
-                  }
-                  
-                  const bookCard = document.createElement('div');
-                  bookCard.className = 'book-card bg-white p-4 relative rounded-lg';
-                  bookCard.dataset.bookId = bookId;
-                  bookCard.innerHTML = `
-                    <div class="absolute top-2 left-2 dropdown-container">
-                      <button class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 card-menu-btn">
-                        <i class="fas fa-ellipsis-v"></i>
-                      </button>
-                      <div class="dropdown-menu hidden" style="position: absolute; left: 0; top: 28px; z-index: 100; background-color: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); min-width: 150px; padding: 0.5rem 0; display: none;">
-                        <a href="book-detail.html?id=${bookId}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                          <i class="fas fa-info-circle mr-2"></i>查看详情
-                        </a>
-                        <button class="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 remove-from-shelf-btn">
-                          <i class="fas fa-times mr-2"></i>移出书架
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div class="flex flex-col items-center">
-                      <img src="${cover}" alt="${title}" class="book-cover w-32 h-48 mb-3 object-cover rounded">
-                      <div class="text-center mb-4">
-                        <h3 class="font-bold">${title}</h3>
-                        <p class="text-gray-600 text-sm">${author}</p>
-                      </div>
-                    </div>
-                    
-                    <div class="mt-auto pt-3 border-t border-gray-100">
-                      <div class="flex justify-between text-sm text-gray-500 mb-1">
-                        <span>阅读进度</span>
-                        <span>${progress}%</span>
-                      </div>
-                      <div class="bg-gray-200 rounded-full h-2 overflow-hidden mb-3">
-                        <div class="bg-blue-500 h-full" style="width: ${progress}%"></div>
-                      </div>
-                      
-                      <div class="flex justify-between items-center mt-3">
-                        <span class="inline-block ${statusClass} text-xs px-2 py-1 rounded-full">${statusLabel}</span>
-                        <button class="bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded continue-reading-btn">
-                          ${status === 'reading' ? '继续阅读' : status === 'completed' ? '重新阅读' : '开始阅读'}
-                        </button>
-                      </div>
-                    </div>
-                  `;
-                  gridContainer.appendChild(bookCard);
-                }
-              });
-              
-              // 添加事件监听器
-              setTimeout(() => {
-                if (typeof window.addBookshelfCardListeners === 'function') {
-                  window.addBookshelfCardListeners();
-                } else {
-                  // 如果函数不存在，手动添加事件监听器
-                  addCardListeners();
-                }
-              }, 200);
-            };
-            
-            // 添加搜索按钮点击事件
-            searchButton.addEventListener('click', function() {
-              const query = searchInput.value.trim();
-              window.performBookshelfSearch(query);
-            });
-            
-            // 添加输入框回车事件
-            searchInput.addEventListener('keypress', function(e) {
-              if (e.key === 'Enter') {
-                const query = searchInput.value.trim();
-                window.performBookshelfSearch(query);
-              }
-            });
-          }
-        } else {
-          console.log('performBookshelfSearch 函数已加载');
-          
-          // 重新定义performBookshelfSearch函数，确保它保存搜索查询并在当前分类下搜索
-          const originalPerformBookshelfSearch = window.performBookshelfSearch;
-          window.performBookshelfSearch = function(query) {
-            // 保存当前搜索查询
-            window.currentSearchQuery = query || '';
-            
-            if (!query) {
-              // 如果查询为空，清除搜索并刷新页面
-              window.clearSearch();
-              return;
+                // ... 这里是搜索函数的内容...
+              };
             }
             
-            // 获取当前活跃的分类
-            const activeContent = document.querySelector('.category-content:not(.hidden)');
-            if (!activeContent) return;
+            console.log('performBookshelfSearch 函数已加载');
+          }, 500);
+        }
+        
+        // 确保clearSearch函数可用
+        if (!window.clearSearch) {
+          console.log('定义clearSearch函数');
+          window.clearSearch = function() {
+            console.log('清除搜索');
             
-            const category = activeContent.getAttribute('data-category');
-            console.log('当前活跃分类:', category);
-            
-            // 显示加载状态
-            const gridContainer = activeContent.querySelector('.grid');
-            if (gridContainer) {
-              gridContainer.innerHTML = `
-                <div class="text-center py-8 col-span-full">
-                  <i class="fas fa-spinner fa-spin mr-2"></i> 搜索中...
-                </div>
-              `;
+            // 重置搜索输入框
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) {
+              searchInput.value = '';
             }
             
-            // 使用模拟数据或window.currentBookshelfData
-            const allBooks = window.currentBookshelfData || [];
-            
-            // 首先根据分类筛选书籍
-            let categoryFilteredBooks = [];
-            
-            if (category === 'all') {
-              // 显示所有书籍
-              categoryFilteredBooks = [...allBooks];
-            } else if (category === 'reading') {
-              // 筛选阅读中的书籍
-              categoryFilteredBooks = allBooks.filter(book => {
-                const status = book.status || (book.Book && book.Book.status) || 'toRead';
-                return status === 'reading';
-              });
-            } else if (category === 'completed') {
-              // 筛选已读完的书籍
-              categoryFilteredBooks = allBooks.filter(book => {
-                const status = book.status || (book.Book && book.Book.status) || 'toRead';
-                return status === 'completed' || status === 'finished';
-              });
-            } else if (category === 'toRead') {
-              // 筛选未读的书籍
-              categoryFilteredBooks = allBooks.filter(book => {
-                const status = book.status || (book.Book && book.Book.status) || 'toRead';
-                return status === 'toRead' || status === 'unread';
-              });
+            // 隐藏清除按钮
+            const clearSearchBtn = document.getElementById('clear-search-btn');
+            if (clearSearchBtn) {
+              clearSearchBtn.classList.add('hidden');
             }
             
-            console.log('分类筛选结果:', categoryFilteredBooks.length, '本书');
+            // 清除当前搜索查询
+            window.currentSearchQuery = '';
             
-            // 然后根据搜索查询进一步筛选
-            const searchQuery = query.toLowerCase();
-            const searchResults = categoryFilteredBooks.filter(book => {
-              const bookInfo = book.Book || book;
-              const title = (bookInfo.title || '').toLowerCase();
-              const author = (bookInfo.author || '').toLowerCase();
-              const description = (bookInfo.description || '').toLowerCase();
-              
-              return title.includes(searchQuery) || 
-                     author.includes(searchQuery) || 
-                     description.includes(searchQuery);
-            });
-            
-            console.log('搜索筛选结果:', searchResults.length, '本书');
-            
-            // 显示搜索结果
-            if (gridContainer) {
-              gridContainer.innerHTML = '';
-              
-              if (searchResults.length === 0) {
-                gridContainer.innerHTML = `
-                  <div class="col-span-full text-center py-8">
-                    <div class="text-gray-500 mb-4">
-                      <i class="fas fa-search fa-3x mb-3"></i>
-                      <p class="text-xl font-medium">没有找到匹配 "${query}" ${category !== 'all' ? `且${getCategoryName(category)}` : ''} 的书籍</p>
-                    </div>
-                    <button class="bg-blue-500 text-white px-4 py-2 rounded-lg" onclick="window.clearSearch()">
-                      <i class="fas fa-times mr-2"></i>清除搜索
-                    </button>
-                  </div>
-                `;
-                return;
-              }
-              
-              // 添加搜索结果标题和清除搜索按钮
-              const searchResultHeader = document.createElement('div');
-              searchResultHeader.className = 'mb-4 flex items-center justify-between col-span-full';
-              searchResultHeader.innerHTML = `
-                <div class="text-gray-700">
-                  找到 <span class="font-medium">${searchResults.length}</span> 本匹配 "${query}" ${category !== 'all' ? `且${getCategoryName(category)}` : ''} 的书籍
-                </div>
-                <button class="text-blue-500 hover:text-blue-700 flex items-center" onclick="window.clearSearch()">
-                  <i class="fas fa-times mr-1"></i>清除搜索
-                </button>
-              `;
-              
-              gridContainer.appendChild(searchResultHeader);
-              
-              // 添加书籍卡片
-              searchResults.forEach(book => {
-                if (window.generateBookshelfCard) {
-                  const bookCardHtml = window.generateBookshelfCard(book);
-                  gridContainer.innerHTML += bookCardHtml;
-                }
-              });
-              
-              // 添加事件监听器
-              setTimeout(() => {
-                if (typeof window.addBookshelfCardListeners === 'function') {
-                  window.addBookshelfCardListeners();
-                } else {
-                  // 如果函数不存在，手动添加事件监听器
-                  addCardListeners();
-                }
-              }, 200);
+            // 重新加载书架数据
+            if (typeof window.loadUserBookshelf === 'function') {
+              window.loadUserBookshelf();
+            } else {
+              console.error('window.loadUserBookshelf 函数不可用，尝试刷新页面');
+              window.location.reload();
             }
           };
+        }
+        
+        // 保存当前搜索查询
+        window.currentSearchQuery = '';
+        
+        // 定义一个改进的搜索函数
+        function performSearch(query) {
+          console.log('执行搜索:', query);
           
-          // 确保搜索按钮和输入框有事件监听器
-          const searchInput = document.getElementById('search-input');
-          const searchButton = document.getElementById('search-button');
+          if (!query || query.trim() === '') {
+            console.log('搜索词为空，不执行搜索');
+            return;
+          }
           
-          if (searchInput && searchButton) {
-            // 添加搜索按钮点击事件
-            searchButton.addEventListener('click', function() {
-              const query = searchInput.value.trim();
-              window.performBookshelfSearch(query);
-            });
-            
-            // 添加输入框回车事件
-            searchInput.addEventListener('keypress', function(e) {
-              if (e.key === 'Enter') {
-                const query = searchInput.value.trim();
-                window.performBookshelfSearch(query);
-              }
-            });
+          // 保存到搜索历史
+          if (window.saveSearchHistory) {
+            window.saveSearchHistory(query);
+          }
+          
+          // 执行搜索
+          if (window.performBookshelfSearch) {
+            window.performBookshelfSearch(query);
+          } else {
+            console.error('performBookshelfSearch 函数未找到，搜索无法执行');
+            alert('搜索功能暂时不可用，请刷新页面重试');
           }
         }
-      }, 500); // 等待500毫秒，确保模块脚本已加载
+        
+        // 搜索按钮点击和输入框回车事件
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        
+        if (searchInput && searchButton) {
+          // 搜索按钮点击事件
+          searchButton.addEventListener('click', function() {
+            const query = searchInput.value.trim();
+            window.currentSearchQuery = query;
+            performSearch(query);
+          });
+          
+          // 输入框回车事件
+          searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+              const query = searchInput.value.trim();
+              window.currentSearchQuery = query;
+              performSearch(query);
+            }
+          });
+          
+          // 输入框内容变化时控制清除按钮的显示
+          searchInput.addEventListener('input', function() {
+            const clearBtn = document.getElementById('clear-search-btn');
+            if (clearBtn) {
+              if (this.value.trim() !== '') {
+                clearBtn.classList.remove('hidden');
+              } else {
+                clearBtn.classList.add('hidden');
+              }
+            }
+          });
+          
+          // 清除按钮点击事件
+          const clearBtn = document.getElementById('clear-search-btn');
+          if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+              if (window.clearSearch) {
+                window.clearSearch();
+              }
+            });
+            
+            // 初始检查搜索框是否有内容
+            if (searchInput.value.trim() !== '') {
+              clearBtn.classList.remove('hidden');
+            } else {
+              clearBtn.classList.add('hidden');
+            }
+          }
+        }
+      }, 500);
     });
     
     // 获取分类名称函数
@@ -1287,6 +1023,26 @@
       // 初始化分类标签点击事件
       const categoryTabs = document.querySelectorAll('.category-tab');
       const categoryContents = document.querySelectorAll('.category-content');
+      
+      // 监听搜索框输入事件，控制清除按钮显示
+      const searchInput = document.getElementById('search-input');
+      const clearSearchBtn = document.getElementById('clear-search-btn');
+      
+      if (searchInput && clearSearchBtn) {
+        // 初始检查输入框是否有内容
+        if (searchInput.value.trim() !== '') {
+          clearSearchBtn.classList.remove('hidden');
+        }
+        
+        // 监听输入事件
+        searchInput.addEventListener('input', function() {
+          if (this.value.trim() !== '') {
+            clearSearchBtn.classList.remove('hidden');
+          } else {
+            clearSearchBtn.classList.add('hidden');
+          }
+        });
+      }
       
       if (categoryTabs.length && categoryContents.length) {
         console.log('找到分类标签，添加点击事件');
