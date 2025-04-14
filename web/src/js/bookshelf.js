@@ -994,7 +994,13 @@ function generateBookshelfCard(bookData) {
     </div>
     
     <div class="flex flex-col items-center">
-      <img src="${cover}" alt="${title}" class="book-cover w-32 h-48 mb-3 object-cover rounded">
+      <img 
+        src="${cover}" 
+        alt="${title}" 
+        class="book-cover w-32 h-48 mb-3 object-cover rounded"
+        data-original-src="${cover}"
+        onerror="if(!this.dataset.defaultLoaded){this.dataset.defaultLoaded='true';this.src='../images/default-cover.jpg';}"
+      >
       <div class="text-center mb-4">
         <h3 class="font-bold">${title}</h3>
         <p class="text-gray-600 text-sm">${author}</p>

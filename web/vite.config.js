@@ -1,5 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import { resolve } from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
@@ -12,6 +14,29 @@ export default defineConfig(({ command, mode }) => {
     : 'http://localhost:3000';
   
   console.log(`Mode: ${mode}, API Base URL: ${apiBaseUrl}`);
+  
+  // 预加载默认图片到内存中，确保中间件能访问
+  let defaultCoverImageCache = null;
+  let defaultCoverImageType = '';
+  
+  try {
+    const imagePath = path.resolve(__dirname, 'src/images/default-cover.jpg');
+    if (fs.existsSync(imagePath)) {
+      defaultCoverImageCache = fs.readFileSync(imagePath);
+      defaultCoverImageType = 'image/jpeg';
+      console.log('默认封面图片已加载到缓存中');
+    } else {
+      // 尝试加载SVG版本
+      const svgPath = path.resolve(__dirname, 'src/images/default-book-cover.svg');
+      if (fs.existsSync(svgPath)) {
+        defaultCoverImageCache = fs.readFileSync(svgPath);
+        defaultCoverImageType = 'image/svg+xml';
+        console.log('使用SVG默认封面图片作为备选');
+      }
+    }
+  } catch (error) {
+    console.error('加载默认封面图片到缓存失败:', error);
+  }
   
   return {
     root: './',
@@ -54,13 +79,37 @@ export default defineConfig(({ command, mode }) => {
       {
         name: 'image-fallback-plugin',
         configureServer(server) {
+          // 添加一个变量来控制日志输出频率，5分钟内只打印一次相同的日志
+          const logThrottleMap = new Map();
+          const LOG_THROTTLE_TIME = 5 * 60 * 1000; // 5分钟
+          
           server.middlewares.use((req, res, next) => {
             // 处理请求 /src/images/default-cover.jpg
-            if (req.url === '/src/images/default-cover.jpg') {
-              console.log('重定向默认封面图片请求到正确路径');
-              return res.writeHead(302, {
-                'Location': '../images/default-cover.jpg'
-              }).end();
+            if (req.url === '/src/images/default-cover.jpg' || req.url.includes('default-book-cover')) {
+              // 检查是否需要打印日志
+              const now = Date.now();
+              const lastLogTime = logThrottleMap.get('default-cover-redirect') || 0;
+              
+              if (now - lastLogTime > LOG_THROTTLE_TIME) {
+                console.log('接收到默认封面图片请求，直接从缓存返回');
+                logThrottleMap.set('default-cover-redirect', now);
+              }
+              
+              // 如果有缓存的图片，直接返回缓存的图片内容
+              if (defaultCoverImageCache) {
+                res.setHeader('Content-Type', defaultCoverImageType);
+                res.setHeader('Cache-Control', 'public, max-age=86400'); // 缓存一天
+                res.setHeader('ETag', '"default-cover-image"');
+                res.statusCode = 200;
+                return res.end(defaultCoverImageCache);
+              } 
+              // 没有缓存，使用重定向
+              else {
+                return res.writeHead(302, {
+                  'Location': '../images/default-cover.jpg',
+                  'Cache-Control': 'public, max-age=86400' // 缓存一天
+                }).end();
+              }
             }
             next();
           });

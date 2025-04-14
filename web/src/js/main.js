@@ -1,7 +1,40 @@
 // 导入样式
 import '../css/styles.css';
 
-console.log('main.js 文件已加载');
+/**
+ * 日志控制模块
+ * 控制应用程序的日志输出级别，减少不必要的控制台输出
+ * - APP_VERBOSE_LOGGING: 设置为true时显示详细日志，false时只显示关键日志
+ * - APP_INIT_LOGS: 设置为false可以完全禁用初始化日志输出
+ */
+window.APP_VERBOSE_LOGGING = false; // 详细日志开关
+window.APP_INIT_LOGS = true; // 初始化日志开关
+
+// 封装日志函数，根据日志级别输出
+const appLog = {
+  // 初始化日志，只在APP_INIT_LOGS为true时输出
+  init: (message) => {
+    if (window.APP_INIT_LOGS) {
+      console.log(message);
+    }
+  },
+  // 详细日志，只在APP_VERBOSE_LOGGING为true时输出
+  verbose: (message) => {
+    if (window.APP_VERBOSE_LOGGING) {
+      console.log(message);
+    }
+  },
+  // 错误日志，始终输出
+  error: (message, error) => {
+    console.error(message, error);
+  },
+  // 警告日志，始终输出
+  warn: (message) => {
+    console.warn(message);
+  }
+};
+
+appLog.init('main.js 文件已加载');
 
 // 导入API服务
 import {
@@ -18,7 +51,7 @@ import BookCard from './components/BookCard.js';
 // 导入配置
 import config from './config.js';
 
-console.log('API服务已导入');
+appLog.init('API服务已导入');
 
 // 导入Alpine.js
 import Alpine from 'alpinejs';
@@ -166,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 智能搜索功能
 function initSearchPage() {
-  console.log('初始化搜索页面');
+  appLog.init('初始化搜索页面');
   
   // 如果当前不在搜索页面，则返回
   if (!window.location.pathname.includes('/search')) {
@@ -219,18 +252,24 @@ function initSearchPage() {
 // 加载ImageProxy模块
 function loadImageProxyModule() {
   if (window.ImageProxy) {
-    console.log('ImageProxy模块已加载');
+    if (window.APP_VERBOSE_LOGGING) {
+      console.log('ImageProxy模块已加载');
+    }
     return;
   }
   
-  console.log('加载ImageProxy模块...');
+  if (window.APP_VERBOSE_LOGGING) {
+    console.log('加载ImageProxy模块...');
+  }
   
   // 创建script元素
   const script = document.createElement('script');
   script.src = '../js/imageProxy.js';
   script.async = true;
   script.onload = function() {
-    console.log('ImageProxy模块加载成功');
+    if (window.APP_VERBOSE_LOGGING) {
+      console.log('ImageProxy模块加载成功');
+    }
   };
   script.onerror = function() {
     console.error('ImageProxy模块加载失败');
@@ -245,23 +284,36 @@ function createBookCoverElement(bookData) {
   try {
     const coverUrl = bookData.coverUrl || bookData.cover;
     
-    // 如果有封面URL，创建图片元素
+    // 如果有封面URL，创建图片元素，确保只加载一次默认图片
     if (coverUrl && typeof coverUrl === 'string') {
-      return `<img src="${coverUrl}" alt="${bookData.title}" class="book-cover w-full h-full object-cover" onerror="this.src='../images/default-cover.jpg';">`;
+      return `<img src="${coverUrl}" alt="${bookData.title}" class="book-cover w-full h-full object-cover" 
+        onerror="if(!this.dataset.defaultLoaded){this.dataset.defaultLoaded='true';this.src='../images/default-cover.jpg';}"
+        data-original-src="${coverUrl}">`;
     }
     
-    // 否则使用默认封面
-    return `<img src="../images/default-cover.jpg" alt="${bookData.title}" class="book-cover w-full h-full object-cover">`;
+    // 否则直接使用默认封面，不需要error处理
+    return `<img src="../images/default-cover.jpg" alt="${bookData.title}" class="book-cover w-full h-full object-cover" data-default-loaded="true">`;
   } catch (error) {
-    console.error('创建书籍封面元素出错:', error);
-    // 出错时使用默认封面
-    return `<img src="../images/default-cover.jpg" alt="${bookData.title}" class="book-cover w-full h-full object-cover">`;
+    // 出错时使用默认封面，减少日志输出
+    return `<img src="../images/default-cover.jpg" alt="${bookData.title}" class="book-cover w-full h-full object-cover" data-default-loaded="true">`;
   }
 }
 
 // 处理书籍封面加载错误
 function handleBookCoverError(img) {
-  console.warn('书籍封面加载失败，尝试使用备用方法:', img.src);
+  // 检查是否已经加载过默认图片
+  if (img.dataset.defaultLoaded === 'true') {
+    img.onerror = null; // 防止无限循环
+    return;
+  }
+  
+  // 标记已经尝试加载默认图片
+  img.dataset.defaultLoaded = 'true';
+  
+  // 只在详细日志模式或调试模式下输出日志
+  if (window.APP_VERBOSE_LOGGING) {
+    console.warn('书籍封面加载失败:', img.src);
+  }
   
   // 获取原始URL，确保我们有一个可靠的URL来尝试
   const originalUrl = img.dataset.originalSrc || img.src;
@@ -271,7 +323,7 @@ function handleBookCoverError(img) {
       originalUrl.includes('/images/default') || 
       !originalUrl) {
     // 已经是默认图片或无效URL，直接使用默认图片
-    img.src = '../images/default-book-cover.svg';
+    img.src = '../images/default-cover.jpg';
     img.onerror = null; // 防止无限循环
     return;
   }
@@ -279,22 +331,16 @@ function handleBookCoverError(img) {
   // 检查是否为豆瓣图片
   const isDoubanImage = originalUrl.includes('douban') || originalUrl.includes('doubanio');
   
-  // 如果ImageProxy模块不可用，则先加载它
+  // 如果ImageProxy模块不可用，则直接使用默认图片
   if (!window.ImageProxy) {
-    console.log('ImageProxy模块未加载，正在加载...');
-    loadImageProxyModule();
-    // 设置一个短暂的延迟，等待模块加载
-    setTimeout(() => {
-      // 递归调用自己，此时ImageProxy可能已加载
-      handleBookCoverError(img);
-    }, 300);
+    img.src = '../images/default-cover.jpg';
+    img.onerror = null; // 防止无限循环
     return;
   }
   
   // 检查是否已经尝试过所有可用的代理服务
   if (img.dataset.triedAllProxies === 'true') {
-    console.log('已尝试所有代理服务，使用默认图片');
-    img.src = '../images/default-book-cover.svg';
+    img.src = '../images/default-cover.jpg';
     img.onerror = null; // 防止无限循环
     return;
   }
@@ -302,7 +348,6 @@ function handleBookCoverError(img) {
   // 检查ImageProxy模块是否可用
   if (window.ImageProxy && (isDoubanImage || img.dataset.useProxy === 'true')) {
     // 豆瓣图片或指定需要代理的图片，使用代理服务
-    console.log('尝试使用图片代理服务加载豆瓣图片');
     
     // 标记正在使用代理
     img.dataset.useProxy = 'true';
@@ -312,14 +357,15 @@ function handleBookCoverError(img) {
       window.ImageProxy.handleImageWithProxy(img, originalUrl);
       return; // 尝试使用代理加载，不立即显示默认图片
     } catch (error) {
-      console.error('代理加载图片失败:', error);
+      if (window.APP_VERBOSE_LOGGING) {
+        console.error('代理加载图片失败:', error);
+      }
       // 发生错误时继续执行后续代码
     }
   }
   
   // 如果以上方法都失败，使用默认图片
-  console.log('无法加载图片，使用默认图片');
-  img.src = '../images/default-book-cover.svg';
+  img.src = '../images/default-cover.jpg';
   img.onerror = null; // 防止无限循环
   img.dataset.triedAllProxies = 'true'; // 标记已尝试所有方法
 }
@@ -330,14 +376,19 @@ window.handleBookCoverError = handleBookCoverError;
 // 测试API连接
 async function testApiConnection() {
   try {
-    console.log('测试API连接...');
-    const url = `${config.api.baseUrl}/ai/test?time=${Date.now()}`;
-    console.log('测试URL:', url);
+    if (window.APP_VERBOSE_LOGGING) {
+      console.log('测试API连接...');
+      const url = `${config.api.baseUrl}/ai/test?time=${Date.now()}`;
+      console.log('测试URL:', url);
+    }
     
+    const url = `${config.api.baseUrl}/ai/test?time=${Date.now()}`;
     const response = await fetch(url);
     const data = await response.json();
     
-    console.log('API测试结果:', data);
+    if (window.APP_VERBOSE_LOGGING) {
+      console.log('API测试结果:', data);
+    }
     return data;
   } catch (error) {
     console.error('API测试失败:', error);
@@ -351,7 +402,7 @@ async function loadPopularSearches() {
     const initialResultsContainer = document.querySelector('.initial-results .grid');
     if (!initialResultsContainer) return;
     
-    console.log('开始加载热门搜索数据...');
+    appLog.init('开始加载热门搜索数据...');
     
     // 显示加载状态 - 使用统一的加载动画
     showLoadingState(initialResultsContainer, 'AI正在为您推荐热门搜索...');
@@ -359,14 +410,14 @@ async function loadPopularSearches() {
     // 检查缓存
     const cachedData = checkPopularSearchesCache();
     if (cachedData) {
-      console.log('从缓存中获取热门搜索数据');
+      appLog.verbose('从缓存中获取热门搜索数据');
       renderBooks(cachedData, initialResultsContainer);
       return;
     }
     
     // 尝试从API获取数据
     try {
-      console.log('尝试从API获取热门搜索数据');
+      appLog.verbose('尝试从API获取热门搜索数据');
       const response = await aiApi.getPopularSearches({ limit: 3 });
       
       if (response && response.data && response.data.length > 0) {
@@ -378,16 +429,16 @@ async function loadPopularSearches() {
         return;
       }
     } catch (apiError) {
-      console.error('API获取热门搜索失败:', apiError);
+      appLog.error('API获取热门搜索失败:', apiError);
     }
     
     // 如果API调用失败，使用本地默认数据
-    console.log('使用默认热门搜索数据');
+    appLog.verbose('使用默认热门搜索数据');
     const mockData = getDefaultPopularSearches();
     renderBooks(mockData, initialResultsContainer);
     
   } catch (error) {
-    console.error('加载热门搜索失败:', error);
+    appLog.error('加载热门搜索失败:', error);
     const initialResultsContainer = document.querySelector('.initial-results .grid');
     if (initialResultsContainer) {
       initialResultsContainer.innerHTML = '<div class="col-span-3 text-center py-8 text-red-500">加载热门搜索失败，请稍后再试</div>';
@@ -1442,7 +1493,13 @@ function generateBookshelfCard(book) {
         </div>
         
         <div class="flex flex-col items-center">
-          <img src="${cover}" alt="${title}" class="book-cover w-32 h-48 mb-3 object-cover rounded" onerror="this.src='../images/default-cover.jpg'">
+          <img 
+            src="${cover}" 
+            alt="${title}" 
+            class="book-cover w-32 h-48 mb-3 object-cover rounded" 
+            data-original-src="${cover}"
+            onerror="if(!this.dataset.defaultLoaded){this.dataset.defaultLoaded='true';this.src='../images/default-cover.jpg';}"
+          >
           <div class="text-center mb-4">
             <h3 class="font-bold">${title}</h3>
             <p class="text-gray-600 text-sm">${author}</p>

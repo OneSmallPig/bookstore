@@ -1816,5 +1816,55 @@
       }
     });
   </script>
+  
+  <!-- 添加一个内联脚本，确保默认图片请求不会重复发送 -->
+  <script>
+    // 监听DOMContentLoaded事件
+    document.addEventListener('DOMContentLoaded', function() {
+      // 定义一个函数，替换所有img元素的onerror事件
+      function enhanceImageErrorHandling() {
+        const images = document.querySelectorAll('img');
+        images.forEach(img => {
+          // 保存原始url
+          const originalSrc = img.getAttribute('src');
+          if (originalSrc) {
+            // 设置data-original-src属性
+            if (!img.hasAttribute('data-original-src')) {
+              img.setAttribute('data-original-src', originalSrc);
+            }
+            
+            // 替换onerror事件
+            img.onerror = function() {
+              // 检查是否已经加载过默认图片
+              if (this.dataset.defaultLoaded !== 'true') {
+                this.dataset.defaultLoaded = 'true';
+                this.src = '../images/default-cover.jpg';
+              } else {
+                // 已经尝试过默认图片，防止无限循环
+                this.onerror = null;
+              }
+            };
+          }
+        });
+      }
+      
+      // 首次执行
+      enhanceImageErrorHandling();
+      
+      // 每当DOM变化时，检查并处理新增的图片
+      const observer = new MutationObserver(function(mutationsList) {
+        for (const mutation of mutationsList) {
+          if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+            enhanceImageErrorHandling();
+          }
+        }
+      });
+      
+      // 开始监听DOM变化
+      observer.observe(document.body, { childList: true, subtree: true });
+    });
+  </script>
+  
+  <!-- 添加一个内联脚本，确保所有下拉菜单在页面加载时都是隐藏的 -->
 </body>
 </html> 
