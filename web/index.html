@@ -7,6 +7,7 @@
   <meta name="description" content="百变书屋是一个智能化的私人图书馆平台，通过AI技术为用户提供个性化的阅读体验">
   <link rel="stylesheet" href="src/css/output.css">
   <link rel="stylesheet" href="src/css/homepage.css">
+  <link rel="stylesheet" href="src/css/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
@@ -68,11 +69,12 @@
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
   <script src="src/js/imageProxy.js"></script>
+  <script src="src/js/common.js"></script>
   <script src="src/js/homepage.js"></script>
 </head>
 <body>
   <!-- 导航栏 -->
-  <nav class="navbar sticky top-0 z-50 px-4 py-3">
+  <nav class="navbar sticky top-0 z-10 px-4 py-3">
     <div class="container mx-auto flex justify-between items-center">
       <div class="flex items-center">
         <img src="src/images/logo.svg" alt="百变书屋" class="h-10">
@@ -385,28 +387,6 @@
       
       // 检查管理员权限并显示管理员菜单
       checkAdminAccess();
-      
-      // 确保书籍卡片功能正常工作
-      if (!window.checkBookInBookshelf) {
-        window.checkBookInBookshelf = function(bookId) {
-          try {
-            // 首先检查用户是否已登录，未登录用户不应该有书架中的书籍
-            const authData = localStorage.getItem('bookstore_auth');
-            if (!authData) {
-              return false;
-            }
-            
-            const bookshelfData = localStorage.getItem('bookstore_user_bookshelf');
-            if (!bookshelfData) return false;
-            
-            const bookshelfMap = JSON.parse(bookshelfData);
-            return !!bookshelfMap[bookId];
-          } catch (error) {
-            console.error('检查书籍是否在书架中出错:', error);
-            return false;
-          }
-        };
-      }
     });
     
     // 检查管理员权限
@@ -443,37 +423,6 @@
         console.error('验证管理员权限失败:', error);
       }
     }
-  </script>
-  <script>
-    // 本地实现isAdmin函数，不再依赖auth.js
-    function isAdmin() {
-      try {
-        const authData = localStorage.getItem('bookstore_auth');
-        if (!authData) return false;
-        
-        const { user } = JSON.parse(authData);
-        if (!user) return false;
-        
-        return user.role === 'admin' || 
-               (user.roles && user.roles.includes('admin')) || 
-               user.isAdmin === true;
-      } catch (error) {
-        console.error('检查管理员权限失败:', error);
-        return false;
-      }
-    }
-    
-    // 在页面加载完成后检查管理员权限
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('检查管理员权限...');
-      if (isAdmin()) {
-        console.log('当前用户具有管理员权限，显示管理员菜单');
-        const adminLinks = document.querySelectorAll('.admin-only-link');
-        adminLinks.forEach(link => {
-          link.style.display = 'flex';
-        });
-      }
-    });
   </script>
 </body>
 </html> 
