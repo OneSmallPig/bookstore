@@ -286,9 +286,22 @@ function createBookCoverElement(bookData) {
     
     // 如果有封面URL，创建图片元素，确保只加载一次默认图片
     if (coverUrl && typeof coverUrl === 'string') {
-      return `<img src="${coverUrl}" alt="${bookData.title}" class="book-cover w-full h-full object-cover" 
-        onerror="if(!this.dataset.defaultLoaded){this.dataset.defaultLoaded='true';this.src='../images/default-cover.jpg';}"
-        data-original-src="${coverUrl}">`;
+      // 检查是否为豆瓣图片
+      const isDoubanImage = coverUrl.includes('douban') || coverUrl.includes('doubanio');
+      
+      // 对于豆瓣图片，直接使用代理URL
+      let imgSrc = coverUrl;
+      if (isDoubanImage) {
+        // 使用images.weserv.nl代理，这是第三个代理服务
+        imgSrc = `https://images.weserv.nl/?url=${encodeURIComponent(coverUrl)}`;
+      }
+      
+      // 返回带有适当属性的图片元素
+      return `<img src="${imgSrc}" alt="${bookData.title}" class="book-cover w-full h-full object-cover" 
+        onerror="window.handleBookCoverError(this)"
+        data-original-src="${coverUrl}"
+        data-douban-image="${isDoubanImage ? 'true' : 'false'}"
+        data-needs-proxy="${isDoubanImage ? 'true' : 'false'}">`;
     }
     
     // 否则直接使用默认封面，不需要error处理
