@@ -206,6 +206,14 @@ function initSearchPage() {
     return;
   }
   
+  // 加载ImageProxy模块，确保图片代理服务可用
+  loadImageProxyModule();
+  
+  // 如果用户已登录，加载用户书架数据
+  if (isLoggedIn()) {
+    loadUserBookshelfData();
+  }
+  
   // 初始化搜索表单
   const searchForm = document.querySelector('.search-form');
   
@@ -876,7 +884,7 @@ function addBookCardListeners() {
   
   // 为所有加入书架按钮添加事件
   document.querySelectorAll('.book-card .btn-add-shelf').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.stopPropagation(); // 阻止事件冒泡
       
       // 检查用户是否登录
@@ -908,23 +916,10 @@ function addBookCardListeners() {
       
       console.log('添加书籍到书架:', bookId);
       
-      // 发送请求到API
-      fetch(`${API_BASE_URL}/api/bookshelf/add`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken()}`
-        },
-        body: JSON.stringify({ bookId })
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log('添加书籍成功:', data);
+      // 发送请求到API - 使用bookshelfApi
+      try {
+        const result = await bookshelfApi.addToBookshelf(bookId);
+        console.log('添加书籍成功:', result);
         
         // 更新按钮状态
         btn.classList.add('added');
@@ -955,11 +950,49 @@ function addBookCardListeners() {
             window.currentBookshelfData.push({ Book: book });
           }
         }
-      })
-      .catch(error => {
+      } catch (error) {
         console.error('添加书籍失败:', error);
-        showErrorMessage('添加书籍失败，请稍后重试');
-      });
+        
+        // 判断是否是"书籍已在书架中"的错误
+        if (error.message && (error.message.includes('已在书架中') || error.message.includes('已添加'))) {
+          // 更新按钮状态为已添加
+          btn.classList.add('added');
+          btn.textContent = '已加入书架';
+          showMessage('该书籍已在您的书架中', 'info');
+          
+          // 如果有本地书架数据，确保该书籍存在
+          if (window.currentBookshelfData) {
+            const exists = window.currentBookshelfData.some(item => {
+              const shelfBook = item.Book || item;
+              return shelfBook.id === bookId || shelfBook.bookId === bookId;
+            });
+            
+            if (!exists) {
+              // 获取当前书籍数据并添加到本地数据
+              const bookElements = document.querySelectorAll(`.book-card-wrapper[data-id="${bookId}"]`);
+              if (bookElements.length > 0) {
+                const bookElement = bookElements[0];
+                const titleElement = bookElement.querySelector('.book-title');
+                const authorElement = bookElement.querySelector('.book-author');
+                const coverElement = bookElement.querySelector('.book-cover');
+                
+                // 创建书籍对象
+                const book = {
+                  id: bookId,
+                  title: titleElement ? titleElement.textContent : '未知书名',
+                  author: authorElement ? authorElement.textContent : '未知作者',
+                  coverUrl: coverElement ? coverElement.src : '',
+                };
+                
+                // 添加到本地数据
+                window.currentBookshelfData.push({ Book: book });
+              }
+            }
+          }
+        } else {
+          showErrorMessage('添加书籍失败，请稍后重试');
+        }
+      }
     });
   });
   
@@ -2791,6 +2824,37 @@ function displaySearchResults(results) {
   
   // 更新搜索历史显示
   updateSearchHistoryDisplay();
+  
+  // 在搜索结果显示后应用图片代理
+  if (window.ImageProxy) {
+    setTimeout(() => {
+      console.log('对搜索结果中的图片应用代理...');
+      // 对所有豆瓣图片应用代理
+      window.ImageProxy.applyImageProxy('img[data-douban-image="true"]');
+      // 对所有需要代理的图片应用代理
+      window.ImageProxy.applyImageProxy('img[data-needs-proxy="true"]');
+    }, 200);
+  }
+  
+  // 如果用户已登录，定期更新书籍卡片的书架状态
+  if (isLoggedIn()) {
+    // 首次刷新书架状态
+    refreshBookshelfStatus();
+    
+    // 然后每隔一段时间刷新一次，以确保状态最新
+    const refreshInterval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshBookshelfStatus();
+      }
+    }, 30000); // 每30秒刷新一次
+    
+    // 页面离开时清除定时器
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        clearInterval(refreshInterval);
+      }
+    }, { once: true });
+  }
 }
 
 // 保存搜索历史
@@ -3813,5 +3877,76 @@ function displayAISearchResults(books, query, container, aiAnalysis = '') {
   
   // 更新搜索历史显示
   updateSearchHistoryDisplay();
+}
+
+// 加载用户书架数据
+async function loadUserBookshelfData() {
+  try {
+    if (!isLoggedIn()) {
+      console.log('用户未登录，无法加载书架数据');
+      return;
+    }
+    
+    console.log('加载用户书架数据');
+    
+    // 使用书架API获取数据
+    const response = await bookshelfApi.getBookshelf();
+    console.log('书架数据加载成功:', response);
+    
+    // 处理不同的API响应结构
+    if (response && response.bookshelf) {
+      window.currentBookshelfData = response.bookshelf;
+    } else if (response && response.data && response.data.bookshelf) {
+      window.currentBookshelfData = response.data.bookshelf;
+    } else if (Array.isArray(response)) {
+      window.currentBookshelfData = response;
+    } else {
+      window.currentBookshelfData = [];
+    }
+    
+    console.log(`成功加载书架数据，共 ${window.currentBookshelfData.length} 本书`);
+  } catch (error) {
+    console.error('加载书架数据失败:', error);
+    window.currentBookshelfData = [];
+  }
+}
+
+// 刷新搜索结果中书籍的书架状态
+function refreshBookshelfStatus() {
+  if (!window.currentBookshelfData || !isLoggedIn()) {
+    return;
+  }
+  
+  console.log('刷新搜索结果中书籍的书架状态...');
+  
+  // 获取所有书籍卡片
+  const bookCards = document.querySelectorAll('.book-card-wrapper');
+  if (bookCards.length === 0) {
+    return;
+  }
+  
+  bookCards.forEach(card => {
+    const bookId = card.dataset.id;
+    if (!bookId) return;
+    
+    // 检查书籍是否在书架中
+    const isInBookshelf = window.currentBookshelfData.some(item => {
+      const shelfBook = item.Book || item;
+      return shelfBook.id === bookId || 
+             shelfBook.bookId === bookId;
+    });
+    
+    // 更新按钮状态
+    const addButton = card.querySelector('.btn-add-shelf');
+    if (addButton) {
+      if (isInBookshelf && !addButton.classList.contains('added')) {
+        addButton.classList.add('added');
+        addButton.textContent = '已加入书架';
+      } else if (!isInBookshelf && addButton.classList.contains('added')) {
+        addButton.classList.remove('added');
+        addButton.textContent = '加入书架';
+      }
+    }
+  });
 }
 
