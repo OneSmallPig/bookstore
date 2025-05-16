@@ -302,8 +302,24 @@ export function addBookCardListeners(container) {
         
         console.log(`正在添加书籍到书架，ID: ${bookId}`);
         
+        // 尝试获取书籍标题和其他信息，用于跨页面状态同步
+         const card = button.closest('.book-card');
+         let bookInfo = null;
+         if (card) {
+           const titleElement = card.querySelector('.book-title');
+           const authorElement = card.querySelector('.book-author');
+           
+           if (titleElement || authorElement) {
+             bookInfo = {
+               title: titleElement ? titleElement.textContent.trim() : '',
+               author: authorElement ? authorElement.textContent.trim() : '',
+             };
+             console.log('获取到书籍信息:', bookInfo);
+           }
+         }
+        
         // 调用API添加到书架
-        await bookshelfApi.addToBookshelf(bookId);
+        await bookshelfApi.addToBookshelf(bookId, 'toRead', bookInfo);
         
         // 显示成功消息
         showToast('书籍已添加到书架', 'success');
@@ -311,8 +327,6 @@ export function addBookCardListeners(container) {
         // 更新按钮状态
         button.innerHTML = '已加入书架';
         button.classList.add('added');
-        
-        console.log(`书籍已成功添加到书架，ID: ${bookId}，正在更新所有相关按钮`);
         
         // 更新所有相同书籍的按钮状态 - 包括首页和详情页的按钮
         document.querySelectorAll(`.add-btn[data-book-id="${bookId}"]`).forEach(btn => {

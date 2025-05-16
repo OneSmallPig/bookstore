@@ -1252,18 +1252,35 @@
             });
           });
           
-          // 为移出书架按钮添加点击事件
-          const removeButtons = document.querySelectorAll('.remove-from-shelf-btn');
-          removeButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
+          // 为书架容器添加事件委托，处理移出书架按钮点击
+          const bookshelfContainer = document.querySelector('.bookshelf-container');
+          if (bookshelfContainer && !bookshelfContainer.hasInlineRemoveListener) {
+            bookshelfContainer.hasInlineRemoveListener = true;
+            
+            // 使用事件委托 - 绑定到容器上而不是每个按钮
+            bookshelfContainer.addEventListener('click', (e) => {
+              // 找到被点击的移出书架按钮（如果有）
+              const removeBtn = e.target.closest('.remove-from-shelf-btn');
+              if (!removeBtn) return; // 如果点击的不是移出书架按钮，直接返回
+              
               e.preventDefault();
+              e.stopPropagation();
               
               // 获取书籍ID
-              const bookCard = btn.closest('.book-card');
+              const bookCard = removeBtn.closest('.book-card');
               if (!bookCard) return;
               
               const bookId = bookCard.getAttribute('data-book-id');
               if (!bookId) return;
+              
+              // 检查是否已经处理过这个按钮点击事件
+              if (removeBtn.dataset.processing === 'true') {
+                console.log('按钮点击已在处理中，忽略重复点击');
+                return;
+              }
+              
+              // 标记按钮正在处理中
+              removeBtn.dataset.processing = 'true';
               
               // 确认是否要移出书架
               if (confirm('确定要将这本书移出书架吗？')) {
@@ -1275,8 +1292,13 @@
                   window.removeFromBookshelf(bookId);
                 }
               }
+              
+              // 1秒后重置处理状态
+              setTimeout(() => {
+                removeBtn.dataset.processing = 'false';
+              }, 1000);
             });
-          });
+          }
         };
       }
     });
@@ -1332,27 +1354,19 @@
           // 手动触发一次点击事件，确保正确筛选书籍
           activeTab.click();
           
-          // 应用默认排序（最近添加）
-          setTimeout(function() {
-            // 获取排序函数
-            if (typeof window.applySortingFunction === 'function') {
-              console.log('应用默认排序: 最近添加');
-              window.applySortingFunction('date-desc');
-              
-              // 更新排序选项的选中状态
-              const sortOptions = document.querySelectorAll('.sort-option');
-              sortOptions.forEach(opt => {
-                opt.querySelector('i').classList.add('invisible');
-              });
-              
-              const defaultSortOption = document.querySelector('.sort-option[data-sort="date-desc"]');
-              if (defaultSortOption) {
-                defaultSortOption.querySelector('i').classList.remove('invisible');
-              }
-            }
-          }, 500);
+          // 更新排序选项的选中状态 - 不需要再次应用排序，只需更新UI
+          const sortOptions = document.querySelectorAll('.sort-option');
+          sortOptions.forEach(opt => {
+            opt.querySelector('i').classList.add('invisible');
+          });
+          
+          // 找到默认排序选项并标记为选中
+          const defaultSortOption = document.querySelector('.sort-option[data-sort="date-desc"]');
+          if (defaultSortOption) {
+            defaultSortOption.querySelector('i').classList.remove('invisible');
+          }
         }
-      }, 1000); // 等待1秒，确保书籍数据已加载
+      }, 200);
     });
   </script>
   

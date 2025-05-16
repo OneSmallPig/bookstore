@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   
   try {
-    // 加载用户书架数据
+    // 加载用户书架数据 - 已在loadUserBookshelf中应用了默认排序
     const bookshelfData = await loadUserBookshelf();
     if (bookshelfData) {
       currentBookshelfData = bookshelfData;
@@ -586,6 +586,26 @@ function applyFiltersAndSort() {
     return;
   }
   
+  // 检查是否需要调用API，如果是首次加载且已经有了按默认排序的数据，可以复用
+  // 但如果有搜索查询、非默认排序或特定状态筛选，则需要调用API
+  const isDefaultView = !searchQuery && currentSort === 'date-desc' && (currentFilter === 'all' || !currentFilter);
+  
+  if (isDefaultView && currentBookshelfData && currentBookshelfData.length > 0) {
+    console.log('使用当前缓存数据，无需再次调用API');
+    
+    // 清除加载状态
+    if (bookshelfContent) {
+      bookshelfContent.innerHTML = '';
+    }
+    
+    // 更新书架显示
+    updateBookshelfDisplay(currentBookshelfData, searchQuery);
+    
+    // 更新统计数据
+    updateBookshelfStats(currentBookshelfData);
+    return;
+  }
+  
   // 调用API获取书架书籍
   bookshelfApi.getBookshelfBooks(params)
     .then(response => {
@@ -611,6 +631,12 @@ function applyFiltersAndSort() {
       
       // 更新统计数据
       updateBookshelfStats(currentBookshelfData);
+      
+      // 如果是默认视图，更新缓存数据
+      if (isDefaultView) {
+        currentBookshelfData = books;
+        window.currentBookshelfData = books;
+      }
     })
     .catch(error => {
       // 显示错误信息
@@ -760,8 +786,14 @@ async function loadUserBookshelf() {
   try {
     // 首先尝试从API获取数据
     if (isLoggedIn()) {
-      // 使用新的接口获取所有书架书籍
-      const bookshelfData = await bookshelfApi.getBookshelfBooks();
+      // 准备排序参数，使用默认排序方式（最近添加，降序）
+      const params = {
+        sort: 'addedAt',
+        order: 'desc'
+      };
+      
+      // 使用新的接口获取所有书架书籍，并传入排序参数
+      const bookshelfData = await bookshelfApi.getBookshelfBooks(params);
       
       // 处理不同的API响应结构
       if (bookshelfData && bookshelfData.data && bookshelfData.data.bookshelf) {
@@ -1066,48 +1098,76 @@ function attachBookCardEventListeners() {
     });
   });
   
-  // 移出书架按钮
-  const removeButtons = document.querySelectorAll('.remove-from-shelf-btn');
+  // 移出书架按钮 - 使用事件委托而不是直接绑定
+  const bookshelfContainer = document.querySelector('.bookshelf-container');
   
-  removeButtons.forEach((btn, index) => {
-    btn.addEventListener('click', async (e) => {
+  if (bookshelfContainer && !bookshelfContainer.hasBookshelfJsRemoveListener) {
+    bookshelfContainer.hasBookshelfJsRemoveListener = true;
+    
+    bookshelfContainer.addEventListener('click', async (e) => {
+      // 如果点击的是移出书架按钮
+      const removeBtn = e.target.closest('.remove-from-shelf-btn');
+      if (!removeBtn) return; // 如果不是移除按钮，不处理
+      
       e.stopPropagation();
-      const bookCard = btn.closest('.book-card');
+      e.preventDefault();
+      
+      // 获取书籍信息
+      const bookCard = removeBtn.closest('.book-card');
       const bookId = bookCard ? bookCard.dataset.bookId : null;
       
-      if (bookId) {
-        if (confirm('确定要从书架中移除这本书吗？')) {
-          try {
-            await bookshelfApi.removeFromBookshelf(bookId);
-            showToast('书籍已从书架移除', 'success');
+      // 检查是否已经处理过这个按钮点击事件
+      if (removeBtn.dataset.processing === 'true') {
+        console.log('按钮点击已在处理中，忽略重复点击');
+        return;
+      }
+      
+      // 标记按钮正在处理中
+      removeBtn.dataset.processing = 'true';
+      
+      if (bookId && confirm('确定要从书架中移除这本书吗？')) {
+        try {
+          console.log(`bookshelf.js: 移出书架书籍 ID: ${bookId}`);
+          await bookshelfApi.removeFromBookshelf(bookId);
+          showToast('书籍已从书架移除', 'success');
+          
+          // 添加移除动画
+          bookCard.style.transition = 'all 0.3s ease';
+          bookCard.style.opacity = '0';
+          bookCard.style.transform = 'scale(0.8)';
+          
+          // 等待动画完成后移除元素
+          setTimeout(() => {
+            bookCard.remove();
             
-            // 添加移除动画
-            bookCard.style.transition = 'all 0.3s ease';
-            bookCard.style.opacity = '0';
-            bookCard.style.transform = 'scale(0.8)';
-            
-            // 等待动画完成后移除元素
-            setTimeout(() => {
-              bookCard.remove();
-              
-              // 重新加载书架
-              loadUserBookshelf().then(bookshelfData => {
-                if (bookshelfData) {
-                  currentBookshelfData = bookshelfData;
-                  // 更新统计数据
-                  updateBookshelfStats(currentBookshelfData);
-                  // 检查是否需要显示空状态
-                  checkEmptyState();
-                }
-              });
-            }, 300);
-          } catch (error) {
-            showToast('移除失败，请稍后再试', 'error');
-          }
+            // 重新加载书架
+            loadUserBookshelf().then(bookshelfData => {
+              if (bookshelfData) {
+                currentBookshelfData = bookshelfData;
+                // 更新统计数据
+                updateBookshelfStats(currentBookshelfData);
+                // 检查是否需要显示空状态
+                checkEmptyState();
+              }
+            });
+          }, 300);
+        } catch (error) {
+          console.error('移除书籍失败:', error);
+          showToast('移除失败，请稍后再试', 'error');
+        } finally {
+          // 1秒后重置处理状态
+          setTimeout(() => {
+            removeBtn.dataset.processing = 'false';
+          }, 1000);
         }
+      } else {
+        // 取消操作也要重置处理状态
+        setTimeout(() => {
+          removeBtn.dataset.processing = 'false';
+        }, 500);
       }
     });
-  });
+  }
   
   // 三点菜单按钮
   const menuButtons = document.querySelectorAll('.card-menu-btn');

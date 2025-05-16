@@ -316,11 +316,28 @@ const bookshelfApi = {
   },
   
   // 添加书籍到书架
-  async addToBookshelf(bookId, status = 'toRead') {
+  async addToBookshelf(bookId, status = 'toRead', bookInfo = null) {
     try {
       console.log(`添加书籍到书架: bookId=${bookId}, status=${status}`);
       if (!bookId) {
         throw new Error('bookId参数是必需的');
+      }
+      
+      // 准备请求体数据
+      const requestData = {
+        readingStatus: status
+      };
+      
+      // 如果有额外的书籍信息，添加到请求中
+      if (bookInfo) {
+        // 包含关键的书籍信息字段
+        if (bookInfo.title) requestData.title = bookInfo.title;
+        if (bookInfo.author) requestData.author = bookInfo.author;
+        if (bookInfo.coverUrl) requestData.coverUrl = bookInfo.coverUrl;
+        if (bookInfo.description) requestData.description = bookInfo.description;
+        if (bookInfo.current_page) requestData.current_page = bookInfo.current_page;
+        
+        console.log('添加书籍到书架包含额外信息:', requestData);
       }
       
       const response = await fetch(`${config.api.baseUrl}/books/${bookId}/bookshelf`, {
@@ -329,7 +346,7 @@ const bookshelfApi = {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getToken()}`
         },
-        body: JSON.stringify({ readingStatus: status })
+        body: JSON.stringify(requestData)
       });
       
       console.log(`添加书籍API响应状态: ${response.status}`);
