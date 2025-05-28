@@ -109,9 +109,10 @@ const addToBookshelf = async (req, res) => {
     // 如果书籍不存在，创建一个新的书籍记录
     if (!book) {
       console.log(`书籍"${bookId}"不存在，创建新书籍记录`);
-      // 创建一个新的书籍记录
+      // 创建一个新的书籍记录 - 优先使用请求体中的title字段
+      const bookTitle = req.body.title || bookId;
       book = await Book.create({
-        title: bookId,
+        title: bookTitle,
         author: req.body.author || '未知作者',
         description: req.body.description || '暂无描述',
         coverImage: req.body.coverImage || 'default-cover.png'
@@ -120,6 +121,7 @@ const addToBookshelf = async (req, res) => {
     } else {
       // 如果书籍存在但数据不完整，使用请求中的数据更新书籍信息
       const shouldUpdate = 
+        (book.title === bookId && req.body.title && req.body.title !== bookId) ||
         (book.author === '未知作者' && req.body.author) || 
         ((!book.description || book.description === '暂无描述') && req.body.description) ||
         ((!book.coverImage || book.coverImage === 'default-cover.png') && req.body.coverImage);
@@ -127,6 +129,7 @@ const addToBookshelf = async (req, res) => {
       if (shouldUpdate) {
         console.log(`书籍"${bookId}"存在但信息不完整，更新书籍信息`);
         await book.update({
+          title: req.body.title || book.title,
           author: req.body.author || book.author,
           description: req.body.description || book.description,
           coverImage: req.body.coverImage || book.coverImage
