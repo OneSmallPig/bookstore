@@ -1,7 +1,7 @@
 import { Sequelize } from 'sequelize';
 import { dbConfig } from '../config/database.js';
 
-const env = process.env.NODE_ENV || 'development';
+const env = import.meta.env.MODE || 'development';
 const config = dbConfig[env];
 
 const sequelize = new Sequelize(

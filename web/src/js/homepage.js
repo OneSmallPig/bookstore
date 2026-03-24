@@ -8,19 +8,20 @@ import { aiApi } from './api.js';
 import config from './config.js';
 
 // 最长请求超时时间（毫秒）
-const REQUEST_TIMEOUT = 40000;
+const REQUEST_TIMEOUT = config.api.timeout;
 
 // 缓存配置
 const CACHE_KEYS = {
-  RECOMMENDED_BOOKS: 'bookstore_recommended_books',
-  POPULAR_BOOKS: 'bookstore_popular_books',
-  CACHE_TIMESTAMP: 'bookstore_cache_timestamp',
-  USER_TOKEN: 'bookstore_auth', // 与auth.js中的AUTH_KEY保持一致
-  USER_BOOKSHELF: 'bookstore_user_bookshelf', // 用户书架缓存
+  RECOMMENDED_BOOKS: config.cache.keys.RECOMMENDED_BOOKS,
+  POPULAR_BOOKS: config.cache.keys.POPULAR_BOOKS,
+  CACHE_TIMESTAMP: config.cache.keys.CACHE_TIMESTAMP,
+  USER_TOKEN: config.cache.keys.AUTH_TOKEN,
+  USER_BOOKSHELF: config.cache.keys.USER_BOOKSHELF,
+  CACHED_TOKEN: config.cache.keys.CACHED_TOKEN,
 };
 
 // 缓存有效期（毫秒）- 设置为1小时
-const CACHE_DURATION = 60 * 60 * 1000;
+const CACHE_DURATION = config.cache.duration;
 
 // 在页面开始加载时就立即执行，确保最早显示加载动画
 window.onload = function () {
@@ -51,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function () {
   showInitialLoadingState();
 
   // 在开发环境添加缓存重置按钮
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  if (config.isDevelopment) {
     const clearCacheBtn = document.createElement('button');
     clearCacheBtn.textContent = '清除缓存数据';
     clearCacheBtn.style.position = 'fixed';
@@ -70,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
       localStorage.removeItem(CACHE_KEYS.RECOMMENDED_BOOKS);
       localStorage.removeItem(CACHE_KEYS.POPULAR_BOOKS);
       localStorage.removeItem(CACHE_KEYS.CACHE_TIMESTAMP);
-      localStorage.removeItem('cachedToken');
+      localStorage.removeItem(CACHE_KEYS.CACHED_TOKEN);
       alert('缓存已清除，页面将刷新');
       window.location.reload();
     });
@@ -112,7 +113,7 @@ function initHomePage() {
 
   // 显示当前缓存和登录状态（调试用）
   const currentToken = getUserToken();
-  const cachedToken = localStorage.getItem('cachedToken') || '';
+  const cachedToken = localStorage.getItem(CACHE_KEYS.CACHED_TOKEN) || '';
   const recommendedCacheTime = JSON.parse(localStorage.getItem(CACHE_KEYS.CACHE_TIMESTAMP) || '{}')[
     CACHE_KEYS.RECOMMENDED_BOOKS
   ];
@@ -181,7 +182,7 @@ function getCachedData(key) {
     // 获取当前用户的登录状态 - 用户token可能为null或空字符串（表示未登录）
     const currentToken = getUserToken();
     // 获取缓存时的登录状态
-    const cachedToken = localStorage.getItem('cachedToken') || '';
+    const cachedToken = localStorage.getItem(CACHE_KEYS.CACHED_TOKEN) || '';
 
     // 只有在登录状态发生实质变化时（从登录变为未登录，或从未登录变为登录，或切换了不同用户）才使缓存失效
     // 这里通过比较"有无token"来判断登录状态变化，避免未登录状态下的不必要缓存失效
@@ -191,7 +192,7 @@ function getCachedData(key) {
     if (wasLoggedIn !== isLoggedIn || (wasLoggedIn && isLoggedIn && cachedToken !== currentToken)) {
       console.log('用户登录状态已变化，缓存无效');
       // 更新保存的token状态
-      localStorage.setItem('cachedToken', currentToken);
+      localStorage.setItem(CACHE_KEYS.CACHED_TOKEN, currentToken);
       return null;
     }
 
@@ -335,7 +336,7 @@ async function loadRecommendedBooks() {
         cacheData(CACHE_KEYS.RECOMMENDED_BOOKS, standardizedBooks);
         // 保存当前的用户登录状态
         const currentToken = getUserToken();
-        localStorage.setItem('cachedToken', currentToken);
+        localStorage.setItem(CACHE_KEYS.CACHED_TOKEN, currentToken);
 
         standardizedBooks.forEach((book) => {
           recommendedContainer.appendChild(createBookCard(book, true));
@@ -471,7 +472,7 @@ async function loadPopularBooks() {
         cacheData(CACHE_KEYS.POPULAR_BOOKS, standardizedBooks);
         // 保存当前的用户登录状态
         const currentToken = getUserToken();
-        localStorage.setItem('cachedToken', currentToken);
+        localStorage.setItem(CACHE_KEYS.CACHED_TOKEN, currentToken);
 
         standardizedBooks.forEach((book) => {
           popularContainer.appendChild(createBookCard(book));
@@ -821,7 +822,7 @@ function addToBookshelf(bookId) {
   
   try {
     // 检查用户是否登录
-    const authData = localStorage.getItem('bookstore_auth');
+    const authData = localStorage.getItem(CACHE_KEYS.USER_TOKEN);
     if (!authData) {
       console.log('用户未登录，显示登录提示');
       if (window.showLoginPrompt) {
@@ -1507,4 +1508,3 @@ function ensureBookCardListeners() {
   
   console.log('书籍卡片事件绑定完成');
 }
-

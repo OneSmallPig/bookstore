@@ -1,6 +1,7 @@
 /**
  * 简单的日志工具模块
  */
+const config = require('../config/config');
 
 // 日志级别
 const LOG_LEVELS = {
@@ -11,8 +12,8 @@ const LOG_LEVELS = {
 };
 
 // 当前日志级别，默认为INFO
-let currentLogLevel = process.env.LOG_LEVEL ? 
-  LOG_LEVELS[process.env.LOG_LEVEL.toUpperCase()] || LOG_LEVELS.INFO : 
+let currentLogLevel = config.logger.level ?
+  LOG_LEVELS[config.logger.level.toUpperCase()] || LOG_LEVELS.INFO :
   LOG_LEVELS.INFO;
 
 /**

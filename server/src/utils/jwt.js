@@ -1,9 +1,5 @@
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
-
-// JWT密钥
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const config = require('../config/config');
 
 /**
  * 生成JWT令牌
@@ -11,8 +7,8 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
  * @param {string} expiresIn - 令牌过期时间，默认为环境变量中的设置或7天
  * @returns {string} JWT令牌
  */
-const generateToken = (payload, expiresIn = JWT_EXPIRES_IN) => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+const generateToken = (payload, expiresIn = config.jwt.expiresIn) => {
+  return jwt.sign(payload, config.jwt.secret, { expiresIn });
 };
 
 /**
@@ -22,7 +18,7 @@ const generateToken = (payload, expiresIn = JWT_EXPIRES_IN) => {
  */
 const verifyToken = (token) => {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, config.jwt.secret);
   } catch (error) {
     return null;
   }

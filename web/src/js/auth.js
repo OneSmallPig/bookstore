@@ -5,9 +5,16 @@
 
 import { userApi } from './api.js';
 import { showToast } from './utils.js';
+import config from './config.js';
 
-// 用户认证状态
-const AUTH_KEY = 'bookstore_auth';
+const AUTH_KEY = config.cache.keys.AUTH_TOKEN;
+const CACHE_KEYS_TO_CLEAR = [
+  config.cache.keys.RECOMMENDED_BOOKS,
+  config.cache.keys.POPULAR_BOOKS,
+  config.cache.keys.POPULAR_SEARCHES,
+  config.cache.keys.CACHE_TIMESTAMP,
+  config.cache.keys.USER_BOOKSHELF
+];
 
 /**
  * 获取当前登录用户信息
@@ -106,20 +113,12 @@ export function saveAuth(user, token, expiresIn = 86400) {
     localStorage.setItem(AUTH_KEY, JSON.stringify(authData));
     
     // 清除缓存数据，以便获取新用户的个性化推荐
-    const cachesToClear = [
-      'bookstore_recommended_books',
-      'bookstore_popular_books',
-      'bookstore_popular_searches',
-      'bookstore_cache_timestamp',
-      'bookstore_user_bookshelf' // 添加用户书架缓存
-    ];
-    
-    cachesToClear.forEach(cacheKey => {
+    CACHE_KEYS_TO_CLEAR.forEach(cacheKey => {
       localStorage.removeItem(cacheKey);
     });
     
     // 保存当前token到缓存，用于后续比较登录状态变化
-    localStorage.setItem('cachedToken', token);
+    localStorage.setItem(config.cache.keys.CACHED_TOKEN, token);
     
     console.log('认证信息已保存，所有缓存已清除');
     
@@ -183,20 +182,12 @@ export function logout() {
     localStorage.removeItem(AUTH_KEY);
     
     // 清除缓存数据
-    const cachesToClear = [
-      'bookstore_recommended_books',
-      'bookstore_popular_books',
-      'bookstore_popular_searches',
-      'bookstore_cache_timestamp',
-      'bookstore_user_bookshelf' // 添加用户书架缓存
-    ];
-    
-    cachesToClear.forEach(cacheKey => {
+    CACHE_KEYS_TO_CLEAR.forEach(cacheKey => {
       localStorage.removeItem(cacheKey);
     });
     
     // 清除缓存的Token
-    localStorage.removeItem('cachedToken');
+    localStorage.removeItem(config.cache.keys.CACHED_TOKEN);
     
     console.log('用户已退出登录，所有缓存已清除');
     

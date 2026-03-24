@@ -1,5 +1,6 @@
 const logger = require('../utils/logger');
 const axios = require('axios');
+const appConfig = require('../config/config');
 
 // 有条件地导入 node-fetch
 let fetch;
@@ -23,7 +24,7 @@ try {
       method: options.method || 'GET',
       headers: options.headers || {},
       data: options.body ? JSON.parse(options.body) : undefined,
-      timeout: options.timeout || 30000,
+      timeout: options.timeout || appConfig.ai.requestTimeout,
       responseType: 'json'
     };
     
@@ -62,12 +63,14 @@ try {
  */
 class AIService {
   constructor(config = {}) {
-    // 添加对火山方舟API支持
-    this.apiKey = config.apiKey || process.env.VOLC_API_KEY || process.env.DEEPSEEK_API_KEY || 'mock-api-key';
-    this.apiUrl = config.apiUrl || process.env.DEEPSEEK_API_URL || 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
-    this.model = config.model || process.env.AI_MODEL || 'deepseek-r1-250120';
-    this.useMockData = config.useMockData || process.env.USE_MOCK_DATA === 'true' || false;
-    this.debugMode = config.debugMode || process.env.DEBUG_MODE === 'true' || false;
+    this.apiKey = config.apiKey || '';
+    this.apiUrl = config.apiUrl || '';
+    this.model = config.model || '';
+    this.useMockData = config.useMockData ?? false;
+    this.debugMode = config.debugMode ?? false;
+    this.requestTimeout = config.requestTimeout || appConfig.ai.requestTimeout;
+    this.totalTimeout = config.totalTimeout || appConfig.ai.timeout;
+    this.retryBaseDelay = config.retryBaseDelay || 3000;
     
     // 存储活跃搜索会话的Map
     this.searchSessions = new Map();
@@ -170,7 +173,7 @@ class AIService {
     }
     
     // 检查API密钥是否配置
-    if (!this.apiKey || this.apiKey === 'mock-api-key') {
+    if (!this.apiKey) {
       logger.warn('未配置有效的API密钥，使用模拟数据');
       return this._getMockResponse(messages);
     }
@@ -186,18 +189,16 @@ class AIService {
     // 使用指数退避策略的重试函数
     const callWithRetry = async () => {
       try {
-        // 根据火山方舟API文档，更新请求参数
+        // 使用 OpenAI 兼容的 Chat Completions 请求体
         const payload = {
-          model: this.model, // 使用配置的模型名称
+          model: this.model,
           messages: messages,
           temperature: mergedOptions.temperature, 
           max_tokens: mergedOptions.max_tokens,
           top_p: mergedOptions.top_p,
           presence_penalty: mergedOptions.presence_penalty,
           frequency_penalty: mergedOptions.frequency_penalty,
-          stream: mergedOptions.stream, // 使用选项中的流式响应设置
-          request_id: requestId, // 添加请求ID用于追踪
-          system_fingerprint: "search_engine_bookstore" // 系统指纹，帮助追踪
+          stream: mergedOptions.stream
         };
         
         // 配置请求选项
@@ -227,9 +228,9 @@ class AIService {
           const source = CancelToken.source();
           
           // 增加超时时间至180秒，更适合大模型推理
-          const timeout = 180000; // 180秒超时
+          const timeout = mergedOptions.timeout || this.totalTimeout;
           setTimeout(() => {
-            source.cancel('请求超时 - 180秒');
+            source.cancel(`请求超时 - ${timeout}ms`);
           }, timeout);
           
           // 根据是否使用流式响应选择不同的处理方式
@@ -272,7 +273,7 @@ class AIService {
               data: payload,
               timeout: timeout, // 180秒超时
               cancelToken: source.token,
-              // 添加特殊处理，解决火山引擎在请求等待期间发送空行保持连接的问题
+              // 兼容 SSE/分块返回中可能出现的非 JSON 保活内容
               transformResponse: [function(data) {
                 try {
                   // 尝试解析JSON
@@ -299,7 +300,7 @@ class AIService {
             this._updateApiCallStats(true, responseTime);
           }
           
-          // 记录火山引擎DeepSeek API的响应详情
+          // 记录 OpenAI 兼容接口的响应详情
           if (this.debugMode && response.headers) {
             logger.debug(`API响应头信息 [请求ID: ${requestId}]:`);
             Object.entries(response.headers).forEach(([key, value]) => {
@@ -352,7 +353,7 @@ class AIService {
             } else if (statusCode === 504) {
               // 网关超时，检查是否可以重试
               if (retryCount < maxRetries) {
-                const waitTime = 3000 * (retryCount + 1);
+                const waitTime = this.retryBaseDelay * (retryCount + 1);
                 logger.warn(`网关超时，等待${waitTime}ms后重试 [请求ID: ${requestId}]`);
                 await new Promise(resolve => setTimeout(resolve, waitTime));
                 throw new Error('网关超时，准备重试');
@@ -448,7 +449,7 @@ class AIService {
       id: 'mock-chatcmpl-' + Date.now(),
       object: 'chat.completion',
       created: Math.floor(Date.now() / 1000),
-      model: 'mock-deepseek-r1',
+      model: `mock-${this.model || 'qwen-plus'}`,
       choices: [
         {
           index: 0,
@@ -1100,7 +1101,7 @@ class AIService {
               // 将Buffer转换为字符串
               const chunkText = chunk.toString();
               
-              // 火山引擎/DeepSeek的流格式可能是分行的JSON，需要特殊处理
+              // OpenAI 兼容流通常为按行分隔的 SSE 数据块
               const lines = chunkText.split('\n').filter(line => line.trim() !== '');
               
               for (const line of lines) {
@@ -1736,9 +1737,11 @@ class AIService {
 }
 
 module.exports = new AIService({
-  apiKey: process.env.VOLC_API_KEY || process.env.DEEPSEEK_API_KEY,
-  apiUrl: process.env.DEEPSEEK_API_URL,
-  model: process.env.AI_MODEL || 'deepseek-r1-250120',
-  useMockData: process.env.USE_MOCK_DATA === 'true',
-  debugMode: process.env.DEBUG_MODE === 'true'
-}); 
+  apiKey: appConfig.ai.apiKey,
+  apiUrl: appConfig.ai.apiUrl,
+  model: appConfig.ai.model,
+  useMockData: appConfig.ai.useMockData,
+  debugMode: appConfig.ai.debugMode,
+  requestTimeout: appConfig.ai.requestTimeout,
+  totalTimeout: appConfig.ai.timeout
+});

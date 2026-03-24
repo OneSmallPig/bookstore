@@ -44,7 +44,7 @@ import {
   communityApi,
   aiApi
 } from './api.js';
-import { initAuthListeners, isLoggedIn, requireAuth } from './auth.js';
+import { getAuthToken as getStoredAuthToken, initAuthListeners, isLoggedIn, requireAuth } from './auth.js';
 import { showToast } from './utils.js';
 // 导入书籍卡片组件
 import BookCard from './components/BookCard.js';
@@ -1026,8 +1026,7 @@ async function loadRecommendedBooks() {
     console.log('热门书籍:', popularBooks);
     
     // 获取用户书架数据（如果已登录）
-    const token = localStorage.getItem('bookstore_auth') ? 
-      JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+    const token = getAuthToken();
     let userBookshelf = [];
     let bookshelfBookIds = new Set();
     
@@ -1232,8 +1231,7 @@ function initBookshelfPage() {
   console.log('初始化书架页面');
   
   // 检查用户是否登录
-  const token = localStorage.getItem('bookstore_auth') ? 
-    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+  const token = getAuthToken();
   
   if (!token) {
     console.log('用户未登录，显示登录提示');
@@ -1279,8 +1277,7 @@ function initBookshelfSearch() {
   if (!searchInput || !searchButton) return;
   
   // 检查用户是否登录 - 虽然此时页面应该已经重定向，但为了安全起见仍进行检查
-  const token = localStorage.getItem('bookstore_auth') ? 
-    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+  const token = getAuthToken();
   
   if (!token) {
     console.log('用户未登录，禁用书架搜索功能');
@@ -1303,8 +1300,7 @@ function initBookshelfSearch() {
 // 执行书架搜索
 async function performBookshelfSearch(query) {
   // 检查用户是否登录
-  const token = localStorage.getItem('bookstore_auth') ? 
-    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+  const token = getAuthToken();
   
   if (!token) {
     console.log('用户未登录，无法执行书架搜索');
@@ -2101,8 +2097,7 @@ async function loadBookDetail(bookId) {
     document.title = `${book.title} - 百变书屋`;
     
     // 检查书籍是否已在书架中
-    const token = localStorage.getItem('bookstore_auth') ? 
-      JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+    const token = getAuthToken();
     let isInBookshelf = false;
     
     if (token) {
@@ -2201,8 +2196,7 @@ function initAddToBookshelfButton(book, isInBookshelf) {
   
   addToBookshelfButton.addEventListener('click', async () => {
     // 检查用户是否已登录
-    const token = localStorage.getItem('bookstore_auth') ? 
-      JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+    const token = getAuthToken();
     if (!token) {
       showToast('请先登录', 'warning');
       setTimeout(() => {
@@ -2515,8 +2509,7 @@ function initProfileButton() {
       e.preventDefault();
       
       // 检查用户是否已登录
-      const token = localStorage.getItem('bookstore_auth') ? 
-        JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+      const token = getAuthToken();
       const user = localStorage.getItem('user');
       console.log('用户登录状态:', { token: !!token, user: !!user });
       
@@ -2536,8 +2529,7 @@ function initProfileButton() {
 // 初始化筛选和排序功能
 function initFilterAndSort() {
   // 检查用户是否登录
-  const token = localStorage.getItem('bookstore_auth') ? 
-    JSON.parse(localStorage.getItem('bookstore_auth')).token : null;
+  const token = getAuthToken();
   
   if (!token) {
     console.log('用户未登录，禁用筛选和排序功能');
@@ -2720,13 +2712,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 获取认证令牌
 function getToken() {
-  return localStorage.getItem(config.cache.keys.AUTH_TOKEN) ? 
-    JSON.parse(localStorage.getItem(config.cache.keys.AUTH_TOKEN)).token : null;
+  return getStoredAuthToken();
 }
 
 // 获取认证令牌（别名，与现有代码兼容）
 function getAuthToken() {
-  return getToken();
+  return getStoredAuthToken();
 }
 
 // 导出必要的函数给其他模块使用
@@ -4487,7 +4478,7 @@ function addToBookshelf(bookId) {
   
   try {
     // 检查用户是否登录
-    const authData = localStorage.getItem('bookstore_auth');
+    const authData = localStorage.getItem(config.cache.keys.AUTH_TOKEN);
     if (!authData) {
       console.log('用户未登录，显示登录提示');
       if (window.showLoginPrompt) {
@@ -4708,6 +4699,3 @@ function addToBookshelf(bookId) {
 
 // 将addToBookshelf函数暴露给全局，以便onclick属性可以调用它
 window.addToBookshelf = addToBookshelf;
-
-
-

@@ -47,3 +47,7 @@ temp/
 # Onlook
 bun.lock
 正式可用测试原.json
+example/.DS_Store
+example/可用测试模板.json
+example/整合书源文件.json
+example/测试模板书源文件.json

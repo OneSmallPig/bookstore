@@ -68,9 +68,8 @@
     });
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
-  <script src="src/js/imageProxy.js"></script>
-  <script src="src/js/common.js"></script>
-  <script src="src/js/homepage.js"></script>
+  <script type="module" src="src/js/imageProxy.js"></script>
+  <script type="module" src="src/js/common.js"></script>
 </head>
 <body>
   <!-- 导航栏 -->
@@ -366,7 +365,7 @@
   </footer>
 
   <!-- 通用脚本，必须放在首位加载 -->
-  <script src="./src/js/main.js"></script>
+  <script type="module" src="./src/js/main.js"></script>
   
   <!-- 主页脚本，需要放在main.js之后 -->
   <script type="module" src="./src/js/homepage.js"></script>

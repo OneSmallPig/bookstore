@@ -1,6 +1,7 @@
 const { DataTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
 const { sequelize } = require('../config/database');
+const config = require('../config/config');
 
 const User = sequelize.define('User', {
   id: {
@@ -81,7 +82,7 @@ User.prototype.validatePassword = async function(password) {
 };
 
 // 同步模型到数据库
-User.sync({ alter: process.env.NODE_ENV === 'development' })
+User.sync({ alter: config.database.syncAlter })
   .then(() => console.log('用户表同步成功'))
   .catch(err => console.error('用户表同步失败:', err));
 

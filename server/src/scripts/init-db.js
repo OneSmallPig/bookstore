@@ -5,6 +5,7 @@
 
 require('dotenv').config();
 const { sequelize } = require('../config/database');
+const config = require('../config/config');
 const User = require('../models/user.model');
 const Book = require('../models/book.model');
 const Bookshelf = require('../models/bookshelf.model');
@@ -17,17 +18,17 @@ async function initDatabase() {
     // 检查表是否已存在
     const [userTableExists] = await sequelize.query(
       `SELECT COUNT(*) as count FROM information_schema.tables 
-       WHERE table_schema = '${process.env.DB_NAME}' AND table_name = 'users'`
+       WHERE table_schema = '${config.database.name}' AND table_name = 'users'`
     );
     
     const [bookTableExists] = await sequelize.query(
       `SELECT COUNT(*) as count FROM information_schema.tables 
-       WHERE table_schema = '${process.env.DB_NAME}' AND table_name = 'books'`
+       WHERE table_schema = '${config.database.name}' AND table_name = 'books'`
     );
     
     const [bookshelfTableExists] = await sequelize.query(
       `SELECT COUNT(*) as count FROM information_schema.tables 
-       WHERE table_schema = '${process.env.DB_NAME}' AND table_name = 'bookshelves'`
+       WHERE table_schema = '${config.database.name}' AND table_name = 'bookshelves'`
     );
     
     const tablesExist = userTableExists[0].count > 0 && 

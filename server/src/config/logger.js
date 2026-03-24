@@ -1,5 +1,5 @@
 const winston = require('winston');
-require('dotenv').config();
+const config = require('./config');
 
 // 定义日志级别
 const levels = {
@@ -12,9 +12,11 @@ const levels = {
 
 // 根据环境选择日志级别
 const level = () => {
-  const env = process.env.NODE_ENV || 'development';
-  const isDevelopment = env === 'development';
-  return isDevelopment ? 'debug' : 'warn';
+  if (config.logger.level) {
+    return config.logger.level.toLowerCase();
+  }
+
+  return config.isDev ? 'debug' : 'warn';
 };
 
 // 定义日志颜色

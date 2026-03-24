@@ -7,11 +7,15 @@ import path from 'node:path';
 export default defineConfig(({ command, mode }) => {
   // 加载当前环境的环境变量
   const env = loadEnv(mode, process.cwd());
+  const devServerPort = Number(env.VITE_DEV_SERVER_PORT || 3000);
+  const devServerHost = env.VITE_DEV_SERVER_HOST || '0.0.0.0';
+  const devServerOpen = env.VITE_DEV_SERVER_OPEN !== 'false';
+  const apiProxyTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:3001';
   
   // 解析API基础URL，优先使用环境变量中的值
-  const apiBaseUrl = env.VITE_API_BASE_URL 
-    ? new URL(env.VITE_API_BASE_URL).origin 
-    : 'http://localhost:3000';
+  const apiBaseUrl = env.VITE_API_BASE_URL && /^https?:\/\//.test(env.VITE_API_BASE_URL)
+    ? new URL(env.VITE_API_BASE_URL).origin
+    : apiProxyTarget;
   
   console.log(`Mode: ${mode}, API Base URL: ${apiBaseUrl}`);
   
@@ -58,11 +62,12 @@ export default defineConfig(({ command, mode }) => {
       sourcemap: true
     },
     server: {
-      port: 3000,
-      open: true,
+      port: devServerPort,
+      host: devServerHost,
+      open: devServerOpen,
       proxy: {
         '/api': {
-          target: 'http://localhost:3001',
+          target: apiProxyTarget,
           changeOrigin: true
         }
       },

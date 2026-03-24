@@ -1,3 +1,12 @@
+const config = window.BOOKSTORE_CONFIG || {
+  cache: {
+    keys: {
+      AUTH_TOKEN: 'bookstore_auth',
+      CACHED_TOKEN: 'cachedToken'
+    }
+  }
+};
+
 // 获取认证令牌函数
 function getAuthToken() {
   // 首先尝试直接从token获取
@@ -8,7 +17,7 @@ function getAuthToken() {
   
   // 如果没有直接的token，尝试从bookstore_auth中获取
   try {
-    const authData = localStorage.getItem('bookstore_auth');
+    const authData = localStorage.getItem(config.cache.keys.AUTH_TOKEN);
     if (authData) {
       const parsedData = JSON.parse(authData);
       if (parsedData && parsedData.token) {
@@ -20,7 +29,7 @@ function getAuthToken() {
   }
   
   // 尝试从cachedToken获取
-  const cachedToken = localStorage.getItem('cachedToken');
+  const cachedToken = localStorage.getItem(config.cache.keys.CACHED_TOKEN);
   if (cachedToken) {
     return cachedToken;
   }

@@ -2,6 +2,7 @@
  * 通用功能模块
  * 包含在所有页面中共享的功能
  */
+const AUTH_STORAGE_KEY = window.BOOKSTORE_CONFIG?.cache?.keys?.AUTH_TOKEN || 'bookstore_auth';
 
 /**
  * 检查管理员权限并显示相应的菜单项
@@ -10,7 +11,7 @@ function checkAndShowAdminMenu() {
   console.log('检查管理员权限...');
   try {
     // 从localStorage获取用户数据
-    const authData = localStorage.getItem('bookstore_auth');
+    const authData = localStorage.getItem(AUTH_STORAGE_KEY);
     if (authData) {
       const userData = JSON.parse(authData).user;
       console.log('当前用户信息:', userData ? userData.username : '未找到用户数据');

@@ -7,9 +7,9 @@
   <link rel="stylesheet" href="../css/styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- 添加通用脚本 -->
-  <script src="/src/js/common.js"></script>
+  <script type="module" src="/src/js/common.js"></script>
   <!-- 引入书源管理相关JS -->
-  <script src="../js/booksource/import.js"></script>
+  <script type="module" src="../js/booksource/import.js"></script>
   <style>
     .admin-only {
       background-color: #f97316;
@@ -746,6 +746,14 @@
   <script>
     // 注：不再导入auth.js，避免模块加载错误
     // 而是使用页面内部的实现
+    const pageConfig = window.BOOKSTORE_CONFIG || {
+      cache: {
+        keys: {
+          AUTH_TOKEN: 'bookstore_auth',
+          CACHED_TOKEN: 'cachedToken'
+        }
+      }
+    };
     
     // 获取认证令牌
     function getAuthToken() {
@@ -757,7 +765,7 @@
       
       // 如果没有直接的token，尝试从bookstore_auth中获取
       try {
-        const authData = localStorage.getItem('bookstore_auth');
+        const authData = localStorage.getItem(pageConfig.cache.keys.AUTH_TOKEN);
         if (authData) {
           const parsedData = JSON.parse(authData);
           if (parsedData && parsedData.token) {
@@ -769,7 +777,7 @@
       }
       
       // 尝试从cachedToken获取
-      const cachedToken = localStorage.getItem('cachedToken');
+      const cachedToken = localStorage.getItem(pageConfig.cache.keys.CACHED_TOKEN);
       if (cachedToken) {
         return cachedToken;
       }
@@ -780,7 +788,7 @@
     // 检查当前用户是否是管理员
     function isAdmin() {
       try {
-        const authData = localStorage.getItem('bookstore_auth');
+        const authData = localStorage.getItem(pageConfig.cache.keys.AUTH_TOKEN);
         if (!authData) return false;
         
         const { user } = JSON.parse(authData);
@@ -799,7 +807,7 @@
     async function checkAdminAccess() {
       try {
         // 获取用户信息
-        const authData = localStorage.getItem('bookstore_auth');
+        const authData = localStorage.getItem(pageConfig.cache.keys.AUTH_TOKEN);
         if (!authData) {
           console.error('未找到用户认证数据');
           showAuthScreen();

@@ -2,10 +2,8 @@
  * 认证中间件
  */
 const jwt = require('jsonwebtoken');
+const config = require('../config/config');
 const logger = require('../utils/logger');
-
-// JWT密钥，生产环境应从环境变量或配置文件中获取
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 /**
  * 验证用户是否已认证
@@ -15,7 +13,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
  */
 const authenticate = (req, res, next) => {
   // 开发环境直接通过认证
-  if (process.env.NODE_ENV === 'development' && process.env.SKIP_AUTH === 'true') {
+  if (config.isDev && config.auth.skip) {
     logger.warn('开发环境跳过认证，请勿在生产环境使用此选项');
     req.user = { id: 1, username: 'admin', role: 'admin' };
     return next();
@@ -36,7 +34,7 @@ const authenticate = (req, res, next) => {
     const token = authHeader.split(' ')[1];
     
     // 验证令牌
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    jwt.verify(token, config.jwt.secret, (err, decoded) => {
       if (err) {
         logger.warn('认证失败: 无效的令牌', err);
         return res.status(401).json({ 

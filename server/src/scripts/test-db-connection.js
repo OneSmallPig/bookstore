@@ -4,12 +4,13 @@
 
 require('dotenv').config();
 const { sequelize, testConnection } = require('../config/database');
+const config = require('../config/config');
 
 console.log('数据库连接信息:');
-console.log('主机:', process.env.DB_HOST);
-console.log('端口:', process.env.DB_PORT);
-console.log('数据库名:', process.env.DB_NAME);
-console.log('用户名:', process.env.DB_USER);
+console.log('主机:', config.database.host);
+console.log('端口:', config.database.port);
+console.log('数据库名:', config.database.name);
+console.log('用户名:', config.database.user);
 console.log('密码:', '******'); // 出于安全考虑不显示实际密码
 
 // 测试数据库连接

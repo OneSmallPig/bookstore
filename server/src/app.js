@@ -7,6 +7,7 @@ const path = require('path');
 require('dotenv').config();
 
 // 导入配置
+const config = require('./config/config');
 const { testConnection } = require('./config/database');
 const logger = require('./config/logger');
 
@@ -29,20 +30,20 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 })); // 安全HTTP头
 app.use(cors({
-  origin: '*', // 开发阶段允许所有来源
+  origin: config.cors.origin,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
+  credentials: config.cors.credentials,
   optionsSuccessStatus: 200
 })); // 跨域资源共享
-app.use(express.json({ limit: '20mb' })); // 解析JSON请求体，限制大小为20MB
-app.use(express.urlencoded({ extended: true, limit: '20mb' })); // 解析URL编码的请求体，限制大小为20MB
+app.use(express.json({ limit: config.app.bodyLimit }));
+app.use(express.urlencoded({ extended: true, limit: config.app.bodyLimit }));
 app.use(morgan('combined')); // HTTP请求日志
 
 // 速率限制
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15分钟
-  max: 100, // 每个IP在windowMs内最多100个请求
+  windowMs: config.api.rateWindow,
+  max: config.api.rateLimit,
   standardHeaders: true,
   legacyHeaders: false,
   message: '请求过于频繁，请稍后再试'
@@ -69,7 +70,7 @@ app.use((err, req, res, next) => {
   logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
   res.status(err.status || 500).json({
     message: err.message || '服务器内部错误',
-    stack: process.env.NODE_ENV === 'development' ? err.stack : {}
+    stack: config.isDev ? err.stack : {}
   });
 });
 
@@ -102,7 +103,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // 启动服务器
-const PORT = process.env.PORT || 3001;
+const PORT = config.app.port;
 app.listen(PORT, () => {
   logger.info(`服务器运行在端口 ${PORT}`);
 });

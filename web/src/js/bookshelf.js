@@ -7,8 +7,6 @@ import { bookApi, bookshelfApi } from './api.js';
 import { showToast } from './utils.js';
 import { isLoggedIn } from './auth.js';
 import { 
-  loadUserBookshelf, 
-  displayBookshelf, 
   updateBookshelfStats
 } from './main.js';
 

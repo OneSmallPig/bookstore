@@ -1,4 +1,5 @@
 const { verifyToken } = require('../utils/jwt');
+const config = require('../config/config');
 const User = require('../models/user.model');
 
 /**
@@ -16,7 +17,7 @@ const authenticate = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     
     // 开发环境下的测试token
-    if (process.env.NODE_ENV === 'development' && token === 'test-token') {
+    if (config.isDev && token === config.auth.testToken) {
       console.log('开发环境使用测试token');
       // 为测试token创建一个测试用户
       req.user = {

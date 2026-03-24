@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { sequelize } = require('../config/database');
+const config = require('../config/config');
 
 async function checkDatabase() {
   try {
@@ -12,7 +13,7 @@ async function checkDatabase() {
     const [tables] = await sequelize.query(`
       SELECT TABLE_NAME 
       FROM INFORMATION_SCHEMA.TABLES 
-      WHERE TABLE_SCHEMA = 'versatile_bookstore'
+      WHERE TABLE_SCHEMA = '${config.database.name}'
     `);
     
     console.log('数据库中的表:');
@@ -31,7 +32,7 @@ async function checkDatabase() {
       FROM 
         INFORMATION_SCHEMA.KEY_COLUMN_USAGE
       WHERE 
-        CONSTRAINT_SCHEMA = 'versatile_bookstore' AND
+        CONSTRAINT_SCHEMA = '${config.database.name}' AND
         REFERENCED_TABLE_NAME IS NOT NULL
     `);
     
@@ -51,7 +52,7 @@ async function checkDatabase() {
       FROM 
         INFORMATION_SCHEMA.STATISTICS
       WHERE 
-        TABLE_SCHEMA = 'versatile_bookstore'
+        TABLE_SCHEMA = '${config.database.name}'
       ORDER BY 
         TABLE_NAME, INDEX_NAME
     `);
