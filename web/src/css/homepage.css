@@ -1,25 +1,102 @@
 /* 书籍卡片容器样式 */
-#recommended-books,
-#popular-books {
+#recommended-books {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  min-height: 350px;
+  width: 100%;
+}
+
+.homepage-group-grid {
   display: grid;
   grid-template-columns: repeat(1, 1fr);
   gap: 1.5rem;
-  min-height: 350px; /* 确保即使没有内容也有足够的高度显示加载动画 */
   width: 100%;
 }
 
 @media (min-width: 640px) {
-  #recommended-books,
-  #popular-books {
+  .homepage-group-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (min-width: 1024px) {
-  #recommended-books,
-  #popular-books {
+  .homepage-group-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
+
+.homepage-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.homepage-group-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.homepage-group-description {
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+  color: #6b7280;
+}
+
+.homepage-source-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.homepage-source-badge.is-fallback {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.category-reason {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.category-skeleton {
+  background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.category-skeleton-icon,
+.category-skeleton-title,
+.category-skeleton-text {
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 9999px;
+}
+
+.category-skeleton-icon {
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.category-skeleton-title {
+  width: 70%;
+  height: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.category-skeleton-text {
+  width: 90%;
+  height: 0.75rem;
 }
 
 /* 书籍卡片样式 */

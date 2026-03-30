@@ -6,6 +6,30 @@ const logger = require('../utils/logger');
  */
 class AIController {
   /**
+   * 获取首页聚合数据
+   * @param {Object} req
+   * @param {Object} res
+   */
+  async getHomepageData(req, res) {
+    try {
+      const user = req.user || null;
+      const homepageData = await aiService.getHomepageData(user);
+
+      res.json({
+        success: true,
+        data: homepageData
+      });
+    } catch (error) {
+      logger.error('获取首页聚合数据失败', error);
+      res.status(500).json({
+        success: false,
+        message: '获取首页聚合数据失败',
+        error: error.message
+      });
+    }
+  }
+
+  /**
    * 获取AI推荐的书籍
    * @param {Object} req 请求对象
    * @param {Object} res 响应对象

@@ -18,14 +18,14 @@
     document.addEventListener('DOMContentLoaded', function() {
       console.log('DOM已加载，立即显示加载动画...');
       const recommendedContainer = document.getElementById('recommended-books');
-      const popularContainer = document.getElementById('popular-books');
+      const categoriesContainer = document.getElementById('homepage-categories');
       
       if (recommendedContainer) {
         recommendedContainer.innerHTML = createLoadingHTML('AI正在为您分析推荐书籍...');
       }
       
-      if (popularContainer) {
-        popularContainer.innerHTML = createLoadingHTML('正在获取热门书籍数据...');
+      if (categoriesContainer) {
+        categoriesContainer.innerHTML = createCategoryLoadingHTML();
       }
       
       // 创建加载HTML
@@ -64,6 +64,16 @@
             <div class="skeleton-tags"></div>
           </div>
         `;
+      }
+
+      function createCategoryLoadingHTML() {
+        return Array.from({ length: 6 }).map(() => `
+          <div class="category-card category-skeleton">
+            <div class="category-skeleton-icon"></div>
+            <div class="category-skeleton-title"></div>
+            <div class="category-skeleton-text"></div>
+          </div>
+        `).join('');
       }
     });
   </script>
@@ -143,12 +153,10 @@
     <section class="mb-10 recommended-section">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-bold">为您推荐</h2>
-        <a href="#" class="text-blue-500 text-sm flex items-center">
-          查看全部 <i class="fas fa-chevron-right ml-1 text-xs"></i>
-        </a>
+        <span class="homepage-source-badge" id="homepage-source-badge">AI推荐</span>
       </div>
       
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="recommended-books">
+      <div id="recommended-books">
         <!-- 推荐书籍将通过JavaScript动态加载 -->
       </div>
     </section>
@@ -157,44 +165,8 @@
     <section class="mb-10">
       <h2 class="text-xl font-bold mb-4">热门分类</h2>
       
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        <a href="#" class="category-card bg-blue-500">
-          <i class="fas fa-laptop-code category-icon"></i>
-          <div class="category-name">计算机科学</div>
-        </a>
-        <a href="#" class="category-card bg-green-500">
-          <i class="fas fa-flask category-icon"></i>
-          <div class="category-name">科学</div>
-        </a>
-        <a href="#" class="category-card bg-purple-500">
-          <i class="fas fa-brain category-icon"></i>
-          <div class="category-name">心理学</div>
-        </a>
-        <a href="#" class="category-card bg-yellow-500">
-          <i class="fas fa-landmark category-icon"></i>
-          <div class="category-name">历史</div>
-        </a>
-        <a href="#" class="category-card bg-red-500">
-          <i class="fas fa-book-open category-icon"></i>
-          <div class="category-name">文学</div>
-        </a>
-        <a href="#" class="category-card bg-indigo-500">
-          <i class="fas fa-chart-line category-icon"></i>
-          <div class="category-name">经济学</div>
-        </a>
-      </div>
-    </section>
-
-    <!-- 热门书籍 -->
-    <section class="mb-10 popular-section">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold">热门书籍</h2>
-        <a href="src/pages/search.html" class="text-blue-500 text-sm flex items-center">
-          查看更多 <i class="fas fa-chevron-right ml-1 text-xs"></i>
-        </a>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="popular-books">
-        <!-- 热门书籍将通过JavaScript动态加载 -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3" id="homepage-categories">
+        <!-- 分类将通过JavaScript动态加载 -->
       </div>
     </section>
 

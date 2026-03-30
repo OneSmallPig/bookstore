@@ -1,6 +1,8 @@
 const logger = require('../utils/logger');
 const axios = require('axios');
 const appConfig = require('../config/config');
+const Bookshelf = require('../models/bookshelf.model');
+const Book = require('../models/book.model');
 
 // 有条件地导入 node-fetch
 let fetch;
@@ -67,6 +69,7 @@ class AIService {
     this.apiUrl = config.apiUrl || '';
     this.model = config.model || '';
     this.useMockData = config.useMockData ?? false;
+    this.disableProxy = config.disableProxy ?? appConfig.ai.disableProxy;
     this.debugMode = config.debugMode ?? false;
     this.requestTimeout = config.requestTimeout || appConfig.ai.requestTimeout;
     this.totalTimeout = config.totalTimeout || appConfig.ai.timeout;
@@ -88,6 +91,7 @@ class AIService {
     
     logger.info(`AI服务初始化完成 [模型: ${this.model}, 模拟数据: ${this.useMockData}]`);
     logger.info(`API URL: ${this.apiUrl}`);
+    logger.info(`AI代理: ${this.disableProxy ? '已禁用' : '沿用环境变量'}`);
     
     if (this.debugMode) {
       logger.debug(`API Key: ${this.apiKey.substring(0, 4)}...${this.apiKey.substring(this.apiKey.length - 4)}`);
@@ -243,6 +247,7 @@ class AIService {
               data: payload,
               timeout: timeout,
               cancelToken: source.token,
+              proxy: this.disableProxy ? false : undefined,
               responseType: 'stream',
               // 特别处理流式响应
               onDownloadProgress: (progressEvent) => {
@@ -273,6 +278,7 @@ class AIService {
               data: payload,
               timeout: timeout, // 180秒超时
               cancelToken: source.token,
+              proxy: this.disableProxy ? false : undefined,
               // 兼容 SSE/分块返回中可能出现的非 JSON 保活内容
               transformResponse: [function(data) {
                 try {
@@ -470,6 +476,604 @@ class AIService {
   }
 
   /**
+   * 获取首页聚合数据
+   * @param {Object|null} user
+   * @returns {Promise<Object>}
+   */
+  async getHomepageData(user = null) {
+    const readingProfile = await this._buildUserReadingProfile(user);
+
+    try {
+      const messages = this._buildHomepageMessages(readingProfile);
+      logger.info(`准备调用AI模型获取首页聚合数据, 场景: ${readingProfile ? 'personalized' : 'guest'}`);
+      const response = await this.callAI(messages, {
+        temperature: 0.7,
+        max_tokens: 5000
+      });
+      const isMockResponse = String(response?.id || '').startsWith('mock-') ||
+        String(response?.model || '').startsWith('mock-');
+
+      const content = response?.choices?.[0]?.message?.content || '';
+      const payload = this._extractJsonFromContent(content);
+      const normalized = this._normalizeHomepagePayload(payload, readingProfile);
+
+      return {
+        ...normalized,
+        source: isMockResponse ? 'fallback' : 'ai'
+      };
+    } catch (error) {
+      logger.error('获取首页聚合数据失败，回退到本地数据', error);
+
+      return {
+        ...this._getMockHomepageData(readingProfile),
+        source: 'fallback'
+      };
+    }
+  }
+
+  /**
+   * 构建用户阅读画像
+   * @param {Object|null} user
+   * @returns {Promise<Object|null>}
+   * @private
+   */
+  async _buildUserReadingProfile(user) {
+    const userId = user?.id;
+
+    if (!userId) {
+      return null;
+    }
+
+    try {
+      const bookshelfEntries = await Bookshelf.findAll({
+        where: { userId },
+        include: [
+          {
+            model: Book,
+            as: 'book',
+            attributes: ['id', 'title', 'author', 'categories', 'description', 'rating']
+          }
+        ],
+        order: [['updatedAt', 'DESC']]
+      });
+
+      const validEntries = bookshelfEntries.filter((entry) => entry.book);
+
+      if (validEntries.length === 0) {
+        return null;
+      }
+
+      const categoryCounter = new Map();
+      const authorCounter = new Map();
+      const completedBooks = [];
+      const inProgressBooks = [];
+      const recentBooks = [];
+
+      validEntries.forEach((entry, index) => {
+        const book = entry.book;
+        const categories = this._normalizeCategoryArray(book.categories);
+
+        categories.forEach((category) => {
+          categoryCounter.set(category, (categoryCounter.get(category) || 0) + 1);
+        });
+
+        if (book.author) {
+          authorCounter.set(book.author, (authorCounter.get(book.author) || 0) + 1);
+        }
+
+        if (index < 6) {
+          recentBooks.push(book.title);
+        }
+
+        if (entry.readingStatus === '已完成') {
+          completedBooks.push(book.title);
+        }
+
+        if (entry.readingStatus === '阅读中') {
+          inProgressBooks.push(book.title);
+        }
+      });
+
+      const favoriteCategories = [...categoryCounter.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([name]) => name);
+
+      const favoriteAuthors = [...authorCounter.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([name]) => name);
+
+      const readingSignals = [];
+      if (completedBooks.length > 0) {
+        readingSignals.push('有稳定完读记录');
+      }
+      if (inProgressBooks.length > 0) {
+        readingSignals.push('近期保持持续阅读');
+      }
+      if (favoriteCategories.length > 0) {
+        readingSignals.push(`偏好${favoriteCategories.slice(0, 3).join('、')}题材`);
+      }
+      if (favoriteAuthors.length > 0) {
+        readingSignals.push(`关注作者包括${favoriteAuthors.slice(0, 2).join('、')}`);
+      }
+
+      return {
+        userId,
+        username: user.username || '用户',
+        totalBooks: validEntries.length,
+        recentBooks: recentBooks.slice(0, 5),
+        completedBooks: completedBooks.slice(0, 5),
+        inProgressBooks: inProgressBooks.slice(0, 5),
+        favoriteCategories,
+        favoriteAuthors,
+        readingSignals,
+      };
+    } catch (error) {
+      logger.error('构建用户阅读画像失败，将按未登录场景处理', error);
+      return null;
+    }
+  }
+
+  /**
+   * 规范化分类数组
+   * @param {Array|string|null} categories
+   * @returns {Array<string>}
+   * @private
+   */
+  _normalizeCategoryArray(categories) {
+    if (!categories) {
+      return [];
+    }
+
+    if (Array.isArray(categories)) {
+      return categories.filter(Boolean).map((item) => String(item).trim()).filter(Boolean);
+    }
+
+    if (typeof categories === 'string') {
+      try {
+        const parsed = JSON.parse(categories);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(Boolean).map((item) => String(item).trim()).filter(Boolean);
+        }
+      } catch (error) {
+        return categories.split(',').map((item) => item.trim()).filter(Boolean);
+      }
+    }
+
+    return [];
+  }
+
+  /**
+   * 构建首页提示词
+   * @param {Object|null} readingProfile
+   * @returns {Array}
+   * @private
+   */
+  _buildHomepageMessages(readingProfile) {
+    const isPersonalized = Boolean(readingProfile);
+
+    const systemPrompt = {
+      role: 'system',
+      content: isPersonalized
+        ? '你是一个资深中文图书首页推荐策划助手。你必须只返回JSON对象，不要输出任何解释文字。'
+        : '你是一个资深中文图书首页推荐策划助手。你必须只返回JSON对象，不要输出任何解释文字。'
+    };
+
+    const userPrompt = isPersonalized
+      ? {
+          role: 'user',
+          content: `请基于以下用户阅读画像，为首页生成个性化推荐数据。
+
+用户画像：
+${JSON.stringify(readingProfile, null, 2)}
+
+请严格返回一个JSON对象，结构如下：
+{
+  "scene": "personalized",
+  "recommendationGroups": [
+    {
+      "key": "aligned_reads",
+      "title": "延续偏好",
+      "description": "一句20字以内的分组说明",
+      "books": [4本书]
+    },
+    {
+      "key": "expanded_reads",
+      "title": "拓展阅读",
+      "description": "一句20字以内的分组说明",
+      "books": [4本书]
+    }
+  ],
+  "categories": [
+    { "name": "分类名", "reason": "不超过24字的原因" }
+  ]
+}
+
+要求：
+1. recommendationGroups 必须正好 2 组，每组正好 4 本书，共 8 本
+2. categories 必须正好 6 个
+3. 每本书必须包含 title、author、category、tags、coverUrl、introduction
+4. 推荐要体现用户阅读偏好与适度拓展
+5. 不要重复书名，不要输出Markdown`
+        }
+      : {
+          role: 'user',
+          content: `请为图书网站首页生成未登录用户的推荐数据。
+
+请严格返回一个JSON对象，结构如下：
+{
+  "scene": "guest",
+  "recommendationGroups": [
+    {
+      "key": "classic_literature",
+      "title": "传统文学",
+      "description": "一句20字以内的分组说明",
+      "books": [4本书]
+    },
+    {
+      "key": "novel",
+      "title": "小说精选",
+      "description": "一句20字以内的分组说明",
+      "books": [4本书]
+    }
+  ],
+  "categories": [
+    { "name": "分类名", "reason": "不超过24字的原因" }
+  ]
+}
+
+要求：
+1. 传统文学必须正好 4 本
+2. 小说精选必须正好 4 本
+3. categories 必须正好 6 个
+4. 每本书必须包含 title、author、category、tags、coverUrl、introduction
+5. 推荐面向大众首页，兼顾经典性、可读性和覆盖面
+6. 不要重复书名，不要输出Markdown`
+        };
+
+    return [systemPrompt, userPrompt];
+  }
+
+  /**
+   * 规范化首页聚合响应
+   * @param {Object} payload
+   * @param {Object|null} readingProfile
+   * @returns {Object}
+   * @private
+   */
+  _normalizeHomepagePayload(payload, readingProfile) {
+    const fallback = this._getMockHomepageData(readingProfile);
+    const rawPayload = payload && typeof payload === 'object' ? payload : {};
+    const rawGroups = Array.isArray(rawPayload.recommendationGroups) ? rawPayload.recommendationGroups : [];
+    const normalizedGroups = fallback.recommendationGroups.map((fallbackGroup, index) => {
+      const sourceGroup = rawGroups[index] || {};
+      const books = this._fillHomepageBooks(
+        Array.isArray(sourceGroup.books) ? sourceGroup.books : [],
+        fallbackGroup.books,
+        fallbackGroup.books.length
+      );
+
+      return {
+        key: sourceGroup.key || fallbackGroup.key,
+        title: sourceGroup.title || fallbackGroup.title,
+        description: sourceGroup.description || fallbackGroup.description,
+        books
+      };
+    });
+
+    const rawCategories = Array.isArray(rawPayload.categories) ? rawPayload.categories : [];
+    const normalizedCategories = this._fillHomepageCategories(rawCategories, fallback.categories, 6);
+
+    return {
+      scene: fallback.scene,
+      profileSummary: fallback.profileSummary,
+      recommendationGroups: normalizedGroups,
+      categories: normalizedCategories
+    };
+  }
+
+  /**
+   * 补齐首页书籍列表
+   * @param {Array} candidateBooks
+   * @param {Array} fallbackBooks
+   * @param {Number} requiredCount
+   * @returns {Array}
+   * @private
+   */
+  _fillHomepageBooks(candidateBooks, fallbackBooks, requiredCount) {
+    const results = [];
+    const seenTitles = new Set();
+
+    const appendBook = (book) => {
+      if (!book || results.length >= requiredCount) {
+        return;
+      }
+
+      const formatted = this._validateAndFormatBook(book);
+      if (seenTitles.has(formatted.title)) {
+        return;
+      }
+
+      seenTitles.add(formatted.title);
+      results.push(formatted);
+    };
+
+    candidateBooks.forEach(appendBook);
+    fallbackBooks.forEach(appendBook);
+
+    return results.slice(0, requiredCount);
+  }
+
+  /**
+   * 补齐首页分类列表
+   * @param {Array} candidateCategories
+   * @param {Array} fallbackCategories
+   * @param {Number} requiredCount
+   * @returns {Array}
+   * @private
+   */
+  _fillHomepageCategories(candidateCategories, fallbackCategories, requiredCount) {
+    const results = [];
+    const seenNames = new Set();
+
+    const appendCategory = (category) => {
+      if (!category || results.length >= requiredCount) {
+        return;
+      }
+
+      const formatted = typeof category === 'string'
+        ? { name: category, reason: '适合作为首页重点阅读方向' }
+        : {
+            name: category.name || category.title || '',
+            reason: category.reason || category.description || '适合作为首页重点阅读方向'
+          };
+
+      if (!formatted.name || seenNames.has(formatted.name)) {
+        return;
+      }
+
+      seenNames.add(formatted.name);
+      results.push(formatted);
+    };
+
+    candidateCategories.forEach(appendCategory);
+    fallbackCategories.forEach(appendCategory);
+
+    return results.slice(0, requiredCount);
+  }
+
+  /**
+   * 获取首页回退数据
+   * @param {Object|null} readingProfile
+   * @returns {Object}
+   * @private
+   */
+  _getMockHomepageData(readingProfile) {
+    if (readingProfile) {
+      return this._getMockPersonalizedHomepageData(readingProfile);
+    }
+
+    return this._getMockGuestHomepageData();
+  }
+
+  /**
+   * 获取未登录首页回退数据
+   * @returns {Object}
+   * @private
+   */
+  _getMockGuestHomepageData() {
+    return {
+      scene: 'guest',
+      profileSummary: '面向未登录用户的综合推荐',
+      recommendationGroups: [
+        {
+          key: 'classic_literature',
+          title: '传统文学',
+          description: '从经典作品建立稳定阅读底盘',
+          books: [
+            {
+              title: '红楼梦',
+              author: '曹雪芹',
+              category: '传统文学',
+              tags: ['古典文学', '人物群像', '家族叙事'],
+              coverUrl: 'https://img1.doubanio.com/view/subject/l/public/s1078958.jpg',
+              introduction: '以贾史王薛四大家族为背景，呈现盛衰起伏与复杂人情世故。'
+            },
+            {
+              title: '呐喊',
+              author: '鲁迅',
+              category: '传统文学',
+              tags: ['现代文学', '社会观察', '短篇经典'],
+              coverUrl: 'https://img9.doubanio.com/view/subject/l/public/s29492583.jpg',
+              introduction: '收录《狂人日记》《阿Q正传》等代表作，展现中国现代文学的锐度。'
+            },
+            {
+              title: '边城',
+              author: '沈从文',
+              category: '传统文学',
+              tags: ['乡土文学', '抒情', '人性'],
+              coverUrl: 'https://img9.doubanio.com/view/subject/l/public/s2893255.jpg',
+              introduction: '以湘西小城为背景，书写人与自然、爱情与命运之间的柔韧关系。'
+            },
+            {
+              title: '围城',
+              author: '钱钟书',
+              category: '传统文学',
+              tags: ['讽刺', '知识分子', '现代文学'],
+              coverUrl: 'https://img1.doubanio.com/view/subject/l/public/s1070222.jpg',
+              introduction: '借婚姻与职场关系映照知识分子的精神困境，语言机锋密集。'
+            }
+          ]
+        },
+        {
+          key: 'novel',
+          title: '小说精选',
+          description: '选择更容易沉浸阅读的叙事作品',
+          books: [
+            {
+              title: '白夜行',
+              author: '东野圭吾',
+              category: '小说',
+              tags: ['悬疑', '命运', '日本文学'],
+              coverUrl: 'https://img9.doubanio.com/view/subject/l/public/s4610502.jpg',
+              introduction: '一桩旧案牵动二十年人生轨迹，在黑暗与救赎之间推进。'
+            },
+            {
+              title: '活着',
+              author: '余华',
+              category: '小说',
+              tags: ['现实主义', '命运', '中国当代'],
+              coverUrl: 'https://img2.doubanio.com/view/subject/l/public/s29053580.jpg',
+              introduction: '通过福贵一生的遭际，写尽普通人在时代洪流中的坚韧与失去。'
+            },
+            {
+              title: '解忧杂货店',
+              author: '东野圭吾',
+              category: '小说',
+              tags: ['治愈', '温情', '书信'],
+              coverUrl: 'https://img9.doubanio.com/view/subject/l/public/s27264181.jpg',
+              introduction: '跨越时空的来信串联起不同人生，让烦恼与答案相互照亮。'
+            },
+            {
+              title: '三体',
+              author: '刘慈欣',
+              category: '小说',
+              tags: ['科幻', '文明冲突', '宇宙想象'],
+              coverUrl: 'https://img2.doubanio.com/view/subject/l/public/s2768378.jpg',
+              introduction: '从地球文明危机出发，将视角推向更宏大的宇宙秩序与生存问题。'
+            }
+          ]
+        }
+      ],
+      categories: [
+        { name: '传统文学', reason: '适合首页建立经典阅读氛围' },
+        { name: '小说', reason: '沉浸感强，适合大众快速进入阅读' },
+        { name: '历史', reason: '能扩展认知维度与现实理解' },
+        { name: '心理学', reason: '兼顾实用性与阅读兴趣' },
+        { name: '科幻', reason: '拓宽想象力与未来视角' },
+        { name: '人物传记', reason: '增强故事性与成长启发' }
+      ]
+    };
+  }
+
+  /**
+   * 获取登录态首页回退数据
+   * @param {Object} readingProfile
+   * @returns {Object}
+   * @private
+   */
+  _getMockPersonalizedHomepageData(readingProfile) {
+    const pool = [
+      {
+        title: '人类简史',
+        author: '尤瓦尔·赫拉利',
+        category: '历史',
+        tags: ['历史', '文明', '人类学'],
+        coverUrl: 'https://img2.doubanio.com/view/subject/l/public/s27814883.jpg',
+        introduction: '从认知革命到科学革命，重新梳理人类如何成为今天的样子。'
+      },
+      {
+        title: '思考，快与慢',
+        author: '丹尼尔·卡尼曼',
+        category: '心理学',
+        tags: ['心理学', '行为决策', '认知偏差'],
+        coverUrl: 'https://img1.doubanio.com/view/subject/l/public/s10389766.jpg',
+        introduction: '从双系统理论出发，解释日常判断、决策与偏误的深层机制。'
+      },
+      {
+        title: '未来简史',
+        author: '尤瓦尔·赫拉利',
+        category: '科技',
+        tags: ['未来', '人工智能', '社会变迁'],
+        coverUrl: 'https://img9.doubanio.com/view/subject/l/public/s29287103.jpg',
+        introduction: '站在未来视角追问人类社会、技术与价值结构将如何变化。'
+      },
+      {
+        title: '追风筝的人',
+        author: '卡勒德·胡赛尼',
+        category: '文学',
+        tags: ['成长', '救赎', '小说'],
+        coverUrl: 'https://img2.doubanio.com/view/subject/l/public/s1727290.jpg',
+        introduction: '在时代创伤与私人歉疚中展开的成长小说，情感推进强烈。'
+      },
+      {
+        title: '局外人',
+        author: '阿尔贝·加缪',
+        category: '哲学',
+        tags: ['存在主义', '文学', '思想'],
+        coverUrl: 'https://img1.doubanio.com/view/subject/l/public/s4468484.jpg',
+        introduction: '用高度克制的叙述触及荒诞、疏离与个体处境。'
+      },
+      {
+        title: '月亮与六便士',
+        author: '毛姆',
+        category: '文学',
+        tags: ['人物命运', '文学', '理想'],
+        coverUrl: 'https://img2.doubanio.com/view/subject/l/public/s29651121.jpg',
+        introduction: '通过极端的人生选择，讨论欲望、艺术与社会评价之间的张力。'
+      },
+      {
+        title: '被讨厌的勇气',
+        author: '岸见一郎、古贺史健',
+        category: '心理学',
+        tags: ['心理成长', '阿德勒', '自我提升'],
+        coverUrl: 'https://img9.doubanio.com/view/subject/l/public/s29287103.jpg',
+        introduction: '以对话方式讨论自我接纳、课题分离与个体改变的可能性。'
+      },
+      {
+        title: '银河帝国：基地',
+        author: '艾萨克·阿西莫夫',
+        category: '科幻',
+        tags: ['科幻', '文明演化', '史诗'],
+        coverUrl: 'https://img1.doubanio.com/view/subject/l/public/s28357056.jpg',
+        introduction: '以宏大的文明尺度展开人类未来史诗，兼具设定感与思想性。'
+      }
+    ];
+
+    const preferred = new Set(readingProfile.favoriteCategories || []);
+    const sortedBooks = [...pool].sort((a, b) => {
+      const scoreA = preferred.has(a.category) ? 1 : 0;
+      const scoreB = preferred.has(b.category) ? 1 : 0;
+      return scoreB - scoreA;
+    });
+
+    const topCategories = [...(readingProfile.favoriteCategories || [])];
+    const categoryNames = [...new Set([
+      ...topCategories,
+      '文学',
+      '小说',
+      '历史',
+      '心理学',
+      '科幻',
+      '人物成长'
+    ])].slice(0, 6);
+
+    return {
+      scene: 'personalized',
+      profileSummary: `基于${readingProfile.username || '用户'}的书架与阅读记录生成`,
+      recommendationGroups: [
+        {
+          key: 'aligned_reads',
+          title: '延续偏好',
+          description: '延续你最近正在形成的阅读方向',
+          books: sortedBooks.slice(0, 4)
+        },
+        {
+          key: 'expanded_reads',
+          title: '拓展阅读',
+          description: '在相邻主题中做适度拓展',
+          books: sortedBooks.slice(4, 8)
+        }
+      ],
+      categories: categoryNames.map((name) => ({
+        name,
+        reason: `结合你近期的${name}阅读兴趣生成`
+      }))
+    };
+  }
+
+  /**
    * 获取AI推荐的书籍
    * @param {Object} user - 用户信息(可选)
    * @param {Number} limit - 返回的书籍数量
@@ -561,14 +1165,6 @@ class AIService {
       if (cachedData) {
         logger.info('从缓存返回热门书籍数据');
         return cachedData;
-      }
-      
-      // 对于小数量请求(≤3)，直接返回预设数据，提高响应速度
-      if (limit <= 3) {
-        const mockBooks = this._getMockPopularBooks(category).slice(0, limit);
-        // 将结果保存到缓存
-        await this._saveToCache(cacheKey, mockBooks, 3600); // 缓存1小时
-        return mockBooks;
       }
       
       // 构建系统提示 - 简化提示
@@ -1516,26 +2112,36 @@ class AIService {
     }
     
     try {
+      const trimmedContent = content.trim();
       // 记录内容前100个字符，用于调试
-      logger.debug(`准备提取JSON，内容开头: ${content.substring(0, 100)}...`);
+      logger.debug(`准备提取JSON，内容开头: ${trimmedContent.substring(0, 100)}...`);
       
       // 尝试方法1: 从Markdown代码块中提取JSON
-      const jsonCodeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      const jsonCodeBlockMatch = trimmedContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
       if (jsonCodeBlockMatch && jsonCodeBlockMatch[1]) {
         logger.info('从Markdown代码块中提取JSON数据');
         const jsonText = jsonCodeBlockMatch[1].trim();
         return JSON.parse(jsonText);
       }
+
+      // 尝试方法2: 如果内容本身以 JSON 起始字符开头，优先提取平衡 JSON
+      if (trimmedContent.startsWith('{') || trimmedContent.startsWith('[')) {
+        const balancedJson = this._findBalancedJsonSubstring(trimmedContent);
+        if (balancedJson) {
+          logger.info('从内容开头提取平衡JSON');
+          return JSON.parse(balancedJson);
+        }
+      }
       
-      // 尝试方法2: 查找 [ 开头和 ] 结尾的部分（数组）
-      const arrayMatch = content.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      // 尝试方法3: 查找 [ 开头和 ] 结尾的部分（数组）
+      const arrayMatch = trimmedContent.match(/\[\s*\{[\s\S]*\}\s*\]/);
       if (arrayMatch) {
         logger.info('从内容中直接提取JSON数组');
         return JSON.parse(arrayMatch[0]);
       }
       
-      // 尝试方法3: 查找最长的 {...} 部分（对象）
-      const objectMatches = content.match(/\{[\s\S]*?\}/g);
+      // 尝试方法4: 查找最长的 {...} 部分（对象）
+      const objectMatches = trimmedContent.match(/\{[\s\S]*?\}/g);
       if (objectMatches && objectMatches.length > 0) {
         // 选择最长的匹配
         const longestMatch = objectMatches.reduce((longest, current) => 
@@ -1555,18 +2161,19 @@ class AIService {
         return parsedObj;
       }
       
-      // 尝试方法4: 直接解析整个内容
+      // 尝试方法5: 直接解析整个内容
       logger.info('尝试直接解析整个内容');
-      return JSON.parse(content);
+      return JSON.parse(trimmedContent);
     } catch (error) {
       logger.error(`提取JSON数据失败: ${error.message}`);
       
       // 最后尝试: 查找和清理可能的JSON字符串
       try {
-        // 查找可能的JSON开始位置 [{ 或 {"
+        const objectStartIndex = content.indexOf('{');
+        const arrayStartIndex = content.indexOf('[');
         const potentialStartIndex = Math.min(
-          content.indexOf('[{') >= 0 ? content.indexOf('[{') : Infinity,
-          content.indexOf('{"') >= 0 ? content.indexOf('{"') : Infinity
+          objectStartIndex >= 0 ? objectStartIndex : Infinity,
+          arrayStartIndex >= 0 ? arrayStartIndex : Infinity
         );
         
         if (potentialStartIndex < Infinity) {

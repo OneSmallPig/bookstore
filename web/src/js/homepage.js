@@ -1,6 +1,6 @@
 /**
  * 首页功能脚本
- * 负责加载AI推荐书籍和热门书籍
+ * 负责加载首页聚合推荐与动态分类
  */
 
 // 导入API模块
@@ -12,8 +12,7 @@ const REQUEST_TIMEOUT = config.api.timeout;
 
 // 缓存配置
 const CACHE_KEYS = {
-  RECOMMENDED_BOOKS: config.cache.keys.RECOMMENDED_BOOKS,
-  POPULAR_BOOKS: config.cache.keys.POPULAR_BOOKS,
+  HOMEPAGE_DATA: config.cache.keys.HOMEPAGE_DATA,
   CACHE_TIMESTAMP: config.cache.keys.CACHE_TIMESTAMP,
   USER_TOKEN: config.cache.keys.AUTH_TOKEN,
   USER_BOOKSHELF: config.cache.keys.USER_BOOKSHELF,
@@ -68,8 +67,9 @@ document.addEventListener('DOMContentLoaded', function () {
     clearCacheBtn.style.fontSize = '12px';
 
     clearCacheBtn.addEventListener('click', () => {
-      localStorage.removeItem(CACHE_KEYS.RECOMMENDED_BOOKS);
-      localStorage.removeItem(CACHE_KEYS.POPULAR_BOOKS);
+      localStorage.removeItem(CACHE_KEYS.HOMEPAGE_DATA);
+      localStorage.removeItem(config.cache.keys.RECOMMENDED_BOOKS);
+      localStorage.removeItem(config.cache.keys.POPULAR_BOOKS);
       localStorage.removeItem(CACHE_KEYS.CACHE_TIMESTAMP);
       localStorage.removeItem(CACHE_KEYS.CACHED_TOKEN);
       alert('缓存已清除，页面将刷新');
@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function () {
 function showInitialLoadingState() {
   // 预先显示加载状态
   const recommendedContainer = document.querySelector('#recommended-books');
-  const popularContainer = document.querySelector('#popular-books');
+  const categoryContainer = document.querySelector('#homepage-categories');
 
   if (recommendedContainer) {
     if (recommendedContainer.children.length > 0) {
@@ -96,14 +96,10 @@ function showInitialLoadingState() {
     console.error('未找到推荐书籍容器');
   }
 
-  if (popularContainer) {
-    if (popularContainer.children.length > 0) {
-      // 如果容器内已有内容，先清空
-      popularContainer.innerHTML = '';
-    }
-    showLoadingState(popularContainer, '正在获取热门书籍数据...');
+  if (categoryContainer) {
+    showCategoryLoadingState(categoryContainer);
   } else {
-    console.error('未找到热门书籍容器');
+    console.error('未找到分类容器');
   }
 }
 
@@ -114,33 +110,22 @@ function initHomePage() {
   // 显示当前缓存和登录状态（调试用）
   const currentToken = getUserToken();
   const cachedToken = localStorage.getItem(CACHE_KEYS.CACHED_TOKEN) || '';
-  const recommendedCacheTime = JSON.parse(localStorage.getItem(CACHE_KEYS.CACHE_TIMESTAMP) || '{}')[
-    CACHE_KEYS.RECOMMENDED_BOOKS
-  ];
-  const popularCacheTime = JSON.parse(localStorage.getItem(CACHE_KEYS.CACHE_TIMESTAMP) || '{}')[
-    CACHE_KEYS.POPULAR_BOOKS
+  const homepageCacheTime = JSON.parse(localStorage.getItem(CACHE_KEYS.CACHE_TIMESTAMP) || '{}')[
+    CACHE_KEYS.HOMEPAGE_DATA
   ];
 
   console.log('----缓存状态----');
   console.log('当前用户Token:', currentToken ? '已登录' : '未登录', currentToken ? `(${currentToken.substring(0, 10)}...)` : '');
   console.log('缓存的Token:', cachedToken ? '已登录' : '未登录', cachedToken ? `(${cachedToken.substring(0, 10)}...)` : '');
   console.log(
-    '推荐书籍缓存时间:',
-    recommendedCacheTime ? new Date(recommendedCacheTime).toLocaleString() : '无缓存'
-  );
-  console.log(
-    '热门书籍缓存时间:',
-    popularCacheTime ? new Date(popularCacheTime).toLocaleString() : '无缓存'
+    '首页聚合缓存时间:',
+    homepageCacheTime ? new Date(homepageCacheTime).toLocaleString() : '无缓存'
   );
   console.log('----------------');
 
   // 短暂延迟以确保DOM渲染完成
   setTimeout(() => {
-    // 加载推荐书籍
-    loadRecommendedBooks();
-
-    // 加载热门书籍
-    loadPopularBooks();
+    loadHomepageData();
   }, 300);
 }
 
@@ -212,290 +197,209 @@ function getCachedData(key) {
 }
 
 /**
- * 加载AI推荐的书籍
+ * 加载首页聚合数据
  */
-async function loadRecommendedBooks() {
+async function loadHomepageData() {
+  const recommendedContainer = document.querySelector('#recommended-books');
+  const categoryContainer = document.querySelector('#homepage-categories');
+
+  if (!recommendedContainer || !categoryContainer) {
+    console.error('首页容器缺失，无法加载首页聚合数据');
+    return;
+  }
+
   try {
-    console.log('开始加载AI推荐书籍...');
-    const recommendedContainer = document.querySelector('#recommended-books');
-    if (!recommendedContainer) {
-      console.error('未找到推荐书籍容器元素');
+    const cachedHomepageData = getCachedData(CACHE_KEYS.HOMEPAGE_DATA);
+    if (cachedHomepageData && cachedHomepageData.recommendationGroups && cachedHomepageData.categories) {
+      console.log('使用缓存的首页聚合数据');
+      renderHomepageData(cachedHomepageData);
       return;
     }
 
-    // 检查是否有用户token
-    const token = getUserToken();
+    console.log('缓存无效，从API获取首页聚合数据');
+    const response = await aiApi.getHomepageData();
+    const homepageData = response?.data || response;
 
-    // 尝试从缓存加载数据
-    const cachedBooks = getCachedData(CACHE_KEYS.RECOMMENDED_BOOKS);
-    if (cachedBooks && cachedBooks.length > 0) {
-      console.log('使用缓存的推荐书籍数据');
-      // 清空加载状态
-      recommendedContainer.innerHTML = '';
-
-      // 渲染缓存的书籍
-      cachedBooks.forEach((book) => {
-        recommendedContainer.appendChild(createBookCard(book, true));
-      });
-      return;
+    if (!homepageData || !Array.isArray(homepageData.recommendationGroups) || !Array.isArray(homepageData.categories)) {
+      throw new Error('首页聚合数据格式无效');
     }
 
-    // 如果没有缓存或缓存失效，从API获取
-    console.log('缓存无效，从API获取推荐书籍数据');
-
-    // 开始计时
-    const startTime = Date.now();
-
-    // 使用API模块发送请求，避免直接使用fetch
-    try {
-      // 根据用户是否登录选择调用不同的API
-      let data;
-      if (token) {
-        console.log('用户已登录，获取个性化推荐');
-        data = await aiApi.getRecommendations({ limit: 4, personalized: true });
-      } else {
-        console.log('用户未登录，获取通用推荐');
-        data = await aiApi.getRecommendations({ limit: 4 });
-      }
-
-      // 计算响应时间
-      const responseTime = Date.now() - startTime;
-      console.log(`AI推荐接口响应时间: ${responseTime}ms`);
-      console.log('获取到的推荐书籍数据:', data);
-
-      // 清空加载状态
-      recommendedContainer.innerHTML = '';
-
-      // 处理不同的API响应结构
-      let books = [];
-      if (data && data.success && data.data && data.data.length > 0) {
-        books = data.data;
-      } else if (data && data.books && data.books.length > 0) {
-        books = data.books;
-      } else if (Array.isArray(data) && data.length > 0) {
-        books = data;
-      }
-
-      // 标准化处理每本书的数据格式
-      const standardizedBooks = books.map(book => {
-        // 处理封面URL
-        let coverUrl = '';
-        if (book.coverUrl) {
-          coverUrl = book.coverUrl;
-        } else if (book.cover) {
-          coverUrl = book.cover;
-        } else if (book.image) {
-          coverUrl = book.image;
-        } else if (book.imageUrl) {
-          coverUrl = book.imageUrl;
-        }
-        
-        // 处理封面URL中的特殊情况
-        if (coverUrl) {
-          // 记录原始封面URL，便于调试
-          console.log('原始封面URL:', coverUrl);
-          
-          // 处理相对路径
-          if (coverUrl.startsWith('/') && !coverUrl.startsWith('//')) {
-            coverUrl = coverUrl; // 保持相对路径不变
-          }
-          
-          // 处理不完整的URL（如//example.com/image.jpg）
-          if (coverUrl.startsWith('//')) {
-            coverUrl = 'https:' + coverUrl;
-          }
-          
-          // 处理没有协议的URL（如www.example.com/image.jpg）
-          if (!coverUrl.startsWith('http') && !coverUrl.startsWith('/') && coverUrl.includes('.')) {
-            coverUrl = 'https://' + coverUrl;
-          }
-          
-          console.log('处理后的封面URL:', coverUrl);
-        }
-        
-        return {
-          id: book.id || book._id || book.title || '',
-          title: book.title || book.name || '未知书名',
-          author: book.author || '未知作者',
-          tags: Array.isArray(book.tags) ? book.tags : 
-                Array.isArray(book.categories) ? book.categories : 
-                typeof book.tags === 'string' ? book.tags.split(',').map(tag => tag.trim()) :
-                typeof book.categories === 'string' ? book.categories.split(',').map(tag => tag.trim()) : [],
-          coverUrl: coverUrl,
-          introduction: book.introduction || book.description || '暂无简介',
-          popularity: book.popularity || book.heat || 0,
-          rating: book.rating || (Math.floor(Math.random() * 10) + 38) / 10
-        };
-      });
-
-      // 渲染书籍
-      if (standardizedBooks.length > 0) {
-        console.log(`渲染${standardizedBooks.length}本推荐书籍:`, standardizedBooks);
-
-        // 缓存获取到的书籍数据
-        cacheData(CACHE_KEYS.RECOMMENDED_BOOKS, standardizedBooks);
-        // 保存当前的用户登录状态
-        const currentToken = getUserToken();
-        localStorage.setItem(CACHE_KEYS.CACHED_TOKEN, currentToken);
-
-        standardizedBooks.forEach((book) => {
-          recommendedContainer.appendChild(createBookCard(book, true));
-        });
-      } else {
-        console.warn('没有获取到推荐书籍数据');
-        showError(recommendedContainer, '暂无推荐书籍');
-      }
-    } catch (apiError) {
-      console.error('API调用失败:', apiError);
-      throw apiError; // 继续抛出以便被外层catch捕获
-    }
+    cacheData(CACHE_KEYS.HOMEPAGE_DATA, homepageData);
+    localStorage.setItem(CACHE_KEYS.CACHED_TOKEN, getUserToken());
+    renderHomepageData(homepageData);
   } catch (error) {
-    console.error('加载推荐书籍错误:', error);
-    const recommendedContainer = document.querySelector('#recommended-books');
-    if (recommendedContainer) {
-      showError(recommendedContainer, '加载推荐书籍失败');
-    }
+    console.error('加载首页聚合数据失败:', error);
+    showError(recommendedContainer, '加载首页推荐失败');
+    showCategoryError(categoryContainer, '加载首页分类失败');
   }
 }
 
 /**
- * 加载热门书籍
+ * 渲染首页聚合数据
+ * @param {Object} homepageData
  */
-async function loadPopularBooks() {
-  try {
-    console.log('开始加载热门书籍...');
-    const popularContainer = document.querySelector('#popular-books');
-    if (!popularContainer) {
-      console.error('未找到热门书籍容器元素');
-      return;
-    }
+function renderHomepageData(homepageData) {
+  renderRecommendationGroups(homepageData.recommendationGroups || []);
+  renderHomepageCategories(homepageData.categories || []);
+  updateHomepageSourceBadge(homepageData.source || 'ai');
+}
 
-    // 尝试从缓存加载数据
-    const cachedBooks = getCachedData(CACHE_KEYS.POPULAR_BOOKS);
-    if (cachedBooks && cachedBooks.length > 0) {
-      console.log('使用缓存的热门书籍数据');
-      // 清空加载状态
-      popularContainer.innerHTML = '';
-
-      // 渲染缓存的书籍
-      cachedBooks.forEach((book) => {
-        popularContainer.appendChild(createBookCard(book));
-      });
-      return;
-    }
-
-    // 如果没有缓存或缓存失效，从API获取
-    console.log('缓存无效，从API获取热门书籍数据');
-
-    // 开始计时
-    const startTime = Date.now();
-
-    // 使用API模块发送请求，避免直接使用fetch
-    try {
-      const data = await aiApi.getPopularBooks({ limit: 4 });
-      
-      // 计算响应时间
-      const responseTime = Date.now() - startTime;
-      console.log(`热门书籍接口响应时间: ${responseTime}ms`);
-      console.log('获取到的热门书籍数据:', data);
-
-      // 清空加载状态
-      popularContainer.innerHTML = '';
-
-      // 处理不同的API响应结构
-      let books = [];
-      if (data && data.success && data.data && data.data.length > 0) {
-        books = data.data;
-      } else if (data && data.books && data.books.length > 0) {
-        books = data.books;
-      } else if (Array.isArray(data) && data.length > 0) {
-        books = data;
-      }
-
-      // 标准化处理每本书的数据格式
-      const standardizedBooks = books.map(book => {
-        // 处理封面URL
-        let coverUrl = '';
-        if (book.coverUrl) {
-          coverUrl = book.coverUrl;
-        } else if (book.cover) {
-          coverUrl = book.cover;
-        } else if (book.image) {
-          coverUrl = book.image;
-        } else if (book.imageUrl) {
-          coverUrl = book.imageUrl;
-        }
-        
-        // 处理封面URL中的特殊情况
-        if (coverUrl) {
-          // 记录原始封面URL，便于调试
-          console.log('原始封面URL:', coverUrl);
-          
-          // 处理相对路径
-          if (coverUrl.startsWith('/') && !coverUrl.startsWith('//')) {
-            coverUrl = coverUrl; // 保持相对路径不变
-          }
-          
-          // 处理不完整的URL（如//example.com/image.jpg）
-          if (coverUrl.startsWith('//')) {
-            coverUrl = 'https:' + coverUrl;
-          }
-          
-          // 处理没有协议的URL（如www.example.com/image.jpg）
-          if (!coverUrl.startsWith('http') && !coverUrl.startsWith('/') && coverUrl.includes('.')) {
-            coverUrl = 'https://' + coverUrl;
-          }
-          
-          console.log('处理后的封面URL:', coverUrl);
-        }
-        
-        return {
-          id: book.id || book._id || book.title || '',
-          title: book.title || book.name || '未知书名',
-          author: book.author || '未知作者',
-          tags: Array.isArray(book.tags) ? book.tags : 
-                Array.isArray(book.categories) ? book.categories : 
-                typeof book.tags === 'string' ? book.tags.split(',').map(tag => tag.trim()) :
-                typeof book.categories === 'string' ? book.categories.split(',').map(tag => tag.trim()) : [],
-          coverUrl: coverUrl,
-          introduction: book.introduction || book.description || '暂无简介',
-          popularity: book.popularity || book.heat || 0,
-          rating: book.rating || (Math.floor(Math.random() * 10) + 38) / 10
-        };
-      });
-
-      // 渲染书籍
-      if (standardizedBooks.length > 0) {
-        console.log(`渲染${standardizedBooks.length}本热门书籍:`, standardizedBooks);
-
-        // 缓存获取到的书籍数据
-        cacheData(CACHE_KEYS.POPULAR_BOOKS, standardizedBooks);
-        // 保存当前的用户登录状态
-        const currentToken = getUserToken();
-        localStorage.setItem(CACHE_KEYS.CACHED_TOKEN, currentToken);
-
-        standardizedBooks.forEach((book) => {
-          popularContainer.appendChild(createBookCard(book));
-        });
-      } else {
-        console.warn('没有获取到热门书籍数据');
-        showError(popularContainer, '暂无热门书籍');
-      }
-    } catch (apiError) {
-      console.error('API调用失败:', apiError);
-      throw apiError; // 继续抛出以便被外层catch捕获
-    }
-  } catch (error) {
-    console.error('加载热门书籍错误:', error);
-    const popularContainer = document.querySelector('#popular-books');
-    if (popularContainer) {
-      if (error.name === 'AbortError') {
-        showError(popularContainer, 'AI热门数据加载超时，请稍后再试');
-      } else {
-        showError(popularContainer, '加载热门书籍失败，请稍后再试');
-      }
-    }
+/**
+ * 渲染推荐分组
+ * @param {Array} groups
+ */
+function renderRecommendationGroups(groups) {
+  const recommendedContainer = document.querySelector('#recommended-books');
+  if (!recommendedContainer) {
+    return;
   }
+
+  recommendedContainer.innerHTML = '';
+
+  if (!Array.isArray(groups) || groups.length === 0) {
+    showError(recommendedContainer, '暂无推荐书籍');
+    return;
+  }
+
+  groups.forEach((group) => {
+    const section = document.createElement('section');
+    section.className = 'homepage-group';
+
+    const title = group.title || '推荐书单';
+    const description = group.description || '';
+    const books = Array.isArray(group.books) ? group.books : [];
+
+    section.innerHTML = `
+      <div class="homepage-group-header">
+        <div>
+          <h3 class="homepage-group-title">${title}</h3>
+          ${description ? `<p class="homepage-group-description">${description}</p>` : ''}
+        </div>
+      </div>
+      <div class="homepage-group-grid"></div>
+    `;
+
+    const grid = section.querySelector('.homepage-group-grid');
+    books.forEach((book) => {
+      grid.appendChild(createBookCard(book, true));
+    });
+
+    recommendedContainer.appendChild(section);
+  });
+}
+
+/**
+ * 渲染首页分类
+ * @param {Array} categories
+ */
+function renderHomepageCategories(categories) {
+  const categoryContainer = document.querySelector('#homepage-categories');
+  if (!categoryContainer) {
+    return;
+  }
+
+  categoryContainer.innerHTML = '';
+
+  if (!Array.isArray(categories) || categories.length === 0) {
+    showCategoryError(categoryContainer, '暂无分类推荐');
+    return;
+  }
+
+  categories.forEach((category) => {
+    const card = document.createElement('div');
+    const categoryName = category.name || '未分类';
+    const categoryReason = category.reason || '适合作为当前首页重点关注方向';
+    const bgColorClass = getCategoryColorClass(categoryName);
+    const iconClass = getCategoryIconClass(categoryName);
+
+    card.className = `category-card ${bgColorClass}`;
+    card.innerHTML = `
+      <i class="${iconClass} category-icon"></i>
+      <div class="category-name">${categoryName}</div>
+      <div class="category-reason">${categoryReason}</div>
+    `;
+
+    categoryContainer.appendChild(card);
+  });
+}
+
+/**
+ * 更新首页来源标签
+ * @param {string} source
+ */
+function updateHomepageSourceBadge(source) {
+  const badge = document.querySelector('#homepage-source-badge');
+  if (!badge) {
+    return;
+  }
+
+  const isFallback = source !== 'ai';
+  badge.textContent = isFallback ? '推荐回退' : 'AI推荐';
+  badge.classList.toggle('is-fallback', isFallback);
+}
+
+/**
+ * 显示分类加载态
+ * @param {HTMLElement} container
+ */
+function showCategoryLoadingState(container) {
+  container.innerHTML = Array.from({ length: 6 }).map(() => `
+    <div class="category-card category-skeleton">
+      <div class="category-skeleton-icon"></div>
+      <div class="category-skeleton-title"></div>
+      <div class="category-skeleton-text"></div>
+    </div>
+  `).join('');
+}
+
+/**
+ * 显示分类错误
+ * @param {HTMLElement} container
+ * @param {string} message
+ */
+function showCategoryError(container, message) {
+  container.innerHTML = `
+    <div class="error-message" style="grid-column: 1 / -1;">
+      <i class="fas fa-exclamation-circle"></i>
+      <p>${message}</p>
+    </div>
+  `;
+}
+
+function getCategoryColorClass(categoryName) {
+  const categoryMap = {
+    传统文学: 'bg-red-500',
+    文学: 'bg-red-500',
+    小说: 'bg-indigo-500',
+    历史: 'bg-yellow-500',
+    心理学: 'bg-green-500',
+    科幻: 'bg-purple-500',
+    科技: 'bg-blue-500',
+    人工智能: 'bg-blue-500',
+    人物传记: 'bg-cyan-500',
+    人物成长: 'bg-cyan-500',
+    哲学: 'bg-emerald-500'
+  };
+
+  return categoryMap[categoryName] || 'bg-blue-500';
+}
+
+function getCategoryIconClass(categoryName) {
+  const iconMap = {
+    传统文学: 'fas fa-book-open',
+    文学: 'fas fa-book-open',
+    小说: 'fas fa-feather-pointed',
+    历史: 'fas fa-landmark',
+    心理学: 'fas fa-brain',
+    科幻: 'fas fa-rocket',
+    科技: 'fas fa-microchip',
+    人工智能: 'fas fa-robot',
+    人物传记: 'fas fa-user-pen',
+    人物成长: 'fas fa-chart-line',
+    哲学: 'fas fa-lightbulb'
+  };
+
+  return iconMap[categoryName] || 'fas fa-book';
 }
 
 /**

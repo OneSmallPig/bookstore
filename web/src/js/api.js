@@ -587,6 +587,11 @@ const communityApi = {
 
 // AI相关API
 const aiApi = {
+  // 获取首页聚合数据
+  getHomepageData() {
+    return request('/ai/homepage');
+  },
+
   // 获取推荐书籍
   getRecommendations(params = {}) {
     const queryParams = new URLSearchParams(params).toString();

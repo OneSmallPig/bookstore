@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const aiController = require('../controllers/aiController');
-const { authenticate } = require('../middlewares/auth');
+const { authenticate, optionalAuthenticate } = require('../middlewares/auth');
 const rateLimit = require('express-rate-limit');
 
 // 测试路由 - 检查前端请求是否能够到达
@@ -34,6 +34,7 @@ const searchProgressLimiter = rateLimit({
 });
 
 // 公共API - 不需要登录也可以访问
+router.get('/homepage', optionalAuthenticate, aiController.getHomepageData);
 router.get('/recommended', aiController.getRecommendedBooks);
 router.get('/popular', aiController.getPopularBooks);
 router.get('/popular-searches', aiController.getPopularSearches);

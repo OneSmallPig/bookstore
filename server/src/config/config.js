@@ -109,6 +109,7 @@ const config = {
     chatPath: getEnv('AI_CHAT_PATH', '/chat/completions'),
     modelId: getEnv('AI_MODEL_ID', 'qwen-plus'),
     useMockData: parseBool(getEnv('USE_MOCK_DATA', 'false')),
+    disableProxy: parseBool(getEnv('AI_DISABLE_PROXY', 'true')),
     debugMode: parseBool(getEnv('DEBUG_MODE', 'false')),
     timeout: parseNumber(getEnv('AI_TIMEOUT_MS', 180000), 180000),
     requestTimeout: parseNumber(getEnv('AI_REQUEST_TIMEOUT_MS', 30000), 30000),

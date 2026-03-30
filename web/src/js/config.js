@@ -34,6 +34,7 @@ const getCurrentBaseUrl = () => {
 // 缓存键值
 const CACHE_KEYS = {
   AUTH_TOKEN: env.VITE_STORAGE_AUTH_TOKEN_KEY || 'bookstore_auth',
+  HOMEPAGE_DATA: env.VITE_STORAGE_HOMEPAGE_DATA_KEY || 'bookstore_homepage_data',
   RECOMMENDED_BOOKS: env.VITE_STORAGE_RECOMMENDED_BOOKS_KEY || 'bookstore_recommended_books',
   POPULAR_BOOKS: env.VITE_STORAGE_POPULAR_BOOKS_KEY || 'bookstore_popular_books',
   POPULAR_SEARCHES: env.VITE_STORAGE_POPULAR_SEARCHES_KEY || 'bookstore_popular_searches',

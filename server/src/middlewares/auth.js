@@ -57,6 +57,45 @@ const authenticate = (req, res, next) => {
 };
 
 /**
+ * 可选认证中间件
+ * 用于允许匿名访问，但在提供有效令牌时补充用户信息
+ * @param {Object} req
+ * @param {Object} res
+ * @param {Function} next
+ */
+const optionalAuthenticate = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    req.user = null;
+    return next();
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+
+  if (config.isDev && config.auth.skip) {
+    logger.warn('开发环境可选认证命中测试用户');
+    req.user = { id: 1, username: 'admin', role: 'admin' };
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, config.jwt.secret);
+    req.user = decoded;
+  } catch (error) {
+    logger.warn('可选认证失败，按未登录处理', error);
+    req.user = null;
+  }
+
+  return next();
+};
+
+/**
  * 验证用户是否为管理员
  * @param {Object} req - 请求对象
  * @param {Object} res - 响应对象
@@ -75,5 +114,6 @@ const isAdmin = (req, res, next) => {
 
 module.exports = {
   authenticate,
+  optionalAuthenticate,
   isAdmin
 }; 
