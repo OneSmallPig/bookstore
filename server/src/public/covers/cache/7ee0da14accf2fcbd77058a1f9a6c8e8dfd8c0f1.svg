@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600">
+  <defs>
+    <linearGradient id="coverGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2bac6a"/>
+      <stop offset="100%" stop-color="#923f77"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="600" fill="url(#coverGradient)"/>
+  <rect x="28" y="28" width="344" height="544" rx="18" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.18)"/>
+  <text x="40" y="110" font-size="22" fill="#ffffff" opacity="0.85" font-family="Arial, sans-serif">当代小说</text>
+  <text x="40" y="220" font-size="42" font-weight="700" fill="#ffffff" font-family="Arial, sans-serif">活着</text>
+  <foreignObject x="40" y="250" width="320" height="180">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="font-size:28px;line-height:1.35;color:#ffffff;font-family:Arial,sans-serif;font-weight:700;">
+      活着
+    </div>
+  </foreignObject>
+  <foreignObject x="40" y="460" width="320" height="80">
+    <div xmlns="http://www.w3.org/1999/xhtml" style="font-size:24px;line-height:1.4;color:rgba(255,255,255,0.92);font-family:Arial,sans-serif;">
+      余华
+    </div>
+  </foreignObject>
+</svg>

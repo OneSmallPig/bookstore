@@ -29,7 +29,7 @@ export function createBookCard(book, tagType = '推荐', isInBookshelf = false) 
   const fullDescription = book.description || '暂无简介';
   
   // 获取封面图片URL，如果没有则使用默认图标
-  const coverImage = book.coverImage || book.cover_image || '';
+  const coverImage = book.coverUrl || book.coverImage || book.cover_image || '';
   
   // 根据是否已在书架中设置按钮文本和样式
   const addBtnText = isInBookshelf ? '已加入书架' : '加入书架';
@@ -49,7 +49,7 @@ export function createBookCard(book, tagType = '推荐', isInBookshelf = false) 
           <!-- 书籍封面 -->
           <div class="book-cover" style="background-color: ${bgColor}">
             ${coverImage 
-              ? `<img src="${coverImage}" alt="${book.title}" class="cover-image">` 
+              ? `<img src="${coverImage}" alt="${book.title}" class="cover-image" onerror="this.onerror=null;this.src='../images/default-cover.jpg';">` 
               : getIconByCategory(book.categories)}
           </div>
         </div>

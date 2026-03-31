@@ -1,6 +1,27 @@
 const User = require('../models/user.model');
 const Bookshelf = require('../models/bookshelf.model');
 const logger = require('../config/logger');
+const coverResolverService = require('../services/cover/CoverResolverService');
+const Book = require('../models/book.model');
+
+async function normalizeBookshelfEntries(bookshelf = []) {
+  const bookEntries = bookshelf
+    .map((entry) => entry.book || entry.Book)
+    .filter(Boolean);
+
+  await coverResolverService.ensureBooksHaveCovers(bookEntries);
+
+  bookshelf.forEach((entry) => {
+    const targetBook = entry.book || entry.Book;
+    if (!targetBook) {
+      return;
+    }
+
+    targetBook.coverUrl = targetBook.coverImage || '';
+  });
+
+  return bookshelf;
+}
 
 /**
  * 获取用户个人资料
@@ -107,11 +128,13 @@ const getBookshelf = async (req, res) => {
       where: { userId },
       include: [
         {
-          model: require('../models/book.model'),
-          attributes: ['id', 'title', 'author', 'cover_image', 'categories', 'rating']
+          model: Book,
+          attributes: ['id', 'title', 'author', 'coverImage', 'categories', 'rating', 'description']
         }
       ]
     });
+
+    await normalizeBookshelfEntries(bookshelf);
     
     return res.status(200).json({ bookshelf });
   } catch (error) {
@@ -132,12 +155,14 @@ const getCurrentUserBookshelf = async (req, res) => {
       where: { userId },
       include: [
         {
-          model: require('../models/book.model'),
+          model: Book,
           as: 'book',
           attributes: ['id', 'title', 'author', 'coverImage', 'categories', 'rating', 'description']
         }
       ]
     });
+
+    await normalizeBookshelfEntries(bookshelf);
     
     return res.status(200).json({ 
       bookshelf,

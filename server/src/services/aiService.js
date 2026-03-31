@@ -3,6 +3,7 @@ const axios = require('axios');
 const appConfig = require('../config/config');
 const Bookshelf = require('../models/bookshelf.model');
 const Book = require('../models/book.model');
+const coverResolverService = require('./cover/CoverResolverService');
 
 // 有条件地导入 node-fetch
 let fetch;
@@ -495,7 +496,7 @@ class AIService {
 
       const content = response?.choices?.[0]?.message?.content || '';
       const payload = this._extractJsonFromContent(content);
-      const normalized = this._normalizeHomepagePayload(payload, readingProfile);
+      const normalized = await this._ensureHomepageCovers(this._normalizeHomepagePayload(payload, readingProfile));
 
       return {
         ...normalized,
@@ -505,7 +506,7 @@ class AIService {
       logger.error('获取首页聚合数据失败，回退到本地数据', error);
 
       return {
-        ...this._getMockHomepageData(readingProfile),
+        ...await this._ensureHomepageCovers(this._getMockHomepageData(readingProfile)),
         source: 'fallback'
       };
     }
@@ -693,7 +694,7 @@ ${JSON.stringify(readingProfile, null, 2)}
 要求：
 1. recommendationGroups 必须正好 2 组，每组正好 4 本书，共 8 本
 2. categories 必须正好 6 个
-3. 每本书必须包含 title、author、category、tags、coverUrl、introduction
+3. 每本书必须包含 title、author、category、tags、introduction
 4. 推荐要体现用户阅读偏好与适度拓展
 5. 不要重复书名，不要输出Markdown`
         }
@@ -727,7 +728,7 @@ ${JSON.stringify(readingProfile, null, 2)}
 1. 传统文学必须正好 4 本
 2. 小说精选必须正好 4 本
 3. categories 必须正好 6 个
-4. 每本书必须包含 title、author、category、tags、coverUrl、introduction
+4. 每本书必须包含 title、author、category、tags、introduction
 5. 推荐面向大众首页，兼顾经典性、可读性和覆盖面
 6. 不要重复书名，不要输出Markdown`
         };
@@ -1094,11 +1095,10 @@ ${JSON.stringify(readingProfile, null, 2)}
     "author": "作者",
     "category": "分类",
     "tags": ["标签1", "标签2", "标签3"],
-    "coverUrl": "封面URL",
     "introduction": "简介"
   }
 ]
-请使用豆瓣图书的真实封面URL，确保返回的是有效的JSON格式，不要有任何额外文字说明。`;
+请不要返回封面URL字段，确保返回的是有效的JSON格式，不要有任何额外文字说明。`;
       
       if (user && user.readHistory && user.readHistory.length > 0) {
         // 如果有用户阅读历史，加入个性化推荐
@@ -1131,6 +1131,7 @@ ${JSON.stringify(readingProfile, null, 2)}
         // 验证书籍数据格式
         logger.info(`成功解析出${books.length}本书，开始验证和格式化`);
         books = books.map(book => this._validateAndFormatBook(book));
+        books = await this._ensureStableBookCovers(books);
         
         logger.info(`成功获取${books.length}本AI推荐书籍`);
       } catch (parseError) {
@@ -1144,7 +1145,7 @@ ${JSON.stringify(readingProfile, null, 2)}
       logger.error('获取AI推荐书籍失败', error);
       logger.info('回退到模拟推荐数据');
       // 返回示例数据，避免前端显示错误
-      return this._getMockRecommendedBooks();
+      return this._ensureStableBookCovers(this._getMockRecommendedBooks());
     }
   }
 
@@ -1179,11 +1180,10 @@ ${JSON.stringify(readingProfile, null, 2)}
     "category": "分类",
     "popularity": 95,
     "tags": ["标签1", "标签2", "标签3"],
-    "coverUrl": "封面URL",
     "introduction": "简介"
   }
 ]
-请使用豆瓣图书的真实封面URL，确保返回的是有效的JSON格式，不要有任何额外文字说明。`;
+请不要返回封面URL字段，确保返回的是有效的JSON格式，不要有任何额外文字说明。`;
       
       if (category) {
         userPrompt += `\n只需要推荐类别为【${category}】的书籍。`;
@@ -1201,7 +1201,7 @@ ${JSON.stringify(readingProfile, null, 2)}
         result = await this.callAI(messages);
       } catch (error) {
         logger.error('调用AI服务获取热门书籍失败，使用模拟数据：', error);
-        const mockBooks = this._getMockPopularBooks(category).slice(0, limit);
+        const mockBooks = await this._ensureStableBookCovers(this._getMockPopularBooks(category).slice(0, limit));
         await this._saveToCache(cacheKey, mockBooks, 1800); // 缓存30分钟
         return mockBooks;
       }
@@ -1250,19 +1250,21 @@ ${JSON.stringify(readingProfile, null, 2)}
           }
         }
         
+        books = await this._ensureStableBookCovers(books);
+
         // 将结果保存到缓存
         await this._saveToCache(cacheKey, books, 3600); // 缓存1小时
         
         return books;
       } catch (error) {
         logger.error('解析AI返回的热门书籍JSON失败，使用模拟数据：', error);
-        const mockBooks = this._getMockPopularBooks(category).slice(0, limit);
+        const mockBooks = await this._ensureStableBookCovers(this._getMockPopularBooks(category).slice(0, limit));
         await this._saveToCache(cacheKey, mockBooks, 1800); // 缓存30分钟
         return mockBooks;
       }
     } catch (error) {
       logger.error('获取热门书籍时发生错误，返回模拟数据：', error);
-      return this._getMockPopularBooks(category).slice(0, limit);
+      return this._ensureStableBookCovers(this._getMockPopularBooks(category).slice(0, limit));
     }
   }
   
@@ -1314,6 +1316,41 @@ ${JSON.stringify(readingProfile, null, 2)}
   }
 
   /**
+   * 为书籍列表补充稳定封面
+   * @param {Array} books
+   * @returns {Promise<Array>}
+   * @private
+   */
+  async _ensureStableBookCovers(books) {
+    if (!Array.isArray(books) || books.length === 0) {
+      return books || [];
+    }
+
+    return coverResolverService.ensureBooksHaveCovers(books, {
+      persist: false,
+      skipExternalLookup: true
+    });
+  }
+
+  /**
+   * 为首页聚合数据补充稳定封面
+   * @param {Object} homepageData
+   * @returns {Promise<Object>}
+   * @private
+   */
+  async _ensureHomepageCovers(homepageData) {
+    if (!homepageData || !Array.isArray(homepageData.recommendationGroups)) {
+      return homepageData;
+    }
+
+    for (const group of homepageData.recommendationGroups) {
+      group.books = await this._ensureStableBookCovers(group.books || []);
+    }
+
+    return homepageData;
+  }
+
+  /**
    * 验证并格式化书籍数据
    * @param {Object} book - 书籍数据
    * @param {Boolean} isPopular - 是否是热门书籍
@@ -1328,7 +1365,7 @@ ${JSON.stringify(readingProfile, null, 2)}
       category: book.category || book.categories?.[0] || '未分类',
       tags: Array.isArray(book.tags) ? book.tags : 
             (book.tags ? [book.tags] : []),
-      coverUrl: book.coverUrl || 'https://img9.doubanio.com/view/subject/l/public/s33950303.jpg', // 提供默认封面
+      coverUrl: book.coverUrl || book.coverImage || '',
       introduction: book.introduction || book.description || '暂无简介',
       rating: typeof book.rating === 'number' ? book.rating : 4.0,
       reasons: book.reasons || '',
@@ -1470,11 +1507,10 @@ ${JSON.stringify(readingProfile, null, 2)}
     "category": "分类",
     "searchFrequency": 95,
     "tags": ["标签1", "标签2", "标签3"],
-    "coverUrl": "封面URL",
     "introduction": "简介"
   }
 ]
-请使用豆瓣图书的真实封面URL，尽量选择流行度高、大众关注的图书，如畅销书、热门网文、知名作家的作品等。确保返回的是有效的JSON格式，不要有任何额外文字说明。`;
+请不要返回封面URL字段，尽量选择流行度高、大众关注的图书，如畅销书、热门网文、知名作家的作品等。确保返回的是有效的JSON格式，不要有任何额外文字说明。`;
       
       const messages = [
         { role: "system", content: systemPrompt },
@@ -1508,6 +1544,7 @@ ${JSON.stringify(readingProfile, null, 2)}
             (Math.floor(Math.random() * 20) + 80); // 默认80-100的随机值
           return formattedBook;
         });
+        books = await this._ensureStableBookCovers(books);
         
         logger.info(`成功获取${books.length}本热门搜索书籍`);
       } catch (parseError) {
@@ -1521,7 +1558,7 @@ ${JSON.stringify(readingProfile, null, 2)}
       logger.error('获取热门搜索书籍失败', error);
       logger.info('回退到模拟热门搜索数据');
       // 返回示例数据，避免前端显示错误
-      return this._getMockPopularSearches();
+      return this._ensureStableBookCovers(this._getMockPopularSearches());
     }
   }
   
@@ -1780,7 +1817,7 @@ ${JSON.stringify(readingProfile, null, 2)}
           this._updateThinkingProgress(sessionId, `成功找到${bookResults.length}本相关书籍，正在整理结果...`, 90);
           
           // 完成搜索结果
-          this._finalizeSearchResults(sessionId, bookResults);
+          await this._finalizeSearchResults(sessionId, bookResults);
         } else {
           logger.error(`无法从AI响应中提取有效的书籍数据: ${fullContent.substring(0, 200)}...`);
           this._updateThinkingProgress(sessionId, "无法获取有效的书籍推荐结果，请重试", 90);
@@ -2024,7 +2061,7 @@ ${JSON.stringify(readingProfile, null, 2)}
    * @param {Array} results 搜索结果
    * @private
    */
-  _finalizeSearchResults(sessionId, results) {
+  async _finalizeSearchResults(sessionId, results) {
     if (!this.searchSessions.has(sessionId)) {
       logger.warn(`会话已不存在，无法完成结果 [ID: ${sessionId}]`);
       return;
@@ -2033,7 +2070,7 @@ ${JSON.stringify(readingProfile, null, 2)}
     const session = this.searchSessions.get(sessionId);
     
     // 处理和格式化结果
-    const formattedResults = Array.isArray(results) 
+    let formattedResults = Array.isArray(results) 
       ? results.map((book, index) => {
           // 增加id字段确保前端能正确识别每本书
           const formattedBook = this._validateAndFormatBook(book);
@@ -2046,6 +2083,8 @@ ${JSON.stringify(readingProfile, null, 2)}
           return formattedBook;
         })
       : [];
+
+    formattedResults = await this._ensureStableBookCovers(formattedResults);
     
     // 立即更新结果
     session.status = 'completed';

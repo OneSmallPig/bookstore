@@ -998,7 +998,7 @@ function generateBookshelfCard(bookData) {
   const bookId = book.id || bookData.bookId || '';
   const title = book.title || '未知标题';
   const author = book.author || '未知作者';
-  const cover = book.coverUrl || book.cover || '../images/default-cover.jpg';
+  const cover = book.coverUrl || book.coverImage || book.cover || '../images/default-cover.jpg';
   
   // 获取创建时间和添加时间
   const createdAt = book.createdAt || bookData.createdAt || new Date().toISOString();

@@ -2,6 +2,13 @@ const Book = require('../models/book.model');
 const Bookshelf = require('../models/bookshelf.model');
 const { Op } = require('sequelize');
 const logger = require('../utils/logger');
+const coverResolverService = require('../services/cover/CoverResolverService');
+
+function toPlainBook(book) {
+  const plainBook = typeof book.toJSON === 'function' ? book.toJSON() : { ...book };
+  plainBook.coverUrl = plainBook.coverImage || '';
+  return plainBook;
+}
 
 /**
  * 获取所有书籍
@@ -55,9 +62,13 @@ const getAllBooks = async (req, res) => {
       offset: parseInt(offset),
       order: orderClause
     });
+
+    await coverResolverService.ensureBooksHaveCovers(books);
+
+    const normalizedBooks = books.map(toPlainBook);
     
     return res.status(200).json({
-      books,
+      books: normalizedBooks,
       totalItems: count,
       totalPages: Math.ceil(count / limit),
       currentPage: parseInt(page)
@@ -80,8 +91,12 @@ const getBookById = async (req, res) => {
     if (!book) {
       return res.status(404).json({ message: '书籍不存在' });
     }
+
+    await coverResolverService.ensureBookCover(book);
+
+    const plainBook = toPlainBook(book);
     
-    return res.status(200).json({ book });
+    return res.status(200).json({ book: plainBook });
   } catch (error) {
     logger.error(`获取书籍详情失败: ${error.message}`);
     return res.status(500).json({ message: '获取书籍详情过程中发生错误' });
@@ -115,7 +130,11 @@ const addToBookshelf = async (req, res) => {
         title: bookTitle,
         author: req.body.author || '未知作者',
         description: req.body.description || '暂无描述',
-        coverImage: req.body.coverImage || 'default-cover.png'
+        coverImage: req.body.coverImage || '',
+        isbn: req.body.isbn || null,
+        isbn10: req.body.isbn10 || null,
+        isbn13: req.body.isbn13 || null,
+        publisher: req.body.publisher || null
       });
       console.log(`创建了新书籍: ${book.title}, ID: ${book.id}`);
     } else {
@@ -132,11 +151,17 @@ const addToBookshelf = async (req, res) => {
           title: req.body.title || book.title,
           author: req.body.author || book.author,
           description: req.body.description || book.description,
-          coverImage: req.body.coverImage || book.coverImage
+          coverImage: req.body.coverImage || book.coverImage,
+          isbn: req.body.isbn || book.isbn,
+          isbn10: req.body.isbn10 || book.isbn10,
+          isbn13: req.body.isbn13 || book.isbn13,
+          publisher: req.body.publisher || book.publisher
         });
         console.log(`更新了书籍信息: ${book.title}, ID: ${book.id}`);
       }
     }
+
+    await coverResolverService.ensureBookCover(book);
     
     // 使用找到的书籍的ID
     const actualBookId = book.id;
@@ -267,10 +292,37 @@ const updateReadingProgress = async (req, res) => {
   }
 };
 
+/**
+ * 主动解析并刷新书籍封面
+ */
+const resolveBookCover = async (req, res) => {
+  try {
+    const { bookId } = req.params;
+
+    const book = await Book.findByPk(bookId);
+    if (!book) {
+      return res.status(404).json({ message: '书籍不存在' });
+    }
+
+    await coverResolverService.ensureBookCover(book, { forceRefresh: true });
+
+    const plainBook = toPlainBook(book);
+
+    return res.status(200).json({
+      message: '书籍封面已刷新',
+      book: plainBook
+    });
+  } catch (error) {
+    logger.error(`刷新书籍封面失败: ${error.message}`);
+    return res.status(500).json({ message: '刷新书籍封面过程中发生错误' });
+  }
+};
+
 module.exports = {
   getAllBooks,
   getBookById,
   addToBookshelf,
   removeFromBookshelf,
-  updateReadingProgress
+  updateReadingProgress,
+  resolveBookCover
 };

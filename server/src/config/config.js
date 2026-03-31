@@ -114,6 +114,12 @@ const config = {
     timeout: parseNumber(getEnv('AI_TIMEOUT_MS', 180000), 180000),
     requestTimeout: parseNumber(getEnv('AI_REQUEST_TIMEOUT_MS', 30000), 30000),
   },
+
+  covers: {
+    publicBasePath: getEnv('COVER_PUBLIC_BASE_PATH', '/covers/cache'),
+    disableProxy: parseBool(getEnv('COVER_DISABLE_PROXY', 'true')),
+    requestTimeout: parseNumber(getEnv('COVER_REQUEST_TIMEOUT_MS', 5000), 5000),
+  },
   
   // 其他配置
   useMockData: parseBool(getEnv('USE_MOCK_DATA', 'false'))

@@ -22,4 +22,7 @@ router.delete('/:bookId/bookshelf', bookController.removeFromBookshelf);
 // 更新阅读进度
 router.put('/:bookId/reading-progress', bookController.updateReadingProgress);
 
+// 手动刷新书籍封面
+router.post('/:bookId/cover/resolve', bookController.resolveBookCover);
+
 module.exports = router; 

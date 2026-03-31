@@ -26,21 +26,10 @@ const CACHE_DURATION = config.cache.duration;
 window.onload = function () {
   console.log('页面已完全加载，执行初始化...');
   initHomePage();
-  
-  // 加载图片代理服务
-  loadImageProxyIfNeeded();
-  
-  // 在首次加载页面后，只执行一次封面图片修复
-  // 延长延迟时间，确保图片有足够时间完成加载
-  if (!window._hasFixedCoverImages) {
-    window._hasFixedCoverImages = true;
-    console.log('页面首次加载，将在2秒后检查和修复封面图片');
-    setTimeout(checkAndFixCoverImages, 2000);
-  }
-  
+
   // 加载用户书架数据
   loadUserBookshelf();
-  
+
   // 确保书籍卡片事件绑定
   setTimeout(ensureBookCardListeners, 1000);
 };
@@ -68,8 +57,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     clearCacheBtn.addEventListener('click', () => {
       localStorage.removeItem(CACHE_KEYS.HOMEPAGE_DATA);
-      localStorage.removeItem(config.cache.keys.RECOMMENDED_BOOKS);
-      localStorage.removeItem(config.cache.keys.POPULAR_BOOKS);
       localStorage.removeItem(CACHE_KEYS.CACHE_TIMESTAMP);
       localStorage.removeItem(CACHE_KEYS.CACHED_TOKEN);
       alert('缓存已清除，页面将刷新');
@@ -546,68 +533,38 @@ function checkBookInBookshelf(bookId) {
  * @returns {string} - 书籍封面HTML
  */
 function createBookCoverElement(bookData) {
-  // 增强日志，便于调试封面问题
-  console.log('处理书籍封面:', bookData.title, '封面URL:', bookData.coverUrl);
-  
-  // 检查封面URL是否有效，处理更多可能的格式
-  if (bookData.coverUrl && typeof bookData.coverUrl === 'string' && bookData.coverUrl.trim() !== '') {
-    let coverUrl = bookData.coverUrl.trim();
-    
-    // 处理相对路径
-    if (coverUrl.startsWith('/') && !coverUrl.startsWith('//')) {
-      coverUrl = coverUrl; // 保持相对路径不变
-    }
-    
-    // 如果是不完整的URL（如//example.com/image.jpg），添加https:
-    if (coverUrl.startsWith('//')) {
-      coverUrl = 'https:' + coverUrl;
-    }
-    
-    // 检测是否为豆瓣或其他可能有防盗链的图片
-    const isDoubanImage = coverUrl.includes('doubanio.com') || 
-                           coverUrl.includes('douban.com') || 
-                           coverUrl.includes('img9.') ||
-                           coverUrl.includes('img1.') ||
-                           coverUrl.includes('img2.') ||
-                           coverUrl.includes('img3.');
-    
-    // 确保URL是安全的
-    try {
-      new URL(coverUrl); // 尝试创建URL对象，如果无效会抛出错误
-      console.log('有效的封面URL:', coverUrl, isDoubanImage ? '(豆瓣图片)' : '');
-      
-      // 根据是否为豆瓣图片选择不同的处理方式
-      if (isDoubanImage) {
-        console.log('检测到豆瓣图片，使用专用处理:', coverUrl);
-        
-        // 对豆瓣图片直接使用代理服务，避免403错误
-        let imgUrl = coverUrl;
-        
-        // 如果ImageProxy模块已加载，直接使用代理URL
-        if (window.ImageProxy && window.ImageProxy.getProxiedImageUrl) {
-          imgUrl = window.ImageProxy.getProxiedImageUrl(coverUrl, 1); // 直接从代理1开始
-          console.log('豆瓣图片直接使用代理URL:', imgUrl);
-        }
-        
-        return `<img src="${imgUrl}" alt="${bookData.title}" class="book-cover-image" 
-                data-original-src="${coverUrl}" 
-                data-douban-image="true"
-                data-use-proxy="true"
-                onerror="this.onerror=null; if(window.handleImageError) window.handleImageError(this);">`;
-      } else {
-        // 非豆瓣图片，正常加载
-        return `<img src="${coverUrl}" alt="${bookData.title}" class="book-cover-image" 
-                onerror="this.onerror=null; if(window.handleImageError) window.handleImageError(this);">`;
-      }
-    } catch (e) {
-      console.warn('无效的封面URL:', coverUrl, e);
-      // 如果URL无效，使用占位符
-      return createCoverPlaceholder(bookData);
-    }
+  const coverUrl = normalizeCoverUrl(bookData.coverUrl);
+  if (coverUrl) {
+    return `<img src="${coverUrl}" alt="${bookData.title}" class="book-cover-image" onerror="this.onerror=null; if(window.handleImageError) window.handleImageError(this);">`;
   }
-  
-  // 使用封面占位符
+
   return createCoverPlaceholder(bookData);
+}
+
+function normalizeCoverUrl(coverUrl) {
+  if (!coverUrl || typeof coverUrl !== 'string') {
+    return '';
+  }
+
+  const normalized = coverUrl.trim();
+  if (!normalized) {
+    return '';
+  }
+
+  if (normalized.startsWith('/')) {
+    return normalized;
+  }
+
+  if (normalized.startsWith('//')) {
+    return `https:${normalized}`;
+  }
+
+  try {
+    return new URL(normalized).toString();
+  } catch (error) {
+    console.warn('封面URL无效，改用占位图:', normalized, error);
+    return '';
+  }
 }
 
 /**
@@ -981,136 +938,10 @@ function showError(container, message) {
 }
 
 /**
- * 检查并修复书籍封面图片加载问题
- */
-function checkAndFixCoverImages() {
-  // 检查是否在书架页面，如果是则跳过执行
-  if (window._isBookshelfPage) {
-    console.log('当前在书架页面，跳过封面图片检查');
-    return;
-  }
-
-  // 防止重复执行
-  if (window._isCheckingCoverImages) {
-    console.log('已有检查封面任务在执行中，跳过...');
-    return;
-  }
-
-  window._isCheckingCoverImages = true;
-  console.log('检查所有书籍封面图片...');
-  const coverImages = document.querySelectorAll('.book-cover-image');
-  
-  // 处理计数，用于跟踪处理完成
-  let processedCount = 0;
-  const totalImages = coverImages.length;
-  
-  if (totalImages === 0) {
-    console.log('页面上没有找到需要处理的封面图片');
-    window._isCheckingCoverImages = false;
-    return;
-  }
-  
-  coverImages.forEach((img, index) => {
-    // 检查图片是否已经处理过或标记为已处理
-    if (img.dataset.checked === 'true' || img.dataset.processed === 'true' || img.dataset.fallbackAttempted === 'true') {
-      processedCount++;
-      if (processedCount >= totalImages) {
-        console.log('所有封面图片处理完成');
-        window._isCheckingCoverImages = false;
-      }
-      return;
-    }
-    
-    // 标记图片已检查
-    img.dataset.checked = 'true';
-    
-    // 检查图片是否已经加载或加载失败
-    if (img.complete) {
-      if (img.naturalHeight === 0) {
-        console.warn(`封面图片 #${index} 加载失败:`, img.src);
-        handleImageError(img);
-      } else {
-        console.log(`封面图片 #${index} 加载成功:`, img.src);
-      }
-      processedCount++;
-      if (processedCount >= totalImages) {
-        console.log('所有封面图片处理完成');
-        window._isCheckingCoverImages = false;
-      }
-    } else {
-      // 图片尚未加载完毕，添加事件监听器
-      img.addEventListener('load', () => {
-        console.log(`封面图片 #${index} 延迟加载成功:`, img.src);
-        processedCount++;
-        if (processedCount >= totalImages) {
-          console.log('所有封面图片处理完成');
-          window._isCheckingCoverImages = false;
-        }
-      });
-      
-      img.addEventListener('error', () => {
-        console.warn(`封面图片 #${index} 加载失败:`, img.src);
-        handleImageError(img);
-        processedCount++;
-        if (processedCount >= totalImages) {
-          console.log('所有封面图片处理完成');
-          window._isCheckingCoverImages = false;
-        }
-      });
-    }
-  });
-  
-  // 设置安全超时，确保状态最终会被重置
-  setTimeout(() => {
-    window._isCheckingCoverImages = false;
-  }, 10000); // 10秒后重置状态
-}
-
-/**
  * 处理图片加载错误
  * @param {HTMLImageElement} img - 图片元素
  */
 function handleImageError(img) {
-  console.warn('图片加载失败，尝试使用备用方法:', img.src);
-  
-  // 如果图片已经被处理过，不要重复处理
-  if (img.dataset.fallbackAttempted === 'true' || img.dataset.processed === 'true') {
-    console.log('图片已被处理过，跳过:', img.src);
-    return;
-  }
-  
-  // 获取原始URL
-  const originalUrl = img.dataset.originalSrc || img.src;
-  
-  // 检查是否为豆瓣图片
-  const isDoubanImage = img.dataset.doubanImage === 'true' || 
-                        originalUrl.includes('doubanio.com') || 
-                        originalUrl.includes('douban.com') || 
-                        originalUrl.includes('img9.') ||
-                        originalUrl.includes('img1.') ||
-                        originalUrl.includes('img2.') ||
-                        originalUrl.includes('img3.');
-  
-  // 标记图片正在被处理
-  img.dataset.fallbackAttempted = 'true';
-  
-  // 检查ImageProxy模块是否可用
-  if (window.ImageProxy && (isDoubanImage || img.dataset.useProxy === 'true')) {
-    console.log('检测到', isDoubanImage ? '豆瓣图片' : '需要代理的图片', '使用图片代理服务:', originalUrl);
-    
-    // 如果是豆瓣图片，设置特定标记
-    if (isDoubanImage) {
-      img.dataset.doubanImage = 'true';
-    }
-    
-    img.dataset.useProxy = 'true';
-    
-    // 使用图片代理服务加载
-    window.ImageProxy.handleImageWithProxy(img, originalUrl);
-    return;
-  }
-  
-  // 如果图片代理服务不可用或不是特殊图片，使用默认占位符
   const title = img.alt || '未知书名';
   const placeholder = document.createElement('div');
   placeholder.className = 'book-cover-placeholder';
@@ -1122,118 +953,6 @@ function handleImageError(img) {
   // 替换图片元素
   if (img.parentNode) {
     img.parentNode.replaceChild(placeholder, img);
-  }
-}
-
-/**
- * 加载图片代理服务模块
- */
-function loadImageProxyIfNeeded() {
-  // 检查ImageProxy是否已加载
-  if (window.ImageProxy) {
-    console.log('图片代理服务模块已加载');
-    // 立即处理所有豆瓣图片
-    setTimeout(processDoubanImages, 50);
-    return;
-  }
-
-  // 动态加载图片代理模块
-  const script = document.createElement('script');
-  script.src = '/src/js/imageProxy.js';
-  script.type = 'module';
-  script.onload = function() {
-    console.log('图片代理服务模块加载成功');
-    // 模块加载成功后立即处理豆瓣图片
-    setTimeout(processDoubanImages, 100);
-  };
-  script.onerror = function(error) {
-    console.error('加载图片代理服务模块失败:', error);
-  };
-  document.head.appendChild(script);
-}
-
-/**
- * 处理页面中所有的豆瓣图片
- */
-function processDoubanImages() {
-  if (!window.ImageProxy) {
-    console.error('ImageProxy未加载，无法处理豆瓣图片');
-    return;
-  }
-  
-  console.log('开始主动处理豆瓣图片...');
-  
-  // 查找所有图片元素
-  const images = document.querySelectorAll('img');
-  let doubanImageCount = 0;
-  
-  images.forEach((img, index) => {
-    // 获取图片URL
-    const src = img.src || '';
-    const originalSrc = img.dataset.originalSrc || src;
-    
-    // 检测豆瓣域名特征
-    const isDoubanImage = 
-      originalSrc.includes('doubanio.com') || 
-      originalSrc.includes('douban.com') || 
-      originalSrc.includes('img9.') || 
-      originalSrc.includes('img1.') || 
-      originalSrc.includes('img2.') || 
-      originalSrc.includes('img3.') ||
-      img.dataset.doubanImage === 'true';
-    
-    // 跳过已处理的豆瓣图片
-    if (isDoubanImage && img.dataset.processed === 'true') {
-      console.log(`图片 #${index} (${originalSrc}) 已经处理过，跳过`);
-      return;
-    }
-    
-    if (isDoubanImage) {
-      doubanImageCount++;
-      console.log(`发现豆瓣图片 #${index}:`, originalSrc);
-      
-      // 保存原始URL
-      if (!img.dataset.originalSrc) {
-        img.dataset.originalSrc = originalSrc;
-      }
-      
-      // 标记为豆瓣图片和需要代理
-      img.dataset.doubanImage = 'true';
-      img.dataset.useProxy = 'true';
-      
-      // 如果图片已加载但高度为0表示加载失败，或者尚未加载完成，使用代理URL替换
-      if ((img.complete && img.naturalHeight === 0) || !img.complete) {
-        const proxyUrl = window.ImageProxy.getProxiedImageUrl(originalSrc, 1); // 直接使用代理服务1
-        console.log(`处理豆瓣图片 #${index}: ${originalSrc} -> ${proxyUrl}`);
-        
-        // 移除可能的事件处理器
-        img.onerror = null;
-        img.onload = null;
-        
-        // 设置新的事件处理器
-        img.onerror = function() {
-          console.warn(`豆瓣图片代理加载失败:`, proxyUrl);
-          // 不再尝试原始URL，直接交由handleImageWithProxy处理下一个代理
-          window.ImageProxy.handleImageWithProxy(this, originalSrc);
-        };
-        
-        img.onload = function() {
-          console.log(`豆瓣图片代理加载成功:`, proxyUrl);
-          this.dataset.processed = 'true';
-        };
-        
-        // 设置代理URL
-        img.src = proxyUrl;
-      }
-    }
-  });
-  
-  console.log(`总计处理${doubanImageCount}张豆瓣图片`);
-  
-  // 确保所有豆瓣图片都能在第一次渲染时正确显示
-  if (doubanImageCount > 0) {
-    // 稍后再次检查，处理动态加载的图片
-    setTimeout(checkAndFixCoverImages, 500);
   }
 }
 

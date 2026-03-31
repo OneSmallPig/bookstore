@@ -20,6 +20,36 @@ const Book = sequelize.define('Book', {
     type: DataTypes.STRING,
     defaultValue: 'default-cover.png'
   },
+  coverSource: {
+    type: DataTypes.STRING(50),
+    defaultValue: 'missing'
+  },
+  coverOriginalUrl: {
+    type: DataTypes.STRING
+  },
+  coverStorageKey: {
+    type: DataTypes.STRING
+  },
+  coverStatus: {
+    type: DataTypes.STRING(20),
+    defaultValue: 'missing'
+  },
+  coverLastVerifiedAt: {
+    type: DataTypes.DATE
+  },
+  coverWidth: {
+    type: DataTypes.INTEGER
+  },
+  coverHeight: {
+    type: DataTypes.INTEGER
+  },
+  coverHash: {
+    type: DataTypes.STRING(64)
+  },
+  coverConfidence: {
+    type: DataTypes.FLOAT,
+    defaultValue: 0
+  },
   description: {
     type: DataTypes.TEXT
   },
@@ -52,6 +82,12 @@ const Book = sequelize.define('Book', {
     defaultValue: '中文'
   },
   isbn: {
+    type: DataTypes.STRING(20)
+  },
+  isbn10: {
+    type: DataTypes.STRING(20)
+  },
+  isbn13: {
     type: DataTypes.STRING(20)
   },
   fileUrl: {
