@@ -39,6 +39,6 @@ router.get('/export', BookSourceController.exportSources);
 router.delete('/sources/:name', BookSourceController.deleteSource);
 
 // 设置书源启用状态
-router.patch('/sources/:name/status', BookSourceController.setSourceStatus);
+router.patch('/sources/:name/status', BookSourceController.setSourceEnabled);
 
 module.exports = router; 

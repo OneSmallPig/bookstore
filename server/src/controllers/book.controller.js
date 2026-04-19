@@ -10,6 +10,20 @@ function toPlainBook(book) {
   return plainBook;
 }
 
+function normalizeBookshelfStatus(inputStatus) {
+  const statusMap = {
+    toRead: '未开始',
+    want: '未开始',
+    unread: '未开始',
+    reading: '阅读中',
+    inProgress: '阅读中',
+    completed: '已完成',
+    finished: '已完成'
+  };
+
+  return statusMap[inputStatus] || inputStatus || '未开始';
+}
+
 /**
  * 获取所有书籍
  */
@@ -123,41 +137,41 @@ const addToBookshelf = async (req, res) => {
     
     // 如果书籍不存在，创建一个新的书籍记录
     if (!book) {
-      console.log(`书籍"${bookId}"不存在，创建新书籍记录`);
+      logger.info(`书籍"${bookId}"不存在，创建新书籍记录`);
       // 创建一个新的书籍记录 - 优先使用请求体中的title字段
       const bookTitle = req.body.title || bookId;
       book = await Book.create({
         title: bookTitle,
         author: req.body.author || '未知作者',
         description: req.body.description || '暂无描述',
-        coverImage: req.body.coverImage || '',
+        coverImage: req.body.coverImage || req.body.coverUrl || '',
         isbn: req.body.isbn || null,
         isbn10: req.body.isbn10 || null,
         isbn13: req.body.isbn13 || null,
         publisher: req.body.publisher || null
       });
-      console.log(`创建了新书籍: ${book.title}, ID: ${book.id}`);
+      logger.info(`创建了新书籍: ${book.title}, ID: ${book.id}`);
     } else {
       // 如果书籍存在但数据不完整，使用请求中的数据更新书籍信息
       const shouldUpdate = 
         (book.title === bookId && req.body.title && req.body.title !== bookId) ||
         (book.author === '未知作者' && req.body.author) || 
         ((!book.description || book.description === '暂无描述') && req.body.description) ||
-        ((!book.coverImage || book.coverImage === 'default-cover.png') && req.body.coverImage);
+        ((!book.coverImage || book.coverImage === 'default-cover.png') && (req.body.coverImage || req.body.coverUrl));
       
       if (shouldUpdate) {
-        console.log(`书籍"${bookId}"存在但信息不完整，更新书籍信息`);
+        logger.info(`书籍"${bookId}"存在但信息不完整，更新书籍信息`);
         await book.update({
           title: req.body.title || book.title,
           author: req.body.author || book.author,
           description: req.body.description || book.description,
-          coverImage: req.body.coverImage || book.coverImage,
+          coverImage: req.body.coverImage || req.body.coverUrl || book.coverImage,
           isbn: req.body.isbn || book.isbn,
           isbn10: req.body.isbn10 || book.isbn10,
           isbn13: req.body.isbn13 || book.isbn13,
           publisher: req.body.publisher || book.publisher
         });
-        console.log(`更新了书籍信息: ${book.title}, ID: ${book.id}`);
+        logger.info(`更新了书籍信息: ${book.title}, ID: ${book.id}`);
       }
     }
 
@@ -179,8 +193,8 @@ const addToBookshelf = async (req, res) => {
     const bookshelfEntry = await Bookshelf.create({
       userId,
       bookId: actualBookId,
-      reading_status: req.body.reading_status || '未开始',
-      current_page: req.body.current_page || 0,
+      reading_status: normalizeBookshelfStatus(req.body.reading_status || req.body.readingStatus),
+      current_page: req.body.current_page ?? req.body.currentPage ?? 0,
       last_read_at: new Date()
     });
     
@@ -247,7 +261,8 @@ const updateReadingProgress = async (req, res) => {
   try {
     const userId = req.user.id;
     const { bookId } = req.params;
-    const { current_page, reading_status } = req.body;
+    const currentPage = req.body.current_page ?? req.body.currentPage ?? req.body.progress;
+    const readingStatus = normalizeBookshelfStatus(req.body.reading_status || req.body.readingStatus);
     
     // 先检查书籍是否存在，先尝试通过ID查找，然后尝试通过书名查找
     let book;
@@ -277,8 +292,8 @@ const updateReadingProgress = async (req, res) => {
     
     // 更新阅读进度
     const updatedEntry = await bookshelfEntry.update({
-      current_page: current_page !== undefined ? current_page : bookshelfEntry.current_page,
-      reading_status: reading_status || bookshelfEntry.reading_status,
+      current_page: currentPage !== undefined ? currentPage : bookshelfEntry.current_page,
+      reading_status: readingStatus || bookshelfEntry.reading_status,
       last_read_at: new Date()
     });
     

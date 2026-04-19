@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
-const config = require('../config/config');
 
 const Book = sequelize.define('Book', {
   id: {
@@ -113,10 +112,5 @@ const Book = sequelize.define('Book', {
   timestamps: true,
   underscored: true
 });
-
-// 同步模型到数据库
-Book.sync({ alter: config.database.syncAlter })
-  .then(() => console.log('书籍表同步成功'))
-  .catch(err => console.error('书籍表同步失败:', err));
 
 module.exports = Book; 

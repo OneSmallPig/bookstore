@@ -278,7 +278,9 @@ async function importBookSources() {
           try {
             const text = await response.text();
             if (text) errorMessage = text;
-          } catch (e) {}
+          } catch (e) {
+            console.warn('读取错误响应文本失败:', e);
+          }
         }
         
         throw new Error(errorMessage);
@@ -402,7 +404,9 @@ async function pollImportProgress(taskId, updateProgress, addDetail, skippedCoun
         updateProgress(100, `完成: ${task.processed}/${task.total}`);
         
         // 刷新书源列表
-        loadBookSources();
+        if (typeof window.loadBookSources === 'function') {
+          window.loadBookSources();
+        }
         
         // 更新最终状态
         const statusColor = task.failed > 0 ? "text-yellow-500" : "text-green-500";
@@ -444,20 +448,15 @@ async function pollImportProgress(taskId, updateProgress, addDetail, skippedCoun
   
   // 开始轮询
   while (retries < maxRetries) {
-    try {
-      const isDone = await poll();
-      if (isDone) break;
-      
-      // 延迟一定时间再次轮询
-      // 刚开始快速轮询，然后逐渐放慢
-      const delay = Math.min(1000 + (retries * 100), 5000);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      
-      retries++;
-    } catch (error) {
-      // 如果轮询出错，抛出异常终止
-      throw error;
-    }
+    const isDone = await poll();
+    if (isDone) break;
+
+    // 延迟一定时间再次轮询
+    // 刚开始快速轮询，然后逐渐放慢
+    const delay = Math.min(1000 + (retries * 100), 5000);
+    await new Promise(resolve => setTimeout(resolve, delay));
+
+    retries++;
   }
   
   // 达到最大重试次数仍未完成

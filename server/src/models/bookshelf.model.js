@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
-const config = require('../config/config');
 const User = require('./user.model');
 const Book = require('./book.model');
 
@@ -64,10 +63,5 @@ Bookshelf.belongsTo(User, { foreignKey: 'user_id' });
 
 Book.hasMany(Bookshelf, { foreignKey: 'book_id' });
 Bookshelf.belongsTo(Book, { foreignKey: 'book_id', as: 'book' });
-
-// 同步模型到数据库
-Bookshelf.sync({ alter: config.database.syncAlter })
-  .then(() => console.log('书架表同步成功'))
-  .catch(err => console.error('书架表同步失败:', err));
 
 module.exports = Bookshelf; 

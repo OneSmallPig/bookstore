@@ -12,6 +12,40 @@ function getToken() {
     JSON.parse(localStorage.getItem(config.cache.keys.AUTH_TOKEN)).token : null;
 }
 
+function getLocalSearchHistory() {
+  try {
+    const raw = localStorage.getItem(config.cache.keys.SEARCH_HISTORY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (error) {
+    console.error('读取本地搜索历史失败:', error);
+    return [];
+  }
+}
+
+function saveLocalSearchHistory(items) {
+  localStorage.setItem(config.cache.keys.SEARCH_HISTORY, JSON.stringify(items));
+}
+
+function normalizeBooksResponse(data) {
+  if (Array.isArray(data)) {
+    return { books: data };
+  }
+
+  if (Array.isArray(data?.books)) {
+    return data;
+  }
+
+  if (Array.isArray(data?.data)) {
+    return { books: data.data };
+  }
+
+  if (Array.isArray(data?.data?.books)) {
+    return data.data;
+  }
+
+  return { books: [] };
+}
+
 // 通用请求函数
 async function request(endpoint, options = {}) {
   const url = `${config.api.baseUrl}${endpoint}`;
@@ -88,49 +122,56 @@ const userApi = {
   
   // 获取当前用户信息
   getCurrentUser: () => {
-    return request('/users/me');
+    return request('/auth/me');
   },
   
   // 更新用户信息
   updateProfile: (userData) => {
-    return request('/users/me', {
+    return request('/users/profile', {
       method: 'PUT',
-      body: JSON.stringify(userData)
+      body: JSON.stringify({
+        username: userData.username,
+        avatar: userData.avatar
+      })
     });
   },
   
-  // 保存搜索历史
-  saveSearchHistory: (searchData) => {
-    return request('/users/search-history', {
-      method: 'POST',
-      body: JSON.stringify(searchData)
-    });
+  // 搜索历史当前仅保留本地存储，不依赖后端接口
+  saveSearchHistory: async (searchData) => {
+    const history = getLocalSearchHistory();
+    const nextItem = {
+      ...searchData,
+      id: searchData.id || `local-${Date.now()}`
+    };
+    const filtered = history.filter((item) => item.query !== nextItem.query);
+    filtered.unshift(nextItem);
+    saveLocalSearchHistory(filtered.slice(0, 10));
+    return { success: true };
   },
   
-  // 获取搜索历史
-  getSearchHistory: () => {
-    return request('/users/search-history');
+  getSearchHistory: async () => {
+    return { success: true, data: getLocalSearchHistory() };
   },
   
-  // 删除搜索历史
-  deleteSearchHistory: (searchId) => {
-    return request(`/users/search-history/${searchId}`, {
-      method: 'DELETE'
-    });
+  deleteSearchHistory: async (searchId) => {
+    const filtered = getLocalSearchHistory().filter((item) => item.id !== searchId);
+    saveLocalSearchHistory(filtered);
+    return { success: true };
   },
   
-  // 清空所有搜索历史
-  clearSearchHistory: () => {
-    return request('/users/search-history', {
-      method: 'DELETE'
-    });
+  clearSearchHistory: async () => {
+    localStorage.removeItem(config.cache.keys.SEARCH_HISTORY);
+    return { success: true };
   },
   
   // 修改密码
   changePassword: (passwordData) => {
     return request('/users/change-password', {
-      method: 'POST',
-      body: JSON.stringify(passwordData)
+      method: 'PUT',
+      body: JSON.stringify({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      })
     });
   },
   
@@ -156,6 +197,10 @@ const userApi = {
       method: 'POST',
       body: JSON.stringify(data)
     });
+  },
+
+  requestPasswordReset: (data) => {
+    return userApi.sendResetCode(data);
   }
 };
 
@@ -164,25 +209,26 @@ const bookApi = {
   // 获取书籍列表
   getBooks: (params = {}) => {
     const queryParams = new URLSearchParams(params).toString();
-    return request(`/books?${queryParams}`);
+    return request(`/books${queryParams ? `?${queryParams}` : ''}`).then(normalizeBooksResponse);
   },
   
   // 获取书籍详情
   getBookById: (bookId) => {
-    return request(`/books/${bookId}`);
+    return request(`/books/${bookId}`).then((data) => data.book || data.data?.book || data);
   },
   
   // 搜索书籍
   searchBooks: (query) => {
-    return request(`/books/search?q=${encodeURIComponent(query)}`);
+    return request(`/books?search=${encodeURIComponent(query)}`).then((data) => {
+      const normalized = normalizeBooksResponse(data);
+      return normalized.books || [];
+    });
   },
   
   // AI推荐书籍
   getRecommendations: (preferences) => {
-    return request('/books/recommendations', {
-      method: 'POST',
-      body: JSON.stringify(preferences)
-    });
+    const queryParams = new URLSearchParams(preferences || {}).toString();
+    return request(`/ai/recommended${queryParams ? `?${queryParams}` : ''}`);
   }
 };
 
@@ -325,7 +371,7 @@ const bookshelfApi = {
       
       // 准备请求体数据
       const requestData = {
-        readingStatus: status
+        reading_status: status
       };
       
       // 如果有额外的书籍信息，添加到请求中
@@ -333,7 +379,7 @@ const bookshelfApi = {
         // 包含关键的书籍信息字段
         if (bookInfo.title) requestData.title = bookInfo.title;
         if (bookInfo.author) requestData.author = bookInfo.author;
-        if (bookInfo.coverUrl) requestData.coverUrl = bookInfo.coverUrl;
+        if (bookInfo.coverUrl) requestData.coverImage = bookInfo.coverUrl;
         if (bookInfo.description) requestData.description = bookInfo.description;
         if (bookInfo.current_page) requestData.current_page = bookInfo.current_page;
         
@@ -416,7 +462,7 @@ const bookshelfApi = {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getToken()}`
         },
-        body: JSON.stringify({ progress })
+        body: JSON.stringify({ current_page: progress })
       });
       
       console.log(`更新进度API响应状态: ${response.status}`);

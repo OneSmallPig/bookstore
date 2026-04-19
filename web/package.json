@@ -11,17 +11,13 @@
     "preview": "vite preview",
     "api": "json-server --watch public/data/books.json --port 3001",
     "lint": "eslint src --ext .js",
-    "format": "prettier --write \"src/**/*.{js,html,css}\"",
-    "init-db": "node src/scripts/initDb.js"
+    "format": "prettier --write \"src/**/*.{js,html,css}\""
   },
   "keywords": ["books", "library", "ai", "reading"],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "alpinejs": "^3.13.3",
-    "bcrypt": "^5.1.1",
-    "mysql2": "^3.9.2",
-    "sequelize": "^6.37.1",
     "vite": "^5.4.14"
   },
   "devDependencies": {

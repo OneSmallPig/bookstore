@@ -74,9 +74,9 @@ async function initDatabase() {
     const bookshelfItems = allBooks.slice(0, 3).map(book => ({
       userId: testUser.id,
       bookId: book.id,
-      status: 'reading',
-      progress: Math.floor(Math.random() * 100),
-      startDate: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000)
+      readingStatus: '阅读中',
+      currentPage: Math.floor(Math.random() * 100),
+      lastReadAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000)
     }));
     
     await Bookshelf.bulkCreate(bookshelfItems);

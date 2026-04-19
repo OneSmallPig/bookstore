@@ -1,6 +1,9 @@
 const { sequelize } = require('../config/database');
-const BookSourceMySQL = require('../models/bookSource/BookSourceMySQL');
-const ReadingRecordMySQL = require('../models/ReadingRecordMySQL');
+require('../models/user.model');
+require('../models/book.model');
+require('../models/bookshelf.model');
+require('../models/bookSource/BookSourceMySQL');
+require('../models/ReadingRecordMySQL');
 const logger = require('../utils/logger');
 const config = require('../config/config');
 
@@ -19,15 +22,9 @@ async function syncDatabase() {
       return true;
     }
 
-    // 同步书源表
-    logger.info('正在同步书源表(book_sources)...');
-    await BookSourceMySQL.sync({ alter: true });
-    logger.info('book_sources表同步完成');
-
-    // 同步阅读记录表
-    logger.info('正在同步阅读记录表(reading_records)...');
-    await ReadingRecordMySQL.sync({ alter: true });
-    logger.info('reading_records表同步完成');
+    logger.info('正在同步所有 Sequelize 模型...');
+    await sequelize.sync({ alter: true });
+    logger.info('所有表结构同步完成');
     
     // 检查表是否存在
     try {
